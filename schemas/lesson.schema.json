@@ -1602,7 +1602,7 @@
         },
         "showTop": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "STACK: show an owned top slot index marker; hidden automatically when empty."
         },
         "blocks": {

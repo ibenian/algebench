@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ArrayChangeTracker} from './array-changes.js';
+import {ArrayChangeTracker,movedBack} from './array-changes.js';
 const k=(values:unknown[])=>values.map(v=>JSON.stringify([typeof v,v]));
 test('initial display never illuminates every cell, and duplicate rebuilds do nothing',()=>{
  const tracker=new ArrayChangeTracker();
@@ -31,4 +31,12 @@ test('shifts and primitive type changes are detected without numeric coercion',(
  const tracker=new ArrayChangeTracker();tracker.update(k([10,20,30]),'0');
  assert.deepEqual(tracker.update(k([20,30]),'1'),{changed:[0,1],added:[],removed:[2]});
  assert.deepEqual(tracker.update(k(['20',30]),'1'),{changed:[0],added:[],removed:[]});
+});
+
+test('a removal counts as undone only when the sliders only went back',()=>{
+    assert.equal(movedBack([5],[4]),true);
+    assert.equal(movedBack([5],[6]),false);
+    assert.equal(movedBack([5],[5]),false,'no slider moved');
+    assert.equal(movedBack([5,1],[4,2]),false,'one back, one forward');
+    assert.equal(movedBack([],[4]),false,'the first state');
 });

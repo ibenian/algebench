@@ -17,7 +17,7 @@ index marker. It reuses array cell sizes, typed values, and illumination.
   "label": "stack",
   "containerColor": "#77bfae",
   "emptyText": "empty",
-  "showTop": true
+  "showTop": false
 }
 ```
 
@@ -29,10 +29,14 @@ can produce those sequences. The renderer does not mutate lesson data.
 Cells have the same dimensions as arrays, with a 0.1-unit vertical gap.
 Container geometry changes only when the length changes. Cell expressions and
 change comparisons use the normal state-binding updates, not frame polling.
-`showIndices` defaults to false; `showTop` defaults to true. Array-style owned
-`markers`, `color`, `highlightExpr`, and font options also apply.
-The marker reads `top slot = k` to distinguish the stack slot from variables
-that store an input position or the value read by a peek.
+`showIndices` and `showTop` default to false. Array-style owned `markers`,
+`color`, `highlightExpr`, and font options also apply.
+With `showTop`, a marker reads `top slot = k`: the top's index, which seldom means
+anything in the algorithm, so it is off unless a lesson asks for it.
+
+A push or pop eases the container to its new length. A pop also shows a speech
+bubble above the cell it left from, saying what left, until the run moves on;
+stepping back through a push shows none, since nothing was popped.
 
 Connections use the stack object's ID and `indexExpr`, exactly as for arrays.
 Out-of-range targets disappear. Removing/hiding the stack controls all its

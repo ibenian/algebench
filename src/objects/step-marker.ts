@@ -142,5 +142,5 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
         } catch { label.forceHidden = true; }
     }};
     if (!owner) { registerAnimExpr(entry); entry._rebuildFn?.(); }
-    return {_animState:animState, _animExprEntry:entry, type:el.type};
+    return {_animState:animState, _animExprEntry:entry, type:el.type, label};
 }

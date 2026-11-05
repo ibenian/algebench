@@ -15914,7 +15914,8 @@ function renderStepMarker(el, _view, owner) {
 	return {
 		_animState: animState,
 		_animExprEntry: entry,
-		type: el.type
+		type: el.type,
+		label
 	};
 }
 //#endregion
@@ -16247,6 +16248,10 @@ var ArrayChangeTracker = class {
 		return changes;
 	}
 };
+/** The sliders only went back: a stepped-back run undoes what it did, so a cell leaving is no real removal. */
+function movedBack(before, after) {
+	return before.length === after.length && after.some((v, i) => v < before[i]) && !after.some((v, i) => v > before[i]);
+}
 //#endregion
 //#region src/objects/cell-identity.ts
 /**
@@ -16664,6 +16669,7 @@ function renderArray(el, _view, decorate) {
 		}
 	});
 	const changes = new ArrayChangeTracker();
+	let lastSliders = [], popped = false;
 	let illuminated = /* @__PURE__ */ new Set();
 	let rimCells = [];
 	function illuminate(changed, removed) {
@@ -16974,6 +16980,8 @@ function renderArray(el, _view, decorate) {
 				value: cell.value
 			} }))) : void 0);
 			const before = moves?.size ? new Map([...new Set(moves.values())].map((p) => [p, drawnAt(p)])) : null;
+			const removedText = delta?.removed.map((i) => labels[i]?.el.textContent ?? "").reverse().join(", ") ?? "";
+			const sliders = Object.values(state.sceneSliders).map((s) => Number(s.value));
 			resize(next);
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
@@ -16983,11 +16991,18 @@ function renderArray(el, _view, decorate) {
 					el.label,
 					symbol
 				].filter((v) => !!v));
+				popped = delta.removed.length > 0 && !movedBack(lastSliders, sliders);
+				decoration?.removed?.(popped ? {
+					at: centre(delta.removed.at(-1)),
+					text: removedText
+				} : null);
 			}
+			lastSliders = sliders;
 			updateTitle();
 			decoration?.resize(next);
 			if (connections.length) setCellLinks(el.id, evaluateLinkTargets(connections, cells.map(({ cell }) => cell.value)), connections.some((c) => c.pinned));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
+			if (popped && decoration?.removed && el.showTop === true && markers.length) markers.at(-1).label.forceHidden = true;
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
 				const { cell, highlighted, color, key: cellKey } = cells[i];
@@ -17201,7 +17216,7 @@ function stackBounds(length, origin, pitch, horizontal = false) {
 		bottom: y - .46,
 		top: y + .46,
 		back: z - .2,
-		front: z + .7
+		front: z + .35
 	};
 	return {
 		left: x - pitch * .39 - .12,
@@ -17209,12 +17224,18 @@ function stackBounds(length, origin, pitch, horizontal = false) {
 		bottom: y - .5,
 		top: y + Math.max(0, length - 1) * .78 + .55,
 		back: z - .2,
-		front: z + .7
+		front: z + .35
 	};
+}
+/** The container's length t of the way (0 to 1) through a push or pop: quick at first, settling at the end. */
+function easedLength(from, to, t) {
+	const u = Math.min(1, Math.max(0, t));
+	return from + (to - from) * (1 - (1 - u) ** 3);
 }
 //#endregion
 //#region src/objects/stack.ts
 /** One state-bound stack owner; its cells reuse the array renderer. */
+var STACK_RESIZE_MS = 260;
 function renderStack(el, view) {
 	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
 	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
@@ -17226,7 +17247,7 @@ function renderStack(el, view) {
 		showIndices: el.showIndices ?? false,
 		label: horizontal ? el.label ?? "stack" : void 0,
 		labelSide: horizontal ? "left" : el.labelSide,
-		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
+		markers: [...el.markers ?? [], ...el.showTop !== true ? [] : [{
 			type: "step_marker",
 			indexName: "top slot",
 			indexExpr: `(${lengthExpr}) - 1`,
@@ -17249,7 +17270,7 @@ function renderStack(el, view) {
 			state.planeMeshes.push(mesh);
 			return mesh;
 		};
-		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
+		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7), rails = makeMesh(.2);
 		const title = horizontal ? null : addLabel3D(el.label ?? "stack", [
 			origin[0],
 			origin[1] - 1.5,
@@ -17279,7 +17300,6 @@ function renderStack(el, view) {
 		empty.ownerMesh = owner;
 		empty.snapToProjection = true;
 		empty.el.setAttribute("aria-label", "Empty stack");
-		let previous = -1;
 		const replace = (mesh, quads) => {
 			const positions = [];
 			for (const q of quads) for (const i of [
@@ -17295,9 +17315,7 @@ function renderStack(el, view) {
 			mesh.geometry.dispose();
 			mesh.geometry = geometry;
 		};
-		const resize = (length) => {
-			if (length === previous) return;
-			previous = length;
+		const draw = (length) => {
 			const b = stackBounds(length, origin, pitch, horizontal), t = .035, z = b.back;
 			replace(back, [[
 				[
@@ -17395,11 +17413,173 @@ function renderStack(el, view) {
 				rect(b.right - t, b.bottom, b.right, b.top),
 				rect(b.left, b.bottom, b.right, b.bottom + t)
 			]);
+			const slab = (x0, y0, x1, y1) => [
+				[
+					[
+						x0,
+						y0,
+						z
+					],
+					[
+						x0,
+						y1,
+						z
+					],
+					[
+						x0,
+						y1,
+						b.front
+					],
+					[
+						x0,
+						y0,
+						b.front
+					]
+				],
+				[
+					[
+						x1,
+						y0,
+						z
+					],
+					[
+						x1,
+						y1,
+						z
+					],
+					[
+						x1,
+						y1,
+						b.front
+					],
+					[
+						x1,
+						y0,
+						b.front
+					]
+				],
+				[
+					[
+						x0,
+						y0,
+						z
+					],
+					[
+						x1,
+						y0,
+						z
+					],
+					[
+						x1,
+						y0,
+						b.front
+					],
+					[
+						x0,
+						y0,
+						b.front
+					]
+				],
+				[
+					[
+						x0,
+						y1,
+						z
+					],
+					[
+						x1,
+						y1,
+						z
+					],
+					[
+						x1,
+						y1,
+						b.front
+					],
+					[
+						x0,
+						y1,
+						b.front
+					]
+				],
+				[
+					[
+						x0,
+						y0,
+						b.front
+					],
+					[
+						x1,
+						y0,
+						b.front
+					],
+					[
+						x1,
+						y1,
+						b.front
+					],
+					[
+						x0,
+						y1,
+						b.front
+					]
+				]
+			];
+			const w = .05;
+			replace(rails, horizontal ? [...slab(b.left, b.bottom - w, b.right, b.bottom), ...slab(b.left, b.top, b.right, b.top + w)] : [...slab(b.left - w, b.bottom, b.left, b.top), ...slab(b.right, b.bottom, b.right + w, b.top)]);
+		};
+		let target = -1, shown = -1, frame = 0;
+		const resize = (length) => {
+			if (length === target) return;
+			const from = shown, start = performance.now();
+			target = length;
 			empty.forceHidden = length !== 0;
 			empty.el.style.display = length === 0 ? "" : "none";
+			cancelAnimationFrame(frame);
+			if (from < 0) {
+				shown = length;
+				draw(length);
+				return;
+			}
+			const tick = (now) => {
+				if (!empty.el.isConnected) return;
+				const t = Math.min(1, Math.max(0, (now - start) / STACK_RESIZE_MS));
+				shown = easedLength(from, length, t);
+				draw(shown);
+				if (t < 1) frame = requestAnimationFrame(tick);
+			};
+			frame = requestAnimationFrame(tick);
 		};
+		const bubble = addLabel3D("", origin, void 0, { cssClass: "label-3d stack-pop" });
+		bubble.ownerMesh = owner;
+		bubble.snapToProjection = true;
+		bubble.forceHidden = true;
+		const removed = (popped) => {
+			bubble.forceHidden = !popped;
+			bubble.el.style.display = popped ? "" : "none";
+			if (!popped) {
+				bubble.el.replaceChildren();
+				return;
+			}
+			const say = document.createElement("span");
+			say.className = "stack-pop-bubble";
+			say.textContent = `pop ${popped.text}`;
+			bubble.el.replaceChildren(say);
+			bubble.boxW = null;
+			bubble.boxH = null;
+			const [x, y, z] = popped.at;
+			bubble.dataPos = [
+				x,
+				y + pitch * .5,
+				z
+			];
+		};
+		removed(null);
 		resize(initial);
-		return { resize };
+		return {
+			resize,
+			removed
+		};
 	});
 }
 //#endregion

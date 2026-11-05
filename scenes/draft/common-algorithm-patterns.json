@@ -20466,7 +20466,7 @@
               "id": "stack",
               "type": "stack",
               "itemType": "number",
-              "origin": [8.4, -1.2, 0],
+              "origin": [5.7, 0.7, 0],
               "cellSize": 0.9,
               "fontSize": 14,
               "showIndices": false,

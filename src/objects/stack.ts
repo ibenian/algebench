@@ -4,9 +4,11 @@ import { dataToWorld } from '/coords.js';
 import { addLabel3D } from '/labels.js';
 import { setSymbolHover, hoveredSymbols } from '/code-symbols.js';
 import { renderArray } from '/objects/array.js';
-import { stackBounds } from '/objects/stack-layout.js';
+import { easedLength, stackBounds } from '/objects/stack-layout.js';
 import type { Element } from '/types/lesson.js';
 import type { Mesh } from 'three';
+
+const STACK_RESIZE_MS=260;
 
 export function renderStack(el:Element,view:MathBoxNode) {
     if(el.shape && el.shape.length!==1)throw new Error('A stack needs a one-dimensional shape.');
@@ -17,7 +19,7 @@ export function renderStack(el:Element,view:MathBoxNode) {
     // text, right-aligned at the same x as the titles of the rows around it.
     const cells:Element={...el,arrayLayout:horizontal?'horizontal':'vertical',lengthExpr,showIndices:el.showIndices??false,
         label:horizontal?el.label??'stack':undefined,labelSide:horizontal?'left':el.labelSide,
-        markers:[...(el.markers??[]),...(el.showTop===false?[]:[{
+        markers:[...(el.markers??[]),...(el.showTop!==true?[]:[{
             type:'step_marker' as const,indexName:'top slot',indexExpr:`(${lengthExpr}) - 1`,color:'#f1c65b',
         }])]};
     return renderArray(cells,view,(initial,origin,pitch,owner)=>{
@@ -31,7 +33,7 @@ export function renderStack(el:Element,view:MathBoxNode) {
             state.three!.scene.add(mesh);state.planeMeshes.push(mesh);
             return mesh;
         };
-        const back=makeMesh(.12),base=makeMesh(.4),outline=makeMesh(.7);
+        const back=makeMesh(.12),base=makeMesh(.4),outline=makeMesh(.7),rails=makeMesh(.2);
         // Vertical: the title under the base (a horizontal stack's title is the array's, above).
         const title=horizontal?null:addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
         if(title){title.ownerMesh=owner;title.snapToProjection=true;}
@@ -51,15 +53,13 @@ export function renderStack(el:Element,view:MathBoxNode) {
         }
         const empty=addLabel3D(el.emptyText??'empty',origin,'#8ca9a0',{cssClass:'label-3d array-cell-label'});
         empty.ownerMesh=owner;empty.snapToProjection=true;empty.el.setAttribute('aria-label','Empty stack');
-        let previous=-1;
         const replace=(mesh:Mesh,quads:number[][][])=>{
             const positions:number[]=[];
             for(const q of quads)for(const i of [0,1,2,0,2,3])positions.push(...dataToWorld(q[i]! as [number,number,number]));
             const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
             mesh.geometry.dispose();mesh.geometry=geometry;
         };
-        const resize=(length:number)=>{
-            if(length===previous)return;previous=length;
+        const draw=(length:number)=>{
             const b=stackBounds(length,origin,pitch,horizontal),t=.035,z=b.back;
             replace(back,[[[b.left,b.bottom,z],[b.right,b.bottom,z],[b.right,b.top,z],[b.left,b.top,z]]]);
             // The base is the closed end: the floor of an upright stack, the left wall of one on its side.
@@ -71,11 +71,49 @@ export function renderStack(el:Element,view:MathBoxNode) {
             replace(outline,horizontal
                 ?[rect(b.left,b.bottom,b.left+t,b.top),rect(b.left,b.bottom,b.right,b.bottom+t),rect(b.left,b.top-t,b.right,b.top)]
                 :[rect(b.left,b.bottom,b.left+t,b.top),rect(b.right-t,b.bottom,b.right,b.top),rect(b.left,b.bottom,b.right,b.bottom+t)]);
+            // The guard rails: a clear slab along each long side, so the cells sit in a channel as the view turns.
+            const slab=(x0:number,y0:number,x1:number,y1:number):number[][][]=>[
+                [[x0,y0,z],[x0,y1,z],[x0,y1,b.front],[x0,y0,b.front]],[[x1,y0,z],[x1,y1,z],[x1,y1,b.front],[x1,y0,b.front]],
+                [[x0,y0,z],[x1,y0,z],[x1,y0,b.front],[x0,y0,b.front]],[[x0,y1,z],[x1,y1,z],[x1,y1,b.front],[x0,y1,b.front]],
+                [[x0,y0,b.front],[x1,y0,b.front],[x1,y1,b.front],[x0,y1,b.front]]];
+            const w=.05;
+            replace(rails,horizontal
+                ?[...slab(b.left,b.bottom-w,b.right,b.bottom),...slab(b.left,b.top,b.right,b.top+w)]
+                :[...slab(b.left-w,b.bottom,b.left,b.top),...slab(b.right,b.bottom,b.right+w,b.top)]);
+        };
+        // A push or pop grows or shrinks the container smoothly, from wherever it is now.
+        let target=-1,shown=-1,frame=0;
+        const resize=(length:number)=>{
+            if(length===target)return;
+            const from=shown,start=performance.now();target=length;
             empty.forceHidden=length!==0;
             // Scene fades also write opacity; remove the empty caption from
             // layout until the next empty state so a fade cannot reveal it.
             empty.el.style.display=length===0?'':'none';
+            cancelAnimationFrame(frame);
+            if(from<0){shown=length;draw(length);return;}
+            const tick=(now:number)=>{
+                if(!empty.el.isConnected)return;
+                const t=Math.min(1,Math.max(0,(now-start)/STACK_RESIZE_MS));
+                shown=easedLength(from,length,t);draw(shown);
+                if(t<1)frame=requestAnimationFrame(tick);
+            };
+            frame=requestAnimationFrame(tick);
         };
-        resize(initial);return {resize};
+        // A pop: a speech bubble above the cell it left from says what left, until the run moves on.
+        const bubble=addLabel3D('',origin,undefined,{cssClass:'label-3d stack-pop'});
+        bubble.ownerMesh=owner;bubble.snapToProjection=true;bubble.forceHidden=true;
+        const removed=(popped:{at:number[];text:string}|null)=>{
+            bubble.forceHidden=!popped;bubble.el.style.display=popped?'':'none';
+            if(!popped){bubble.el.replaceChildren();return;}
+            const say=document.createElement('span');say.className='stack-pop-bubble';say.textContent=`pop ${popped.text}`;
+            // A new element, so the entrance plays again for each pop.
+            bubble.el.replaceChildren(say);bubble.boxW=null;bubble.boxH=null;
+            // On the cell's top edge, so the tail touches the cell at any zoom.
+            const [x,y,z]=popped.at as [number,number,number];
+            bubble.dataPos=[x,y+pitch*.5,z];
+        };
+        removed(null);
+        resize(initial);return {resize,removed};
     });
 }

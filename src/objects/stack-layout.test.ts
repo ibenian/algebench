@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {stackBounds} from './stack-layout.js';
+import {easedLength,stackBounds} from './stack-layout.js';
 import {arrayCellCorners,arrayCellPosition} from './array-data.js';
 test('stack container remains visible when empty, contains every cell, and grows only upwards',()=>{
  const origin=[7,-2,0],pitch=1.35,empty=stackBounds(0,origin,pitch);
@@ -32,4 +32,11 @@ test('a horizontal stack leaves room for the row title the array draws left of c
  const titleRight=origin[0]!-pitch*.39-.22;   // array.ts: a left title's right edge
  assert.ok(titleRight<b.left,'the title clears the closed end');
  assert.ok(b.left<origin[0]!-pitch*.39,'the closed end clears cell 0');
+});
+
+test('a push or pop eases from the old length to the new one, without overshooting',()=>{
+ assert.equal(easedLength(3,4,0),3);assert.equal(easedLength(3,4,1),4);assert.equal(easedLength(4,3,1),3);
+ assert.equal(easedLength(3,4,2),4,'past the end stays at the end');
+ let last=3;
+ for(let i=1;i<10;i++){const v=easedLength(3,4,i/10);assert.ok(v>last&&v<4,`step ${i}: ${v}`);last=v;}
 });

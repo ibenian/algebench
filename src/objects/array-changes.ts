@@ -20,3 +20,7 @@ export class ArrayChangeTracker {
         return changes;
     }
 }
+/** The sliders only went back: a stepped-back run undoes what it did, so a cell leaving is no real removal. */
+export function movedBack(before: number[], after: number[]): boolean {
+    return before.length === after.length && after.some((v,i)=>v<before[i]!) && !after.some((v,i)=>v>before[i]!);
+}

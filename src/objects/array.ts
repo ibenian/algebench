@@ -14,7 +14,7 @@ import { keyText } from '/objects/dict-keys.js';
 import { roundedCellUnit } from '/objects/rounded-cell.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
-import { ArrayChangeTracker } from '/objects/array-changes.js';
+import { ArrayChangeTracker, movedBack } from '/objects/array-changes.js';
 import { identityTracker } from '/objects/cell-identity.js';
 import { createCellGlide } from '/objects/cell-glide.js';
 import { setCellLinks } from '/cell-links.js';
@@ -34,7 +34,7 @@ function roundedUnit(w:number,h:number,r:number) {
 }
 export interface ArrayCellTarget { vertical:boolean; graph?:boolean; round?:boolean; at(index:number):{position:[number,number,number];corners:number[][]}|null; ports?(index:number):number[][]; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',text:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
-export interface ArrayDecoration { resize(length:number):void; }
+export interface ArrayDecoration { resize(length:number):void; /** Cells were removed: where the last one to leave was, and what they held; null when none were. */ removed?(popped:{at:number[];text:string}|null):void; }
 export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:number,origin:number[],pitch:number,owner:Mesh)=>ArrayDecoration) {
     if(!state.three)return null;
     const lengthFn=el.lengthExpr?compileExpr(el.lengthExpr):null;
@@ -130,6 +130,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         if(glowMesh.visible)glowMaterial.uniforms.phase!.value=pipeFlowPhase(nowMs);
     }});
     const changes=new ArrayChangeTracker();
+    let lastSliders:number[]=[],popped=false;
     let illuminated=new Set<number>();
     let rimCells: number[] = [];
     function illuminate(changed:number[],removed:number[]){
@@ -327,19 +328,27 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         const moves=identities?.next(cells.map(({cell})=>JSON.stringify([cell.kind,cell.value])),
             idFn?cells.map(({cell},i)=>String(evalExpr(idFn,0,{overrideScope:{idx:i,value:cell.value}}))):undefined);
         const before=moves?.size?new Map([...new Set(moves.values())].map(p=>[p,drawnAt(p)])):null;
+        // What the removed cells held, read before the resize drops their labels; the last one left first.
+        const removedText=delta?.removed.map(i=>labels[i]?.el.textContent??'').reverse().join(', ')??'';
+        const sliders=Object.values(state.sceneSliders).map(s=>Number(s.value));
         resize(next);
         if(delta){
             illuminated=new Set([...delta.changed,...delta.added]);
             illuminate([...illuminated],delta.removed);
             // Changed cells light the array's variable where it is executing (by id, or by its title).
             if(illuminated.size||delta.removed.length)flashSymbols([el.id,el.label,symbol].filter((v):v is string=>!!v));
+            popped=delta.removed.length>0&&!movedBack(lastSliders,sliders);
+            decoration?.removed?.(popped?{at:centre(delta.removed.at(-1)!),text:removedText}:null);
         }
+        lastSliders=sliders;
         updateTitle();
         decoration?.resize(next);
         if(connections.length){
             setCellLinks(el.id!,evaluateLinkTargets(connections,cells.map(({cell})=>cell.value)),connections.some(c=>c.pinned));
         }
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
+        // The stack's top marker (its last) would sit over the bubble and the cell it points at: it gives way.
+        if(popped&&decoration?.removed&&el.showTop===true&&markers.length)markers.at(-1)!.label.forceHidden=true;
         let dirty=false;
         for(let i=0;i<n;i++){
             const {cell,highlighted,color,key:cellKey}=cells[i]!; // one successfully evaluated cell per slot
