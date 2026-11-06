@@ -15,13 +15,15 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
-import { presenterOn, presenting, presentQuestion } from '/presenter.js';
+import { presenterOn, presenting, presentQuestion, pointerTrace, pointerTo, pointerDone } from '/presenter.js';
 import { suppressChatWelcome } from '/chat.js';
 import { sceneHasCode } from '/describe-problem.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
 import { editsBetween, keystrokes, backspaces, keyDelay, findSelection } from '/code-assist-play.js';
+import { createCodeCanvas } from '/code-canvas.js';
+import type { CodeMark } from '/code-canvas-core.js';
 
 /** The coach looks again after this long without typing. */
 const IDLE_REVIEW_MS = 5000;
@@ -37,7 +39,7 @@ const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practic
  *  each with the share of it the learner typed. */
 interface Attempt { text: string; peeked: number[]; assisted?: number[]; paired?: Record<number, number>; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
-interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number; cursor_line?: number}[]; closing: string; needs_fix?: boolean }
+interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number; cursor_line?: number; draw?: CodeMark[]; erase_marks?: string[]}[]; closing: string; needs_fix?: boolean }
 /** How much a pairing turn helps (Pair with me), most first: the choice stays until changed. */
 type HintLevel = 'direct' | 'point' | 'question' | 'vague';
 const HINT_LEVELS: {level: HintLevel; label: string; title: string; start: string; noun: string}[] = [
@@ -323,7 +325,7 @@ export function setupCodePractice(): void {
         }
         if (!speakOn() || !text || !window.algebenchSpeakText) { then?.();return; }
         coachTalking = true;
-        window.algebenchSpeakText(text, () => { coachTalking = false;then?.(); });
+        window.algebenchSpeakText(text, () => { coachTalking = false;then?.(); }, 'coach');
     }
     /** What the coach has handed to the chat on this block: a concept is shown once. */
     const shownInChat = new Set<string>();
@@ -448,15 +450,17 @@ export function setupCodePractice(): void {
         showTarget(v);
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;pairSaid = '';clearTimeout(pairIdle);
+        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;pairSaid = '';turns = [];clearTimeout(pairIdle);
         // The block's sections, kept to it: the first may start above it (taking the imports).
-        sections = codeSections(v.file).filter(s => s.to >= v.from && s.from <= v.to)
-            .map(s => s.from < v.from || s.to > v.to ? {...s, from: Math.max(s.from, v.from), to: Math.min(s.to, v.to)} : s);
+        // (Its last line is the last with code: a section running on over the blank line after it still fits.)
+        const last = v.from + text.split('\n').length - 1;
+        sections = codeSections(v.file).filter(s => s.to >= v.from && s.from <= last)
+            .map(s => s.from < v.from || s.to > last ? {...s, from: Math.max(s.from, v.from), to: Math.min(s.to, last)} : s);
         const count = v.to - v.from + 1;
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
-        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);
+        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();
         const wanted = key;
         void loadAttempt(lessonId(), v.file.path, wanted).then(found => {
             if (key !== wanted) return;
@@ -824,6 +828,12 @@ export function setupCodePractice(): void {
     // click Walk me through it, and still see what they asked about until the assistant takes over.
     const keptSelection = el('div', 'cp-ai-selection cp-kept-selection');
     stack.append(keptSelection, aiSelection, aiCaret);
+    // The agent's whiteboard over the code: in focus mode with the presenter on, on its turn (code-canvas.ts).
+    const canvas = createCodeCanvas({stack, paint, editor, charWidth: () => { measure();return charWidth; }, text: () => input.value,
+        hand: {trace: pointerTrace, moveTo: pointerTo, done: pointerDone}});
+    // The talk on this block so far, for words that refer back to it (code_assist's recent_turns).
+    let turns: string[] = [], turnWords: string[] = [];
+    const recentTurns = () => turns.slice(-4).join('\n').slice(-2800);
     let selectedTo = 0, selection: [number, number] | null = null, kept: [number, number] | null = null, caretAt = 0;
     let assisting = 0, assistSeq = 0, charWidth = 0;
     // The question waiting for the learner's answer, and the ones asked on this block (so none is asked twice).
@@ -896,7 +906,7 @@ export function setupCodePractice(): void {
         pairNudged = line;
         const text = 'Need a hand with this line? I can give you a hint, or finish it.';
         offerHelp(message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: text})));
-        if (speakOn()) window.algebenchSpeakText?.(text);
+        if (speakOn()) window.algebenchSpeakText?.(text, undefined, 'coach');
     }
     /** A line finished (Enter): the assistant looks at it, then hints or starts the next. */
     function pairLineDone() {
@@ -989,6 +999,7 @@ export function setupCodePractice(): void {
     /** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
     async function say(text: string, into: HTMLElement, run: number) {
         if (!text) return;
+        turnWords.push(text);
         into.classList.add('speaking');
         const plain = text.replace(/[`*_]/g, '');
         const words = plain.split(/\s+/).length;
@@ -997,7 +1008,7 @@ export function setupCodePractice(): void {
             if (speakOn() && speakNow) {
                 // The speech reports its end (a failed or cut-off stream's too): the next step waits for it, however
                 // long its voice takes to prepare and say.
-                speakNow(plain, res);
+                speakNow(plain, res, 'coach');
             } else window.setTimeout(res, Math.min(6000, Math.max(1200, words * 230)));
         });
         let shown = '';
@@ -1073,6 +1084,7 @@ export function setupCodePractice(): void {
     }
     /** Drawn in px of the font it was drawn at: another font size draws what is showing again. */
     function redrawMarks() {
+        canvas.redraw();
         if (selection) { aiSelection.replaceChildren();drawRange(aiSelection, selection[0], selection[1], 'cp-ai-sel'); }
         if (kept) { keptSelection.replaceChildren();drawRange(keptSelection, kept[0], kept[1], 'cp-kept-sel'); }
         if (aiCaret.hidden) return;
@@ -1103,7 +1115,7 @@ export function setupCodePractice(): void {
     /** Type the change from the editor to `target`: move there, backspace what goes, type what comes. */
     async function typeTo(target: string, run: number) {
         let text = input.value + '\n', caret = input.value.length;
-        const show = (at: number) => { caret = at;resumeAt = at;input.value = text.slice(0, -1);attempt.text = input.value;render(false);placeCaret(Math.min(at, input.value.length));highlight(); };
+        const show = (at: number) => { caret = at;resumeAt = at;input.value = text.slice(0, -1);attempt.text = input.value;render(false);canvas.edited();placeCaret(Math.min(at, input.value.length));highlight(); };
         for (const e of editsBetween(input.value, target)) {
             const end = e.at + e.remove;
             if (assisting !== run) throw new Stopped();
@@ -1125,6 +1137,14 @@ export function setupCodePractice(): void {
             await sleep(220);
         }
     }
+    // The canvas needs both: focus mode, where the code is all there is to see, and the presenter on.
+    const canvasOn = () => focused && presenterOn();
+    // What is on it stays until the agent takes it off, whatever is switched: only hidden meanwhile.
+    const drawOnCode = (step: AssistStep) => {
+        if (!canvasOn()) return Promise.resolve();
+        canvas.erase(step.erase_marks ?? []);
+        return canvas.play(step.draw ?? []);
+    };
     async function assist(scope: AssistScope, request = '') {
         if (!current || !score || assisting) return;
         if (scope === 'grade' && !quiz) return;
@@ -1139,7 +1159,7 @@ export function setupCodePractice(): void {
             series = null;quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null;
             const text = HINT_LEVELS.find(h => h.level === hintLevel())!.start;
             offerHelp(message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: text})));
-            if (speakOn()) window.algebenchSpeakText?.(text);
+            if (speakOn()) window.algebenchSpeakText?.(text, undefined, 'coach');
             input.focus();input.setSelectionRange(userCaret, userCaret);
             pairWait();
             return;
@@ -1192,6 +1212,7 @@ export function setupCodePractice(): void {
         const assistedBefore = new Set(attempt.assisted);
         const waiting = message('assistant', el('div', 'chat-loading'));
         waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
+        turnWords = [];
         let ended = false, nextAfter = false, pointed: [number, number] | null = null, leaveOn = 0, proposal = '';
         const hintWas = asked === 'Give me a hint.';
         try {
@@ -1206,7 +1227,7 @@ export function setupCodePractice(): void {
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
                 // While pairing, the scene is shown only when the learner asks for something: a presentation of its
                 // own pulls them away from the line they are typing.
-                : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && (!pairing || scope === 'ask'), hint_level: pairing ? hintLevel() : 'direct', last_said: said.slice(0, 600), cursor: input.value.slice(0, userCaret).split('\n').length,
+                : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && !canvasOn() && (!pairing || scope === 'ask'), hint_level: pairing ? hintLevel() : 'direct', last_said: said.slice(0, 600), recent_turns: recentTurns(), canvas: canvasOn(), canvas_marks: canvasOn() ? canvas.describe().slice(0, 40) : [], cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
                     issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string; quiet?: boolean; answered?: boolean};
             waiting.remove();
@@ -1278,7 +1299,8 @@ export function setupCodePractice(): void {
                 const shown = !types && !!step.select && selectText(step.select, step.select_line);
                 // "Look here" only when there is something to look at: a step pointing at nothing is talk.
                 head.hidden = scope === 'grade' && !shown;
-                await say(step.say, thought, run);
+                // What it draws goes with what it says, as at a board; what is about to be typed isn't there to draw on yet.
+                await Promise.all([say(step.say, thought, run), types ? null : drawOnCode(step)]);
                 if (!types) {
                     if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
                     continue;
@@ -1296,7 +1318,9 @@ export function setupCodePractice(): void {
                 markAssisted(exactBefore);
                 body.classList.remove('typing');
                 if (step.select) selectText(step.select, step.select_line);
+                const drawn = drawOnCode(step);
                 if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
+                await drawn;
             }
             // Pointing: what it asked about stays lit after the hand-back, and the cursor waits where to work.
             if (scope === 'pair' && hintLevel() === 'point') { pointed = selection;leaveOn = r.steps[r.steps.length - 1]?.cursor_line ?? 0; }
@@ -1320,6 +1344,7 @@ export function setupCodePractice(): void {
             waiting.remove();
             if (!(e instanceof Stopped) && assisting === run) message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: (e as Error).message}));
         } finally {
+            if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked && own ? `${own}` : asked ?? ''}\nYou: ${turnWords.join(' ')}`);
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
             if (ended && pairing && key === blockKey) { leavePointing(pointed, leaveOn);trimPairTail();fixProposed = proposal; }
             // In a quiz, a judged answer leads to the next question; pairing, a finished line to the next line.
@@ -1356,8 +1381,8 @@ export function setupCodePractice(): void {
             if (series) {
                 // In a quiz, the answer is read out, then the next question follows.
                 const next = () => nextInSeries();
-                if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next);else next();
-            } else { offerHelp(card);if (speakOn()) window.algebenchSpeakText?.(spoken); }
+                if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next, 'coach');else next();
+            } else { offerHelp(card);if (speakOn()) window.algebenchSpeakText?.(spoken, undefined, 'coach'); }
         });
         const skip = button('Skip', 'Let this question go', () => {
             if (!quiz || assisting) return;
@@ -1432,8 +1457,19 @@ export function setupCodePractice(): void {
         if (!assisting) return;
         assisting = 0;dropped = drop;series = null;pairing = false;clearTimeout(pairIdle);   // taking the keyboard back ends a quiz, and pairing
         root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
-        if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+        if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     }
+    // Another voice started (the chat, the presenter, the Doc): the coach stops going on, its word and any move at the
+    // keyboard. That voice silences this one itself. A pairing stays on: only this turn is over.
+    let voiceTaken = false;
+    window.addEventListener('algebench:voice', e => {
+        if ((e as CustomEvent<{owner: string}>).detail.owner === 'coach') return;
+        clearInterval(holdTimer);holdTimer = 0;held = null;coachTalking = false;
+        if (!assisting) return;
+        const stillPairing = pairing;
+        voiceTaken = true;stopAssist();voiceTaken = false;
+        if (stillPairing) { pairing = true;pairWait(); }
+    });
     takeBack.addEventListener('click', () => stopAssist());
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && assisting) { e.preventDefault();stopAssist(); } });
     helpTool.addEventListener('click', () => {
@@ -1477,7 +1513,7 @@ export function setupCodePractice(): void {
     input.addEventListener('input', () => {
         fixProposed = '';
         attempt.text = input.value;persist();
-        render();highlight();markPaired();
+        render();highlight();markPaired();canvas.edited();
         clearTimeout(idle);
         if (coachOn()) idle = window.setTimeout(() => void review(false), IDLE_REVIEW_MS);
         pairWait();
@@ -1541,7 +1577,7 @@ export function setupCodePractice(): void {
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
         stopAssist(true);quiz = null;series = null;pairing = false;clearTimeout(pairIdle);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
-        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
+        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();turns = [];input.focus();
         if (hintsOn()) void review(false);
     });
     // The editor's font size, one for each mode: A− and A+ on its header, the size between them back to the default.
@@ -1583,12 +1619,28 @@ export function setupCodePractice(): void {
         head.classList.toggle('side-section-foldable', !on);toggle.hidden = on;
         // It doesn't fold here, so its header has the room: the toolbar moves up onto it.
         if (on) head.insertBefore(tools, total);else bodyEl.prepend(tools);
-        paintFocus();paintFont();
+        paintFocus();paintFont();canvas.setVisible(canvasOn());
         setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);
         if (!root.hidden) input.focus();
         retarget();
     };
     focusBtn.addEventListener('click', e => { e.stopPropagation();setFocus(!focused); });
+    // Focus mode hides the chat's Present button, so the toolbar has its own: a second face of the same switch. Turned
+    // off from either, what the agent drew on the code hides; turned on, it is back.
+    const presenterSwitch = document.getElementById('presenter-toggle-btn');
+    if (presenterSwitch) {
+        const present = tool('', '');present.classList.add('cp-present-tool');present.innerHTML = presenterSwitch.innerHTML;
+        tools.insertBefore(present, reset);
+        const mirror = () => {
+            const on = presenterOn();
+            present.setAttribute('aria-pressed', String(on));present.classList.toggle('active', on);
+            present.title = presenterSwitch.title;present.setAttribute('aria-label', presenterSwitch.getAttribute('aria-label') ?? 'AI presenter');
+            canvas.setVisible(canvasOn());
+        };
+        present.addEventListener('click', () => presenterSwitch.click());
+        new MutationObserver(mirror).observe(presenterSwitch, {attributes: true, attributeFilter: ['aria-pressed', 'title']});
+        mirror();
+    }
     // In capture, ahead of the editor's own Cmd/Ctrl+Enter (Check) and Enter.
     document.addEventListener('keydown', e => {
         if (e.key !== 'Enter' || !e.shiftKey || !(e.metaKey || e.ctrlKey) || (root.hidden && !focused)) return;
@@ -1596,7 +1648,7 @@ export function setupCodePractice(): void {
     }, true);
     // Registered after the assistant's Esc, which marks the key as used.
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && focused && !e.defaultPrevented) setFocus(false); });
-    paintFocus();paintFont();
+    paintFocus();paintFont();canvas.setVisible(canvasOn());
     window.addEventListener('algebench:codeview', retarget);
     window.addEventListener('algebench:navchange', retarget);
     retarget();

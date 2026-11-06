@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field
 from backend.experts.llm_config import make_adapter, retry_on_parse_error, scoped_lm
 from backend.util.model_errors import model_error_message
 
-from .signature import AssistStep, CodeAssistSig
+from .canvas import clean_marks
+from .signature import AssistStep, CanvasStep, CodeAssistCanvasSig, CodeAssistSig
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ CALL_FAILED = "I couldn't take the keyboard this time. Try Help me again."
 
 class CodeAssist(BaseModel):
     plan: str = ""
-    steps: list[AssistStep] = Field(default_factory=list)
+    steps: list[CanvasStep] = Field(default_factory=list)
     closing: str = ""
     #: The model's word that the learner's code is complete and correct.
     complete: bool = False
@@ -52,9 +53,9 @@ class CodeAssist(BaseModel):
 
 
 class Assistant(dspy.Module):
-    def __init__(self):
+    def __init__(self, signature=CodeAssistSig):
         super().__init__()
-        self.predict = dspy.Predict(CodeAssistSig)
+        self.predict = dspy.Predict(signature)
 
     def forward(self, **inputs):
         with _LM(), dspy.context(adapter=make_adapter(restore_first_header=True)):
@@ -62,8 +63,8 @@ class Assistant(dspy.Module):
 
 
 @cache
-def _assistant() -> Assistant:
-    return Assistant()
+def _assistant(canvas: bool = False) -> Assistant:
+    return Assistant(CodeAssistCanvasSig if canvas else CodeAssistSig)
 
 
 def _clean(text) -> str:
@@ -97,18 +98,28 @@ def clean_code(code: str) -> str:
     return "\n".join(line.rstrip() for line in code.replace("\t", "    ").split("\n")).strip("\n")
 
 
-def keep_lines(code: str, before: str) -> str:
+def keep_lines(code: str, before: str, erase: frozenset[int] | set[int] = frozenset()) -> str:
     """``code`` with every line that is, spacing aside, a line of ``before`` (in the same order) taken from
     ``before`` as it is. A step's code is the whole editor, copied by the model: copying, it may re-indent or
-    re-space the learner's lines, which would then be erased and retyped. Only what it really changed is typed."""
+    re-space the learner's lines, which would then be erased and retyped. Only what it really changed is typed.
+
+    But indentation is code: a line moved in or out of a block is a real change. It stays when the step lists it in
+    ``erase``, or when only some lines moved. Most of them moved is the copy's doing, not a fix."""
     if not code or not before:
         return code
     new, old = code.split("\n"), before.split("\n")
     out = list(new)
+    indent = lambda line: line[:len(line) - len(line.lstrip())]
     matcher = difflib.SequenceMatcher(None, [l.strip() for l in old], [l.strip() for l in new], autojunk=False)
+    pairs = [(a + k, b + k) for a, b, size in matcher.get_matching_blocks() for k in range(size) if old[a + k].strip()]
+    moved = {(a, b) for a, b in pairs if indent(old[a]) != indent(new[b])}
+    meant = len(moved) * 2 <= len(pairs)
     for op, a1, _, b1, b2 in matcher.get_opcodes():
         if op == "equal":
             out[b1:b2] = old[a1:a1 + b2 - b1]
+    for a, b in moved:
+        if meant or a + 1 in erase:
+            out[b] = new[b]
     return "\n".join(out)
 
 
@@ -144,13 +155,15 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: st
             code = ""
         erase = {int(k) for k in (s.erase or []) if str(k).lstrip("-").isdigit()}
         if code:
-            code = keep_lines(keep_unerased(code, before, erase), before)
+            code = keep_lines(keep_unerased(code, before, erase), before, erase)
         # Typing nothing and pointing at nothing is talk alone: it joins the step before.
         typed_nothing = not code or (steps and code == steps[-1].code)
-        if steps and typed_nothing and not select:
+        marks = clean_marks(getattr(s, "draw", None))
+        gone = [str(name).strip() for name in (getattr(s, "erase_marks", None) or []) if str(name).strip()]
+        if steps and typed_nothing and not select and not marks and not gone:
             steps[-1].explain = " ".join(filter(None, [steps[-1].explain, _clean(s.say), _clean(s.explain)]))
             continue
-        draft = keep_lines(keep_unerased(clean_code(s.draft), before, erase), before) if s.draft else ""
+        draft = keep_lines(keep_unerased(clean_code(s.draft), before, erase), before, erase) if s.draft else ""
         if code:
             before = code
         # A draft is a slip caught: one that is the fix already, or comes with nothing noticed, is no draft.
@@ -159,7 +172,7 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: st
             line = max(0, int(s.select_line or 0)) if select else 0
         except (TypeError, ValueError):
             line = 0
-        steps.append(AssistStep(say=_clean(s.say), code=code, erase=sorted(erase), select=select, select_line=line, explain=_clean(s.explain),
+        steps.append(CanvasStep(say=_clean(s.say), code=code, draw=marks, erase_marks=gone, erase=sorted(erase), select=select, select_line=line, explain=_clean(s.explain),
                                 cursor_line=max(0, int(s.cursor_line or 0)), draft=draft if keep else "", notice=_clean(s.notice) if keep else ""))
     return steps
 
@@ -179,11 +192,11 @@ def partial_steps(raw, editor: str) -> list[int]:
     return out
 
 
-def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
+def assist_code(scope: str, editor_text: str = "", canvas: bool = False, **inputs) -> CodeAssist:
     """Ask the model for the steps; one more ask if the answer was malformed, or sent part of the editor for the
     whole of it (the code must stay whole: lines leave only when a step erases them on purpose)."""
     try:
-        out = retry_on_parse_error(lambda: _assistant()(scope=scope, **inputs), label="code_assist")
+        out = retry_on_parse_error(lambda: _assistant(canvas)(scope=scope, **inputs), label="code_assist")
         partial = [] if scope == "narrate" else partial_steps(out.steps, editor_text)
         if partial:
             log.info("code_assist: step(s) %s sent part of the editor; asking again", partial)
@@ -191,7 +204,7 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
                      f"(Your last answer's step(s) {', '.join(map(str, partial))} left out lines of the editor without "
                      "listing them in `erase`. Each step's `code` must be the WHOLE editor: every line, changed only "
                      "where the step types.)"]))}
-            out = retry_on_parse_error(lambda: _assistant()(scope=scope, **again), label="code_assist")
+            out = retry_on_parse_error(lambda: _assistant(canvas)(scope=scope, **again), label="code_assist")
     except Exception as e:
         log.exception("code_assist: the model call failed")
         return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")

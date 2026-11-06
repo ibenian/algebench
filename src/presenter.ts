@@ -24,6 +24,8 @@ import { makeAiAskButton } from '/labels.js';
 import { labelAskMessage } from '/annotation-layout.js';
 import { LINKS, SHAPES, edgePoint, hullAround, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
+import { markGeometry, ringRadii } from '/ink-marks.js';
+import type { MarkShape } from '/ink-marks.js';
 
 interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; write_side?: NoteSide | 'free' | ''; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both'; spotlight?: boolean;
     slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; together?: string[]; color?: string; draw?: Drawing | null }
@@ -320,43 +322,6 @@ async function glide(x: number, y: number, r: number, ms?: number) {
     }
 }
 
-type MarkShape = 'circle' | 'underline' | 'check' | 'cross';
-/**
- * Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
- * it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
- */
-function markGeometry(rect: DOMRect, shape: MarkShape): {left: number; top: number; w: number; h: number; strokes: string[]} {
-    if (shape === 'underline') {
-        const w = rect.width + 8;
-        return {left: rect.left - 4, top: rect.bottom, w: w + 4, h: 12, strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]};
-    }
-    if (shape === 'check') {
-        const s = Math.max(22, Math.min(44, rect.height * 1.3));
-        return {left: rect.left + rect.width / 2 - s / 2, top: rect.top + rect.height / 2 - s / 2, w: s, h: s,
-            strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]};
-    }
-    if (shape === 'cross') {
-        const pad = 4, w = Math.min(rect.width, 160) + pad * 2, h = Math.min(rect.height, 80) + pad * 2;
-        const left = rect.left + rect.width / 2 - w / 2, top = rect.top + rect.height / 2 - h / 2;
-        return {left, top, w, h, strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]};
-    }
-    const {rx, ry} = ringRadii(rect), cx = rx + 2, cy = ry + 2;
-    const at = (deg: number) => { const a = deg * Math.PI / 180;return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`; };
-    // From the top left, once round clockwise and a little on.
-    return {left: rect.left + rect.width / 2 - rx - 2, top: rect.top + rect.height / 2 - ry - 2, w: rx * 2 + 4, h: ry * 2 + 4,
-        // Both arcs on the one ellipse: the second runs 200° (60° round to -100°), so it is a large arc too; flagged small,
-        // SVG fits it on another ellipse, shifted, and the ring cuts across what it rings.
-        strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]};
-}
-/**
- * A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
- * what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
- * to sit inside, with a margin.
- */
-function ringRadii(rect: DOMRect): {rx: number; ry: number} {
-    const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
-    return {rx, ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4};
-}
 let ringShape: MarkShape = 'circle';
 /** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
 function drawRing(rect: DOMRect | null, color = '', shape: MarkShape = 'circle') {
@@ -533,6 +498,37 @@ async function traceMark(r: number) {
     }
     for (const el of [ring, ...moreRings, ...markLinks]) el.classList.add('drawn');
 }
+/**
+ * The pointer, for another surface's strokes (the code canvas): it glides to `path`'s start and draws it as it does a
+ * mark here. Ends early when `live` says the drawing is over. The surface owns the path; this only moves the hand.
+ */
+export async function pointerTrace(path: SVGPathElement, live: () => boolean) {
+    const svg = path.ownerSVGElement;
+    if (!svg) return;
+    const frame = () => new Promise<unknown>(res => { requestAnimationFrame(res);window.setTimeout(res, 60); });   // a hidden tab has no frames
+    try {
+        const box = svg.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+        await glide(box.left + start.x, box.top + start.y, run, 200);
+        const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
+        for (;;) {
+            if (!live() || !path.isConnected) break;
+            const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            path.style.strokeDashoffset = String(1 - k);
+            const b = svg.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+            pos.x = b.left + p.x;pos.y = b.top + p.y;paintPointer();
+            if (t >= 1) break;
+            await frame();
+        }
+    } catch (e) { if (!(e instanceof Stopped)) throw e; }
+    path.style.strokeDashoffset = '0';
+}
+/** The pointer to (x, y) on the page, as the hand moves to where it will write. */
+export async function pointerTo(x: number, y: number) {
+    try { await glide(x, y, run, 200); } catch (e) { if (!(e instanceof Stopped)) throw e; }
+}
+/** The hand has finished: it goes after a moment, as after a mark. */
+export function pointerDone() { restPointer(); }
+
 /** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
 function showPointer() { ensurePointer().classList.add('on'); }
 function restPointer() {
@@ -1608,7 +1604,7 @@ function speak(text: string, into: HTMLElement, r: number): Promise<void> {
         const speakNow = window.algebenchSpeakText;
         // The next beat waits for the speech's own end (a failed or cut-off stream reports one too), however long
         // its voice takes to prepare and say: no guess at its length.
-        if (speakNow) speakNow(text, () => { into.textContent = text;end(); });
+        if (speakNow) speakNow(text, () => { into.textContent = text;end(); }, 'presenter');
         else window.setTimeout(() => { into.textContent = text;end(); }, Math.max(1500, text.split(/\s+/).length * 260));
     });
 }
@@ -1861,10 +1857,11 @@ function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
 }
 
 /** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
-export function stopPresenting() {
+export function stopPresenting(voiceTaken = false) {
     if (!playing) return;
     run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');spotlightBeat = false;drawRing(null);pointer?.classList.remove('on', 'pressed');
-    if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+    // Another voice taking over silences this one itself; stopping speech here would stop that voice's stream too.
+    if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 
 // ── The switch ──
@@ -1894,4 +1891,5 @@ export function setupPresenter(): void {
         if (playing) { e.preventDefault();stopPresenting(); } else if (notes.length || board.length) eraseNotes(true);
     });
     window.addEventListener('algebench:navchange', () => { stopPresenting();eraseNotes(true); });
+    window.addEventListener('algebench:voice', e => { if ((e as CustomEvent<{owner: string}>).detail.owner !== 'presenter') stopPresenting(true); });
 }

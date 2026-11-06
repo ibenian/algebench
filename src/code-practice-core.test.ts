@@ -99,6 +99,17 @@ test('finishing a line rewrites the learner\'s attempt at it, not a blank line b
     assert.equal(finish('def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    ', 2), `${fixed}\n    merged = []`);
 });
 
+test('a wrong line takes nothing from the renamed lines before it', () => {
+    const ref = 'def power(x, n):\n    if n == 0:\n        return 1\n    return x';
+    const top = 'def power(num, exp):\n    if exp == 0:\n        return 1\n';
+    const exact = (last: string) => scorePractice(ref, 1, top + last, new Set()).typed.map(t => t.exact);
+    assert.deepEqual(exact('    return num'), [true, true, true, true]);
+    assert.deepEqual(exact('    return num * 2'), [true, true, true, false], 'more than the code has');
+    assert.deepEqual(exact('    return exp'), [true, true, true, false], 'the wrong one of their names');
+    // The code's own name, after they renamed it, isn't defined in their code: it doesn't count as a match.
+    assert.deepEqual(exact('    return x'), [true, true, true, false]);
+});
+
 test('names of the learner\'s own, used one for one, score as the code\'s', () => {
     const ref = 'def single_number(nums):\n    result = 0\n    for x in nums:\n        result ^= x\n    return result';
     const mine = 'def singlenumber(nums):\n    result = 0\n    for num in nums:\n        result ^= num\n    return result\n    ';
@@ -108,8 +119,8 @@ test('names of the learner\'s own, used one for one, score as the code\'s', () =
     assert.equal(s.typedAll, true);
     // Part way through, the names so far count too.
     assert.equal(ownNames(ref, 'def singlenumber(nums):\n    result = 0\n    for num in nu').text, 'def single_number(nums):\n    result = 0\n    for x in nu');
-    // One name for two of the code's is not a renaming; nor is the language's own name for another.
-    assert.equal(ownNames(ref, 'def f(nums):\n    nums = 0').renamed, false);
+    // One name for two of the code's is not a renaming: the line that tries it is left as typed. Nor is the language's own name for another.
+    assert.equal(ownNames(ref, 'def f(nums):\n    nums = 0').text, 'def single_number(nums):\n    nums = 0');
     assert.equal(ownNames('n = max(a)', 'n = min(a)').renamed, false);
     // A method or a call to something the code does not define is typed as it is.
     assert.equal(ownNames('xs.append(1)', 'xs.add(1)').renamed, false);

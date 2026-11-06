@@ -1692,6 +1692,30 @@
       "path": "patterns/recursion.py",
       "language": "python",
       "source": "def power(x, n):\n    if n == 0:\n        return 1\n    half = power(x, n // 2)\n    if n % 2 == 0:\n        return half * half\n    return half * half * x\n\ndef fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)",
+      "sections": [
+        {"id": "rec-power-base", "title": "The smallest copy answers itself", "from": 1, "to": 3, "hint": "Write the case that needs no recursion first. Any number to the power 0 is 1, and every chain of calls ends here."},
+        {"id": "rec-power-trust", "title": "Trust the call on half the exponent", "from": 4, "to": 4, "hint": "Assume the smaller copy returns the right answer, and keep it in a name: it is one call, used twice below.", "prompt": "Explain why calling power once and storing half gives about log n calls, while writing power(x, n // 2) * power(x, n // 2) would give about n."},
+        {"id": "rec-power-combine", "title": "Combine: square it, with one more x if n is odd", "from": 5, "to": 8, "hint": "Halving an odd exponent rounds down and loses one factor of x, so the odd case puts it back."},
+        {"id": "rec-fib-base", "title": "Fibonacci stops at the first two numbers", "from": 9, "to": 11, "hint": "fib(0) is 0 and fib(1) is 1, which is n itself in both cases."},
+        {"id": "rec-fib-branch", "title": "Two smaller copies, so the calls branch", "from": 12, "to": 12, "hint": "Each call makes two more, and neither knows what the other already worked out.", "prompt": "Explain why this line makes the call tree grow exponentially, and which calls are repeated, using the tree on screen."}
+      ],
+      "annotations": [
+        {"name": "power", "text": "`power(x, n)` returns `x` to the power `n`, in O(log n) calls and O(log n) stack depth."},
+        {"name": "x", "text": "The base. It stays the same in every call."},
+        {"name": "n", "line": 1, "endLine": 7, "text": "The exponent. It halves on each call, which is what reaches the base case quickly."},
+        {"name": "half", "text": "This call's answer for half the exponent: `x` to the power `n // 2`."},
+        {"name": "fib", "text": "`fib(n)` returns the `n`th Fibonacci number. Written this way it takes about O(1.6ⁿ) calls, but only O(n) stack depth."},
+        {"name": "n", "line": 9, "endLine": 12, "text": "Which Fibonacci number to return. Each call asks for the two before it."},
+        {"line": 2, "col": 7, "endCol": 13, "text": "The base case: nothing left to multiply. Without it, the calls would never stop."},
+        {"line": 4, "col": 11, "endCol": 27, "text": "The one recursive call. This call waits on the stack until the smaller copy returns."},
+        {"line": 4, "col": 20, "endCol": 26, "text": "Halves the exponent, rounding down: `n` falls to 0 in about log₂ n calls."},
+        {"line": 5, "col": 7, "endCol": 17, "text": "An even `n` halves exactly. An odd one rounds down and leaves one `x` over."},
+        {"line": 6, "col": 15, "endCol": 26, "text": "For an even `n`, the answer is the half times itself: one recursive call, used twice."},
+        {"line": 7, "col": 23, "endCol": 26, "text": "Puts back the factor the rounded-down halving lost."},
+        {"line": 10, "col": 7, "endCol": 12, "text": "The base case, for `n` of 0 or 1. Every branch of the tree ends here."},
+        {"line": 12, "col": 11, "endCol": 21, "text": "Runs to the bottom of its whole subtree before `fib(n - 2)` starts."},
+        {"line": 12, "col": 24, "endCol": 34, "text": "Starts from scratch: it solves again what `fib(n - 1)` already solved. Remembering those answers is dynamic programming."}
+      ],
       "locations": [
         {"line": 2, "scene": "recursion", "step": "run", "snapshot": 0, "label": "Solve smaller copies (recursion) · power(2, 13): is n 0?"},
         {"line": 4, "scene": "recursion", "step": "run", "snapshot": 1, "label": "Solve smaller copies (recursion) · Trust the smaller copy: power(2, 13 // 2 = 6) gives half the answer."},

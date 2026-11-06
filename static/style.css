@@ -6219,13 +6219,26 @@ body:has(.push-array) #legend { display: none; }
    font size) and the coach's words (zoom on each message, so the review keeps its drag); titles and buttons stay as
    they are. The ancestors stay laid out, whatever tab or panel state the page is in. */
 body.cp-focus-mode #explanation-panel, body.cp-focus-mode #tab-doc { display: flex !important; }
+body.cp-focus-mode .ai-pointer { z-index: 9600; }   /* the hand draws on the code canvas, over the panel */
 body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context holds the panel: lift it over the title bar */
 .code-practice.cp-focus { position: fixed; inset: 0; z-index: 9500; flex: none !important; max-height: none !important; min-height: 0; border-top: 0; background: var(--page-bg); }
 .cp-focus .cp-resize, .cp-focus .cp-hide-tool { display: none; }
+.code-practice:not(.cp-focus) .cp-present-tool { display: none; }
+.cp-tool.cp-present-tool { display: inline-flex; align-items: center; gap: 3px; }
+.cp-tool.cp-present-tool.active { color: #fff; background: color-mix(in srgb, #ff5a4e 70%, transparent); border-color: #ff5a4e; }
 .cp-focus .cp-head .cp-tools { flex: none; flex-wrap: nowrap; }
 .cp-focus .cp-head .cp-tool { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .cp-focus .cp-cheer, .cp-focus .cp-report > *, .cp-focus .cp-ai-tag { zoom: 2; }
 .cp-focus .cp-help, .cp-focus .cp-quiz-controls { zoom: .5; }   /* a message's buttons: back to their own size */
+/* The code canvas (code-canvas.ts): the agent's marks over the code, in focus mode. It scrolls with the code and takes
+   no clicks, so the editor under it stays the learner's. */
+.cp-canvas { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; --ink: #7dffcf; }
+.cp-canvas[hidden] { display: none; }
+.cp-canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.cp-canvas path { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.cp-canvas path.cp-canvas-fill { fill: color-mix(in srgb, var(--ink) 13%, transparent); stroke: none; }
+.cp-canvas-text { position: absolute; transform: translateY(-50%); color: var(--ink); font-size: .82em; font-weight: 600; line-height: 1.2; white-space: pre; }
+.cp-canvas-text.centred { transform: translate(-50%, -50%); }
 /* Help me: the assistant at the keyboard (code-practice.ts). Its colour marks everything it does: the editor's
    ring, its caret and name tag, and its messages. */
 .code-practice { --ai-tone: #a78bfa; }

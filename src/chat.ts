@@ -1762,7 +1762,9 @@ window.algebenchStopTTS = function() {
 
 // ---- algebenchSpeakText with completion callback ----
 
-window.algebenchSpeakText = function(text, onEnd) {
+/** One voice at a time: whoever speaks last has the page. The others hear this and stop going on. */
+window.algebenchSpeakText = function(text, onEnd, owner = 'chat') {
+    window.dispatchEvent(new CustomEvent('algebench:voice', {detail: {owner}}));
     const expectedId = ttsRequestId + 1;
     speakText(text, { explicit: true });
 
@@ -1818,6 +1820,8 @@ async function speakText(text: string, { explicit = false }: { explicit?: boolea
     if (!player) return;
 
     if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
+    // What is still sounding stops now, not when the new voice's first sound arrives a moment later.
+    player.stop();
     const abort = new AbortController();
     ttsAbortController = abort;
     let response: Response;

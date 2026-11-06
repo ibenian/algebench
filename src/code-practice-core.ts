@@ -213,31 +213,36 @@ function tokens(code: string): Tok[] {
 }
 
 /**
- * The learner's code read with the code's own names: when what they typed is the code so far, token for token,
- * but for names they chose themselves (`num` for `x`, `singleNumber` for `single_number`), one for one and
- * consistently, those names are put back so the lines score as the code. Anything else, the text as typed.
+ * The learner's code read with the code's own names: names they chose themselves (`num` for `x`, `singleNumber` for
+ * `single_number`), one for one and consistently, are put back so the lines score as the code. The names are read off
+ * the lines that are the code so far, token for token, up to the first that isn't: a later line being wrong takes
+ * nothing from the lines before it. A code name they renamed and then used anyway isn't the code's: it won't match.
  */
 export function ownNames(reference: string, typed: string): {text: string; renamed: boolean} {
     const want = tokens(reference), have = tokens(typed);
-    if (!have.length || have.length > want.length) return {text: typed, renamed: false};
-    const to = new Map<string, string>(), from = new Map<string, string>();
+    if (!have.length) return {text: typed, renamed: false};
+    let to = new Map<string, string>(), from = new Map<string, string>();
+    let whole = new Map<string, string>(), line = have[0]!.line;
     for (let k = 0; k < have.length; k++) {
-        const a = have[k]!, b = want[k]!;
-        if (a.text === b.text && !b.renamable) continue;
-        const fits = b.renamable && NAME.test(a.text) && !RESERVED.has(a.text)
+        const a = have[k]!, b = want[k];
+        if (a.line !== line) { whole = new Map(to);line = a.line; }
+        if (b && a.text === b.text && !b.renamable) continue;
+        const fits = !!b && b.renamable && NAME.test(a.text) && !RESERVED.has(a.text)
             && (to.get(a.text) ?? b.text) === b.text && (from.get(b.text) ?? a.text) === a.text;
         if (!fits) {
-            // The last token may be a name still being typed: the code before it is what counts.
-            if (k === have.length - 1) break;
-            return {text: typed, renamed: false};
+            // The last token may be a name still being typed: the code before it is what counts. Elsewhere this
+            // line isn't the code, and what it seemed to say about names goes with it.
+            if (k !== have.length - 1) to = whole;
+            break;
         }
-        to.set(a.text, b.text);from.set(b.text, a.text);
+        to.set(a.text, b!.text);from.set(b!.text, a.text);
     }
     if ([...to].every(([a, b]) => a === b)) return {text: typed, renamed: false};
+    const away = new Set([...to].filter(([a, b]) => a !== b).map(([, b]) => b));
     // Put the code's names in, right to left on each line so the positions stay true.
     const lines = typed.split('\n');
     for (const t of [...have].reverse()) {
-        const name = to.get(t.text);
+        const name = to.get(t.text) ?? (t.renamable && away.has(t.text) ? `${t.text}\u2032` : undefined);
         if (name === undefined || name === t.text || !NAME.test(t.text)) continue;
         const l = lines[t.line]!;
         lines[t.line] = l.slice(0, t.at) + name + l.slice(t.at + t.text.length);

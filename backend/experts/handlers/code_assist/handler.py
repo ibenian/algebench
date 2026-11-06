@@ -47,7 +47,10 @@ def render_inputs(req: CodeAssistRequest) -> dict:
         "presenter": "on" if req.present else "off",
         "hint_level": req.hint_level,
         "last_said": req.last_said.strip(),
+        "recent_turns": req.recent_turns.strip(),
         "problems": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
+        # The code canvas's one input; without it the expert isn't told of drawing at all.
+        **({"canvas_marks": "\n".join(req.canvas_marks)} if req.canvas else {}),
     }
 
 
@@ -148,19 +151,23 @@ def within_hint_level(step, level: str, typed: str) -> None:
         if step.code and not only_comments_added(step.code, typed):
             step.code, step.cursor_line = "", 0
         return
-    step.code, step.select, step.select_line, step.cursor_line = "", "", 0, 0
+    step.code, step.select, step.select_line, step.cursor_line, step.draw, step.erase_marks = "", "", 0, 0, [], []
 
 
 @register_handler("code_assist", request_model=CodeAssistRequest, speaks=True)
 def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "ask" and not req.request.strip():
         return {"reason": ASK_FIRST}
-    out = assist_code(req.scope, editor_text=req.typed, **render_inputs(req))
+    out = assist_code(req.scope, editor_text=req.typed, canvas=req.canvas, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
     if out.show and req.present:
         # Shown on the view by the chat, not typed here: what was said, and the request for it.
         return {"reason": out.closing or SHOWING, "show": out.show}
+    # The canvas is focus mode's alone.
+    if not req.canvas:
+        for step in out.steps:
+            step.draw, step.erase_marks = [], []
     # An answer is judged, whatever the model sent with it: nothing is typed.
     answered = bool(req.scope == "ask" and req.last_said.strip() and out.answered)
     if answered:

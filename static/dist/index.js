@@ -9714,7 +9714,7 @@ var LAYOUTS = /* @__PURE__ */ new Set([
 	"graph",
 	"free"
 ]);
-var placed = (e) => typeof e.x === "number" && typeof e.y === "number";
+var placed$1 = (e) => typeof e.x === "number" && typeof e.y === "number";
 var GAP = 28;
 var guess = {
 	box: {
@@ -9783,7 +9783,7 @@ function layoutDrawing(elements, layout = "", m = guess) {
 		if (asked === "free" && linksAmong(inside).length) return "flow";
 		if (LAYOUTS.has(asked)) return asked;
 		if (linksAmong(inside).length) return "flow";
-		return inside.some(placed) ? "free" : "row";
+		return inside.some(placed$1) ? "free" : "row";
 	};
 	const measure = (g) => {
 		const inside = kids(g), kind = kindOf(g, inside);
@@ -10199,6 +10199,68 @@ function hullAround(boxes, pad = 12) {
 	return out;
 }
 //#endregion
+//#region src/ink-marks.ts
+/**
+* Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
+* it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
+*/
+function markGeometry(rect, shape) {
+	if (shape === "underline") {
+		const w = rect.width + 8;
+		return {
+			left: rect.left - 4,
+			top: rect.bottom,
+			w: w + 4,
+			h: 12,
+			strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]
+		};
+	}
+	if (shape === "check") {
+		const s = Math.max(22, Math.min(44, rect.height * 1.3));
+		return {
+			left: rect.left + rect.width / 2 - s / 2,
+			top: rect.top + rect.height / 2 - s / 2,
+			w: s,
+			h: s,
+			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
+		};
+	}
+	if (shape === "cross") {
+		const w = Math.min(rect.width, 160) + 8, h = Math.min(rect.height, 80) + 8;
+		return {
+			left: rect.left + rect.width / 2 - w / 2,
+			top: rect.top + rect.height / 2 - h / 2,
+			w,
+			h,
+			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
+		};
+	}
+	const { rx, ry } = ringRadii(rect), cx = rx + 2, cy = ry + 2;
+	const at = (deg) => {
+		const a = deg * Math.PI / 180;
+		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
+	};
+	return {
+		left: rect.left + rect.width / 2 - rx - 2,
+		top: rect.top + rect.height / 2 - ry - 2,
+		w: rx * 2 + 4,
+		h: ry * 2 + 4,
+		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]
+	};
+}
+/**
+* A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
+* what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
+* to sit inside, with a margin.
+*/
+function ringRadii(rect) {
+	const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
+	return {
+		rx,
+		ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4
+	};
+}
+//#endregion
 //#region src/presenter.ts
 /**
 * AI presenter: with the presenter switch on (chat toolbar), a question typed in the chat is answered as a
@@ -10595,66 +10657,6 @@ async function glide(x, y, r, ms) {
 		await new Promise((res) => requestAnimationFrame(res));
 	}
 }
-/**
-* Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
-* it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
-*/
-function markGeometry(rect, shape) {
-	if (shape === "underline") {
-		const w = rect.width + 8;
-		return {
-			left: rect.left - 4,
-			top: rect.bottom,
-			w: w + 4,
-			h: 12,
-			strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]
-		};
-	}
-	if (shape === "check") {
-		const s = Math.max(22, Math.min(44, rect.height * 1.3));
-		return {
-			left: rect.left + rect.width / 2 - s / 2,
-			top: rect.top + rect.height / 2 - s / 2,
-			w: s,
-			h: s,
-			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
-		};
-	}
-	if (shape === "cross") {
-		const w = Math.min(rect.width, 160) + 8, h = Math.min(rect.height, 80) + 8;
-		return {
-			left: rect.left + rect.width / 2 - w / 2,
-			top: rect.top + rect.height / 2 - h / 2,
-			w,
-			h,
-			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
-		};
-	}
-	const { rx, ry } = ringRadii(rect), cx = rx + 2, cy = ry + 2;
-	const at = (deg) => {
-		const a = deg * Math.PI / 180;
-		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
-	};
-	return {
-		left: rect.left + rect.width / 2 - rx - 2,
-		top: rect.top + rect.height / 2 - ry - 2,
-		w: rx * 2 + 4,
-		h: ry * 2 + 4,
-		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]
-	};
-}
-/**
-* A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
-* what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
-* to sit inside, with a margin.
-*/
-function ringRadii(rect) {
-	const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
-	return {
-		rx,
-		ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4
-	};
-}
 var ringShape = "circle";
 /** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
 function drawRing(rect, color = "", shape = "circle") {
@@ -10904,6 +10906,49 @@ async function traceMark(r) {
 		...moreRings,
 		...markLinks
 	]) el.classList.add("drawn");
+}
+/**
+* The pointer, for another surface's strokes (the code canvas): it glides to `path`'s start and draws it as it does a
+* mark here. Ends early when `live` says the drawing is over. The surface owns the path; this only moves the hand.
+*/
+async function pointerTrace(path, live) {
+	const svg = path.ownerSVGElement;
+	if (!svg) return;
+	const frame = () => new Promise((res) => {
+		requestAnimationFrame(res);
+		window.setTimeout(res, 60);
+	});
+	try {
+		const box = svg.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+		await glide(box.left + start.x, box.top + start.y, run, 200);
+		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
+		for (;;) {
+			if (!live() || !path.isConnected) break;
+			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+			path.style.strokeDashoffset = String(1 - k);
+			const b = svg.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+			pos.x = b.left + p.x;
+			pos.y = b.top + p.y;
+			paintPointer();
+			if (t >= 1) break;
+			await frame();
+		}
+	} catch (e) {
+		if (!(e instanceof Stopped)) throw e;
+	}
+	path.style.strokeDashoffset = "0";
+}
+/** The pointer to (x, y) on the page, as the hand moves to where it will write. */
+async function pointerTo(x, y) {
+	try {
+		await glide(x, y, run, 200);
+	} catch (e) {
+		if (!(e instanceof Stopped)) throw e;
+	}
+}
+/** The hand has finished: it goes after a moment, as after a mark. */
+function pointerDone() {
+	restPointer();
 }
 /** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
 function showPointer() {
@@ -11221,7 +11266,7 @@ function mathHtml(body, open, katex) {
 }
 /** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
 /** The presenter's colours (style.css `.ai-ink-*`); green when none is named. */
-var INKS = /* @__PURE__ */ new Set([
+var INKS$1 = /* @__PURE__ */ new Set([
 	"yellow",
 	"red",
 	"blue",
@@ -11229,7 +11274,7 @@ var INKS = /* @__PURE__ */ new Set([
 	"orange",
 	"pink"
 ]);
-var inkClass = (color) => color && INKS.has(color) ? `ai-ink-${color}` : "";
+var inkClass = (color) => color && INKS$1.has(color) ? `ai-ink-${color}` : "";
 async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
 	if (side === "free") near = "";
 	const note = document.createElement("div");
@@ -12414,7 +12459,7 @@ function speak$1(text, into, r) {
 		if (speakNow) speakNow(text, () => {
 			into.textContent = text;
 			end();
-		});
+		}, "presenter");
 		else window.setTimeout(() => {
 			into.textContent = text;
 			end();
@@ -12718,7 +12763,7 @@ function addReplay(body, steps, start) {
 	body.append(btn);
 }
 /** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
-function stopPresenting() {
+function stopPresenting(voiceTaken = false) {
 	if (!playing) return;
 	run++;
 	markPlaying(null);
@@ -12728,7 +12773,7 @@ function stopPresenting() {
 	spotlightBeat = false;
 	drawRing(null);
 	pointer?.classList.remove("on", "pressed");
-	if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+	if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttribute("aria-pressed") === "true";
 function setupPresenter() {
@@ -12765,6 +12810,9 @@ function setupPresenter() {
 	window.addEventListener("algebench:navchange", () => {
 		stopPresenting();
 		eraseNotes(true);
+	});
+	window.addEventListener("algebench:voice", (e) => {
+		if (e.detail.owner !== "presenter") stopPresenting(true);
 	});
 }
 //#endregion
@@ -29151,9 +29199,9 @@ var PAD = 10;
 var CHAR = 6.4;
 /** Rows left empty between separate functions' trees. */
 var ROOT_GAP = .4;
-var SVG = "http://www.w3.org/2000/svg";
+var SVG$1 = "http://www.w3.org/2000/svg";
 function svg$2(tag, attrs) {
-	const el = document.createElementNS(SVG, tag);
+	const el = document.createElementNS(SVG$1, tag);
 	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
 	return el;
 }
@@ -32372,26 +32420,29 @@ function tokens(code) {
 	return out;
 }
 /**
-* The learner's code read with the code's own names: when what they typed is the code so far, token for token,
-* but for names they chose themselves (`num` for `x`, `singleNumber` for `single_number`), one for one and
-* consistently, those names are put back so the lines score as the code. Anything else, the text as typed.
+* The learner's code read with the code's own names: names they chose themselves (`num` for `x`, `singleNumber` for
+* `single_number`), one for one and consistently, are put back so the lines score as the code. The names are read off
+* the lines that are the code so far, token for token, up to the first that isn't: a later line being wrong takes
+* nothing from the lines before it. A code name they renamed and then used anyway isn't the code's: it won't match.
 */
 function ownNames(reference, typed) {
 	const want = tokens(reference), have = tokens(typed);
-	if (!have.length || have.length > want.length) return {
+	if (!have.length) return {
 		text: typed,
 		renamed: false
 	};
-	const to = /* @__PURE__ */ new Map(), from = /* @__PURE__ */ new Map();
+	let to = /* @__PURE__ */ new Map(), from = /* @__PURE__ */ new Map();
+	let whole = /* @__PURE__ */ new Map(), line = have[0].line;
 	for (let k = 0; k < have.length; k++) {
 		const a = have[k], b = want[k];
-		if (a.text === b.text && !b.renamable) continue;
-		if (!(b.renamable && NAME.test(a.text) && !RESERVED.has(a.text) && (to.get(a.text) ?? b.text) === b.text && (from.get(b.text) ?? a.text) === a.text)) {
-			if (k === have.length - 1) break;
-			return {
-				text: typed,
-				renamed: false
-			};
+		if (a.line !== line) {
+			whole = new Map(to);
+			line = a.line;
+		}
+		if (b && a.text === b.text && !b.renamable) continue;
+		if (!(!!b && b.renamable && NAME.test(a.text) && !RESERVED.has(a.text) && (to.get(a.text) ?? b.text) === b.text && (from.get(b.text) ?? a.text) === a.text)) {
+			if (k !== have.length - 1) to = whole;
+			break;
 		}
 		to.set(a.text, b.text);
 		from.set(b.text, a.text);
@@ -32400,9 +32451,10 @@ function ownNames(reference, typed) {
 		text: typed,
 		renamed: false
 	};
+	const away = new Set([...to].filter(([a, b]) => a !== b).map(([, b]) => b));
 	const lines = typed.split("\n");
 	for (const t of [...have].reverse()) {
-		const name = to.get(t.text);
+		const name = to.get(t.text) ?? (t.renamable && away.has(t.text) ? `${t.text}\u2032` : void 0);
 		if (name === void 0 || name === t.text || !NAME.test(t.text)) continue;
 		const l = lines[t.line];
 		lines[t.line] = l.slice(0, t.at) + name + l.slice(t.at + t.text.length);
@@ -34691,7 +34743,9 @@ window.algebenchStopTTS = function() {
 	if (p) p.stop();
 	fetch("/api/tts/kill", { method: "POST" }).catch(() => {});
 };
-window.algebenchSpeakText = function(text, onEnd) {
+/** One voice at a time: whoever speaks last has the page. The others hear this and stop going on. */
+window.algebenchSpeakText = function(text, onEnd, owner = "chat") {
+	window.dispatchEvent(new CustomEvent("algebench:voice", { detail: { owner } }));
 	const expectedId = ttsRequestId + 1;
 	speakText(text, { explicit: true });
 	if (typeof onEnd !== "function") return;
@@ -34741,6 +34795,7 @@ async function speakText(text, { explicit = false } = {}) {
 		ttsAbortController.abort();
 		ttsAbortController = null;
 	}
+	player.stop();
 	const abort = new AbortController();
 	ttsAbortController = abort;
 	let response;
@@ -35059,6 +35114,465 @@ function createPracticeStore(factory = globalThis.indexedDB) {
 			} catch {
 				return fallback.take(key);
 			}
+		}
+	};
+}
+//#endregion
+//#region src/code-canvas-core.ts
+/**
+* The code canvas: what the agent draws on the code in Type along's focus mode with the presenter on, on its turn. Marks name the code
+* itself (a line, a run of lines, a piece of text on a line) and are laid out here into strokes and words, in the
+* editor's own coordinates. It knows only the code, nothing of the 3D view. Pure, so it is testable; code-canvas.ts paints it.
+*/
+/** A mark as the agent is told it is on the board: its name, then what it is and where. */
+function describeMark(mark) {
+	const place = (line, end, text) => [line ? `line ${line}${end && end !== line ? `-${end}` : ""}` : "", text ? `"${text}"` : ""].filter(Boolean).join(" ");
+	const to = mark.to_id ? `shape ${mark.to_id}` : place(mark.to_line, mark.to_end_line, mark.to_text);
+	return [
+		`${mark.mid ?? "?"}:`,
+		mark.kind === "shape" ? `${mark.shape || "rectangle"} shape${mark.id ? ` ${mark.id}` : ""}` : mark.kind,
+		place(mark.line, mark.end_line, mark.text),
+		to ? `to ${to}` : "",
+		mark.label ? `"${mark.label}"` : ""
+	].filter(Boolean).join(" ");
+}
+/** What a mark names: `text` on `line` when both are there, else the lines, from their indentation to their end. */
+function resolveSpan(lines, line = 0, endLine = 0, text = "") {
+	const source = lines.join("\n");
+	if (text.trim()) {
+		const at = findSelection(source, text, 0, line);
+		if (at) {
+			const where = (offset) => {
+				const before = source.slice(0, offset).split("\n");
+				return [before.length - 1, before[before.length - 1].length];
+			};
+			const [fromLine, fromCol] = where(at[0]), [toLine, toCol] = where(at[1]);
+			return {
+				fromLine,
+				fromCol,
+				toLine,
+				toCol
+			};
+		}
+	}
+	if (line < 1 || line > lines.length) return null;
+	const last = Math.max(line, Math.min(endLine || line, lines.length));
+	const first = lines[line - 1];
+	return {
+		fromLine: line - 1,
+		fromCol: first.length - first.trimStart().length,
+		toLine: last - 1,
+		toCol: lines[last - 1].trimEnd().length
+	};
+}
+/** The box round a span: across its lines from the leftmost start to the rightmost end. */
+function spanBox(span, lines, m) {
+	const top = m.row(span.fromLine), bottom = m.row(span.toLine);
+	if (!top || !bottom) return null;
+	let fromCol = span.fromCol, toCol = span.toCol;
+	for (let k = span.fromLine; k <= span.toLine; k++) {
+		const text = lines[k] ?? "";
+		if (k > span.fromLine) fromCol = Math.min(fromCol, text.length - text.trimStart().length);
+		if (k < span.toLine) toCol = Math.max(toCol, text.trimEnd().length);
+	}
+	const left = top.left + fromCol * m.charWidth, width = Math.max(m.charWidth, (toCol - fromCol) * m.charWidth), height = bottom.top + bottom.height - top.top;
+	return {
+		left,
+		top: top.top,
+		width,
+		height,
+		bottom: top.top + height
+	};
+}
+/** A bowed arrow between two points, its head at `b`: the shaft first, then the head. */
+function arrowPaths(a, b) {
+	const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+	const bow = Math.min(40, len * .18), mid = {
+		x: (a.x + b.x) / 2 - dy / len * bow,
+		y: (a.y + b.y) / 2 + dx / len * bow
+	};
+	const angle = Math.atan2(b.y - mid.y, b.x - mid.x), head = 9;
+	const wing = (d) => `${b.x + head * Math.cos(angle + d)} ${b.y + head * Math.sin(angle + d)}`;
+	return [smoothPath([
+		a,
+		mid,
+		b
+	]), `M${wing(2.6)} L${b.x} ${b.y} L${wing(-2.6)}`];
+}
+var placed = (g, d) => translatePath(d, g.left, g.top);
+/** A stroke moved by (dx, dy): its absolute coordinates shifted (arcs keep their radii, flags and rotation). */
+function translatePath(d, dx, dy) {
+	return d.replace(/([MLQA])\s*([^MLQA]*)/g, (_all, cmd, rest) => {
+		const n = rest.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+		if (cmd === "A") {
+			const out = [];
+			for (let i = 0; i + 6 < n.length; i += 7) out.push(n[i], n[i + 1], n[i + 2], n[i + 3], n[i + 4], n[i + 5] + dx, n[i + 6] + dy);
+			return `A${out.join(" ")} `;
+		}
+		return `${cmd}${n.map((v, i) => i % 2 ? v + dy : v + dx).join(" ")} `;
+	}).trim();
+}
+var SIDE_GAP = 56;
+/** A note's letters, as a share of the code's (style.css `.cp-canvas-text`). */
+var NOTE_SCALE = .82;
+/**
+* Every mark, laid out. Shapes stand in a column to the right of the code, each by its line (or under the one before
+* it), so an arrow can find them whichever order they come in. Marks naming code that isn't there are left out.
+*/
+function layoutMarks(marks, lines, m) {
+	const origin = m.row(0);
+	const codeRight = (origin?.left ?? 0) + Math.max(0, ...lines.map((l) => l.trimEnd().length)) * m.charWidth;
+	const rowHeight = origin?.height ?? 20;
+	const column = codeRight + SIDE_GAP;
+	const shapes = /* @__PURE__ */ new Map();
+	let below = origin?.top ?? 0;
+	const shapeOf = /* @__PURE__ */ new Map();
+	for (const mark of marks) {
+		if (mark.kind !== "shape") continue;
+		const type = mark.shape === "ellipse" || mark.shape === "diamond" ? mark.shape : "rectangle";
+		const w = Math.max(rowHeight * 3, (mark.label ?? "").length * m.charWidth * .9 + rowHeight * 1.2), h = rowHeight * (type === "rectangle" ? 1.5 : 2);
+		const by = mark.line ? m.row(mark.line - 1)?.top ?? below : below, top = Math.max(by, below);
+		const s = {
+			type,
+			cx: column + w / 2,
+			cy: top + h / 2,
+			w,
+			h,
+			box: {
+				left: column,
+				top,
+				width: w,
+				height: h,
+				bottom: top + h
+			}
+		};
+		below = top + h + rowHeight * .5;
+		shapeOf.set(mark, s);
+		if (mark.id) shapes.set(mark.id, s);
+	}
+	const out = [];
+	let width = codeRight, height = 0, firstTop = null;
+	const noteEnd = /* @__PURE__ */ new Map();
+	const grow = (b) => {
+		width = Math.max(width, b.left + b.width + 16);
+		height = Math.max(height, b.bottom + 8);
+		firstTop ??= b.top;
+	};
+	for (const [index, mark] of marks.entries()) {
+		const color = mark.color ?? (mark.kind === "cross" ? "red" : "");
+		if (mark.kind === "shape") {
+			const s = shapeOf.get(mark);
+			grow(s.box);
+			out.push({
+				source: index,
+				paths: [shapeStroke(s.type, s.cx, s.cy, s.w, s.h)],
+				color,
+				...mark.label ? { text: {
+					x: s.cx,
+					y: s.cy,
+					words: mark.label,
+					centred: true
+				} } : {}
+			});
+			continue;
+		}
+		const span = resolveSpan(lines, mark.line, mark.end_line, mark.text);
+		const box = span && spanBox(span, lines, m);
+		if (!box) continue;
+		grow(box);
+		if (mark.kind === "note") {
+			if (!mark.label) continue;
+			const row = m.row(span.fromLine), end = row.left + (lines[span.fromLine] ?? "").trimEnd().length * m.charWidth;
+			const x = Math.max(end, box.left + (span.fromLine === span.toLine ? box.width : 0), noteEnd.get(span.fromLine) ?? 0) + m.charWidth * 2;
+			noteEnd.set(span.fromLine, x + mark.label.length * m.charWidth * NOTE_SCALE);
+			grow({
+				left: x,
+				top: row.top,
+				width: mark.label.length * m.charWidth,
+				height: row.height,
+				bottom: row.top + row.height
+			});
+			out.push({
+				source: index,
+				paths: [],
+				color,
+				text: {
+					x,
+					y: row.top + row.height / 2,
+					words: mark.label,
+					centred: false
+				}
+			});
+		} else if (mark.kind === "arrow") {
+			const shape = mark.to_id ? shapes.get(mark.to_id) : void 0;
+			const toSpan = shape ? null : resolveSpan(lines, mark.to_line, mark.to_end_line, mark.to_text);
+			const toBox = shape?.box ?? (toSpan && spanBox(toSpan, lines, m));
+			if (!toBox) continue;
+			grow(toBox);
+			const down = !shape && toBox.top >= box.bottom, up = !shape && toBox.bottom <= box.top;
+			const start = {
+				x: down || up ? box.left + box.width / 2 : box.left + box.width + 4,
+				y: down ? box.bottom : up ? box.top : box.top + box.height / 2
+			};
+			const end = shape ? edgePoint(shape.type, shape.cx, shape.cy, shape.w, shape.h, start, 4) : {
+				x: down || up ? toBox.left + toBox.width / 2 : toBox.left + toBox.width + 4,
+				y: down ? toBox.top : up ? toBox.bottom : toBox.top + toBox.height / 2
+			};
+			out.push({
+				source: index,
+				paths: arrowPaths(start, end),
+				color
+			});
+		} else if (mark.kind === "box") {
+			const x = box.left - 4, y = box.top - 1, w = box.width + 8, h = box.height + 2;
+			const d = shapeStroke("rectangle", x + w / 2, y + h / 2, w, h);
+			out.push({
+				source: index,
+				paths: [d],
+				fill: `M${x} ${y} H${x + w} V${y + h} H${x} Z`,
+				color
+			});
+		} else {
+			const beside = mark.kind === "check" || mark.kind === "cross";
+			const rowH = m.row(span.fromLine).height;
+			const g = markGeometry(beside ? {
+				left: box.left + box.width + rowH * .3,
+				top: box.top + box.height / 2 - rowH / 2,
+				width: rowH,
+				height: rowH,
+				bottom: box.top + box.height / 2 + rowH / 2
+			} : box, mark.kind);
+			grow({
+				left: g.left,
+				top: g.top,
+				width: g.w,
+				height: g.h,
+				bottom: g.top + g.h
+			});
+			out.push({
+				source: index,
+				paths: g.strokes.map((d) => placed(g, d)),
+				color
+			});
+		}
+	}
+	return {
+		marks: out,
+		width,
+		height,
+		firstTop
+	};
+}
+/**
+* Where a line went when the code changed: the same place if it is still there; else the nearest line with its text;
+* else, with no line added or taken away (the one being typed on), the same place. Null when it has gone.
+*/
+function remapLine(before, after, line) {
+	const text = before[line - 1];
+	if (text === void 0) return null;
+	if (after[line - 1] === text) return line;
+	if (text.trim()) {
+		let best = -1;
+		after.forEach((t, k) => {
+			if (t === text && (best < 0 || Math.abs(k + 1 - line) < Math.abs(best - line))) best = k + 1;
+		});
+		if (best > 0) return best;
+	}
+	return before.length === after.length ? line : null;
+}
+/**
+* Marks carried over an edit: each follows its lines, and goes if what it named has gone. A check or a cross also goes
+* when the code it judged changes: it was a verdict on what was there, and that code no longer is.
+*/
+function remapMarks(marks, before, after) {
+	const out = [];
+	for (const mark of marks) {
+		const next = { ...mark };
+		let gone = false;
+		for (const key of [
+			"line",
+			"end_line",
+			"to_line",
+			"to_end_line"
+		]) {
+			const at = mark[key];
+			if (!at) continue;
+			const moved = remapLine(before, after, at);
+			if (moved == null) gone = true;
+			else next[key] = moved;
+		}
+		if (!gone && (mark.kind === "check" || mark.kind === "cross") && mark.line) {
+			const span = (lines, from, to) => lines.slice(from - 1, to).join("\n");
+			if (span(before, mark.line, mark.end_line || mark.line) !== span(after, next.line, next.end_line || next.line)) gone = true;
+		}
+		if (!gone) out.push(next);
+	}
+	return out;
+}
+//#endregion
+//#region src/code-canvas.ts
+/**
+* The code canvas's layer: the agent's marks painted over Type along's editor, scrolling with the code. It follows
+* the code as it changes and is drawn afresh at another font size. See code-canvas-core.ts for what marks are.
+*/
+var WORD_MS = 16;
+var INKS = /* @__PURE__ */ new Set([
+	"yellow",
+	"red",
+	"blue",
+	"purple",
+	"orange",
+	"pink"
+]);
+var SVG = "http://www.w3.org/2000/svg";
+function createCodeCanvas(o) {
+	const layer = document.createElement("div");
+	layer.className = "cp-canvas";
+	layer.setAttribute("aria-hidden", "true");
+	o.stack.append(layer);
+	let marks = [], lines = [], shown = 0, run = 0, named = 0;
+	const metrics = {
+		get charWidth() {
+			return o.charWidth();
+		},
+		row(k) {
+			const row = o.paint.children[k];
+			return row ? {
+				left: row.offsetLeft,
+				top: row.offsetTop,
+				height: row.offsetHeight
+			} : null;
+		}
+	};
+	const inkOf = (color) => INKS.has(color) ? `ai-ink-${color}` : "";
+	function paintMark(mark, svg, animate, strokes) {
+		const ink = inkOf(mark.color);
+		const g = document.createElementNS(SVG, "g");
+		if (ink) g.classList.add(ink);
+		if (mark.fill) {
+			const f = document.createElementNS(SVG, "path");
+			f.setAttribute("d", mark.fill);
+			f.classList.add("cp-canvas-fill");
+			g.append(f);
+		}
+		for (const d of mark.paths) {
+			const p = document.createElementNS(SVG, "path");
+			p.setAttribute("d", d);
+			p.setAttribute("pathLength", "1");
+			if (animate) {
+				p.style.strokeDasharray = "1";
+				p.style.strokeDashoffset = "1";
+				strokes.push(p);
+			}
+			g.append(p);
+		}
+		svg.append(g);
+		if (!mark.text) return null;
+		const t = document.createElement("div");
+		t.className = `cp-canvas-text${mark.text.centred ? " centred" : ""} ${ink}`.trim();
+		t.style.left = `${mark.text.x}px`;
+		t.style.top = `${mark.text.y}px`;
+		t.textContent = mark.text.words;
+		layer.append(t);
+		return t;
+	}
+	/** Everything up to the `shown`th mark; the last one being drawn, when `animate`. */
+	function paint(animate = false) {
+		layer.replaceChildren();
+		if (!marks.length) {
+			layer.style.width = layer.style.height = "0";
+			return null;
+		}
+		const laid = layoutMarks(marks, lines, metrics);
+		layer.style.width = `${laid.width}px`;
+		layer.style.height = `${laid.height}px`;
+		const svg = document.createElementNS(SVG, "svg");
+		layer.append(svg);
+		let last = null;
+		const strokes = [];
+		for (const mark of laid.marks) {
+			if (mark.source >= shown) continue;
+			const drawing = animate && mark.source === shown - 1;
+			const words = paintMark(mark, svg, drawing, strokes);
+			if (drawing) last = words;
+		}
+		return {
+			last,
+			strokes,
+			firstTop: laid.firstTop
+		};
+	}
+	return {
+		async play(next) {
+			if (!next.length) return;
+			const mine = ++run;
+			lines = o.text().split("\n");
+			marks = [...marks, ...next.map((mark) => ({
+				...mark,
+				mid: `m${++named}`
+			}))];
+			for (let k = 0; k < next.length; k++) {
+				shown++;
+				const at = paint(true);
+				if (k === 0 && at?.firstTop != null) {
+					const view = o.editor, top = at.firstTop;
+					if (top < view.scrollTop || top > view.scrollTop + view.clientHeight - 60) view.scrollTop = Math.max(0, top - 40);
+				}
+				const live = () => mine === run;
+				for (const stroke of at?.strokes ?? []) {
+					await o.hand.trace(stroke, live);
+					if (!live()) return o.hand.done();
+				}
+				const words = at?.last, whole = words?.textContent ?? "";
+				if (words) {
+					words.textContent = "";
+					words.classList.add("writing");
+					const b = words.getBoundingClientRect();
+					await o.hand.moveTo(b.left, b.top + b.height / 2);
+					for (let c = 1; c <= whole.length; c++) {
+						words.textContent = whole.slice(0, c);
+						await new Promise((res) => window.setTimeout(res, WORD_MS));
+						if (!live()) return o.hand.done();
+					}
+				}
+			}
+			o.hand.done();
+		},
+		redraw() {
+			if (marks.length) paint();
+		},
+		edited() {
+			const after = o.text().split("\n");
+			if (!marks.length || after.join("\n") === lines.join("\n")) {
+				lines = after;
+				return;
+			}
+			const kept = remapMarks(marks.slice(0, shown), lines, after);
+			marks = [...kept, ...marks.slice(shown)];
+			shown = kept.length;
+			lines = after;
+			paint();
+		},
+		erase(names) {
+			if (!names.length || !marks.length) return;
+			run++;
+			const kept = names.includes("all") ? [] : marks.slice(0, shown).filter((mark) => !names.includes(mark.mid ?? ""));
+			marks = kept;
+			shown = kept.length;
+			paint();
+		},
+		describe() {
+			return marks.slice(0, shown).map(describeMark);
+		},
+		setVisible(on) {
+			layer.hidden = !on;
+		},
+		clear() {
+			run++;
+			marks = [];
+			shown = 0;
+			layer.replaceChildren();
+			layer.style.width = layer.style.height = "0";
 		}
 	};
 }
@@ -35509,7 +36023,7 @@ function setupCodePractice() {
 		window.algebenchSpeakText(text, () => {
 			coachTalking = false;
 			then?.();
-		});
+		}, "coach");
 	}
 	/** What the coach has handed to the chat on this block: a concept is shown once. */
 	const shownInChat = /* @__PURE__ */ new Set();
@@ -35685,11 +36199,13 @@ function setupCodePractice() {
 		series = null;
 		pairing = false;
 		pairSaid = "";
+		turns = [];
 		clearTimeout(pairIdle);
-		sections = codeSections(v.file).filter((s) => s.to >= v.from && s.from <= v.to).map((s) => s.from < v.from || s.to > v.to ? {
+		const last = v.from + text.split("\n").length - 1;
+		sections = codeSections(v.file).filter((s) => s.to >= v.from && s.from <= last).map((s) => s.from < v.from || s.to > last ? {
 			...s,
 			from: Math.max(s.from, v.from),
-			to: Math.min(s.to, v.to)
+			to: Math.min(s.to, last)
 		} : s);
 		const count = v.to - v.from + 1;
 		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
@@ -35706,6 +36222,7 @@ function setupCodePractice() {
 		cheer.hidden = true;
 		score = null;
 		render(false);
+		canvas.clear();
 		const wanted = key;
 		loadAttempt(lessonId(), v.file.path, wanted).then((found) => {
 			if (key !== wanted) return;
@@ -36165,6 +36682,23 @@ function setupCodePractice() {
 	const aiSelection = el("div", "cp-ai-selection");
 	const keptSelection = el("div", "cp-ai-selection cp-kept-selection");
 	stack.append(keptSelection, aiSelection, aiCaret);
+	const canvas = createCodeCanvas({
+		stack,
+		paint,
+		editor,
+		charWidth: () => {
+			measure();
+			return charWidth;
+		},
+		text: () => input.value,
+		hand: {
+			trace: pointerTrace,
+			moveTo: pointerTo,
+			done: pointerDone
+		}
+	});
+	let turns = [], turnWords = [];
+	const recentTurns = () => turns.slice(-4).join("\n").slice(-2800);
 	let selectedTo = 0, selection = null, kept = null, caretAt = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	let quiz = null;
@@ -36252,7 +36786,7 @@ function setupCodePractice() {
 		pairNudged = line;
 		const text = "Need a hand with this line? I can give you a hint, or finish it.";
 		offerHelp(message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: text })));
-		if (speakOn()) window.algebenchSpeakText?.(text);
+		if (speakOn()) window.algebenchSpeakText?.(text, void 0, "coach");
 	}
 	/** A line finished (Enter): the assistant looks at it, then hints or starts the next. */
 	function pairLineDone() {
@@ -36395,12 +36929,13 @@ function setupCodePractice() {
 	/** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
 	async function say(text, into, run) {
 		if (!text) return;
+		turnWords.push(text);
 		into.classList.add("speaking");
 		const plain = text.replace(/[`*_]/g, "");
 		const words = plain.split(/\s+/).length;
 		const speech = new Promise((res) => {
 			const speakNow = window.algebenchSpeakText;
-			if (speakOn() && speakNow) speakNow(plain, res);
+			if (speakOn() && speakNow) speakNow(plain, res, "coach");
 			else window.setTimeout(res, Math.min(6e3, Math.max(1200, words * 230)));
 		});
 		let shown = "";
@@ -36499,6 +37034,7 @@ function setupCodePractice() {
 	}
 	/** Drawn in px of the font it was drawn at: another font size draws what is showing again. */
 	function redrawMarks() {
+		canvas.redraw();
 		if (selection) {
 			aiSelection.replaceChildren();
 			drawRange(aiSelection, selection[0], selection[1], "cp-ai-sel");
@@ -36540,6 +37076,7 @@ function setupCodePractice() {
 			input.value = text.slice(0, -1);
 			attempt.text = input.value;
 			render(false);
+			canvas.edited();
 			placeCaret(Math.min(at, input.value.length));
 			highlight();
 		};
@@ -36569,6 +37106,12 @@ function setupCodePractice() {
 			await sleep(220);
 		}
 	}
+	const canvasOn = () => focused && presenterOn();
+	const drawOnCode = (step) => {
+		if (!canvasOn()) return Promise.resolve();
+		canvas.erase(step.erase_marks ?? []);
+		return canvas.play(step.draw ?? []);
+	};
 	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
 		if (scope === "grade" && !quiz) return;
@@ -36595,7 +37138,7 @@ function setupCodePractice() {
 			quiz = null;
 			const text = HINT_LEVELS.find((h) => h.level === hintLevel()).start;
 			offerHelp(message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: text })));
-			if (speakOn()) window.algebenchSpeakText?.(text);
+			if (speakOn()) window.algebenchSpeakText?.(text, void 0, "coach");
 			input.focus();
 			input.setSelectionRange(userCaret, userCaret);
 			pairWait();
@@ -36677,6 +37220,7 @@ function setupCodePractice() {
 		const assistedBefore = new Set(attempt.assisted);
 		const waiting = message("assistant", el("div", "chat-loading"));
 		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
+		turnWords = [];
 		let ended = false, nextAfter = false, pointed = null, leaveOn = 0, proposal = "";
 		const hintWas = asked === "Give me a hint.";
 		try {
@@ -36719,9 +37263,12 @@ function setupCodePractice() {
 				...where,
 				scope,
 				request: proposed ? `Do the fix you just proposed: ${proposed}` : request,
-				present: presenterOn() && (!pairing || scope === "ask"),
+				present: presenterOn() && !canvasOn() && (!pairing || scope === "ask"),
 				hint_level: pairing ? hintLevel() : "direct",
 				last_said: said.slice(0, 600),
+				recent_turns: recentTurns(),
+				canvas: canvasOn(),
+				canvas_marks: canvasOn() ? canvas.describe().slice(0, 40) : [],
 				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
@@ -36802,7 +37349,7 @@ function setupCodePractice() {
 				}
 				const shown = !types && !!step.select && selectText(step.select, step.select_line);
 				head.hidden = scope === "grade" && !shown;
-				await say(step.say, thought, run);
+				await Promise.all([say(step.say, thought, run), types ? null : drawOnCode(step)]);
 				if (!types) {
 					if (step.explain) {
 						const why = el("div", "cp-assist-why");
@@ -36825,11 +37372,13 @@ function setupCodePractice() {
 				markAssisted(exactBefore);
 				body.classList.remove("typing");
 				if (step.select) selectText(step.select, step.select_line);
+				const drawn = drawOnCode(step);
 				if (step.explain) {
 					const why = el("div", "cp-assist-why");
 					body.append(why);
 					await say(step.explain, why, run);
 				}
+				await drawn;
 			}
 			if (scope === "pair" && hintLevel() === "point") {
 				pointed = selection;
@@ -36859,6 +37408,7 @@ function setupCodePractice() {
 			waiting.remove();
 			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
 		} finally {
+			if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked && own ? `${own}` : asked ?? ""}\nYou: ${turnWords.join(" ")}`);
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
 			if (ended && pairing && key === blockKey) {
 				leavePointing(pointed, leaveOn);
@@ -36916,11 +37466,11 @@ function setupCodePractice() {
 			const spoken = (body.textContent ?? "").replace(/[`*_]/g, "");
 			if (series) {
 				const next = () => nextInSeries();
-				if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next);
+				if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next, "coach");
 				else next();
 			} else {
 				offerHelp(card);
-				if (speakOn()) window.algebenchSpeakText?.(spoken);
+				if (speakOn()) window.algebenchSpeakText?.(spoken, void 0, "coach");
 			}
 		});
 		const skip = button("Skip", "Let this question go", () => {
@@ -37032,8 +37582,25 @@ function setupCodePractice() {
 		helpTool.hidden = false;
 		aiCaret.hidden = true;
 		clearSelection();
-		if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+		if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	}
+	let voiceTaken = false;
+	window.addEventListener("algebench:voice", (e) => {
+		if (e.detail.owner === "coach") return;
+		clearInterval(holdTimer);
+		holdTimer = 0;
+		held = null;
+		coachTalking = false;
+		if (!assisting) return;
+		const stillPairing = pairing;
+		voiceTaken = true;
+		stopAssist();
+		voiceTaken = false;
+		if (stillPairing) {
+			pairing = true;
+			pairWait();
+		}
+	});
 	takeBack.addEventListener("click", () => stopAssist());
 	document.addEventListener("keydown", (e) => {
 		if (e.key === "Escape" && assisting) {
@@ -37095,6 +37662,7 @@ function setupCodePractice() {
 		render();
 		highlight();
 		markPaired();
+		canvas.edited();
 		clearTimeout(idle);
 		if (coachOn()) idle = window.setTimeout(() => void review(false), IDLE_REVIEW_MS);
 		pairWait();
@@ -37193,6 +37761,8 @@ function setupCodePractice() {
 		lastReviewed = "";
 		persist();
 		render(false);
+		canvas.clear();
+		turns = [];
 		input.focus();
 		if (hintsOn()) review(false);
 	});
@@ -37240,6 +37810,7 @@ function setupCodePractice() {
 		else bodyEl.prepend(tools);
 		paintFocus();
 		paintFont();
+		canvas.setVisible(canvasOn());
 		setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);
 		if (!root.hidden) input.focus();
 		retarget();
@@ -37248,6 +37819,27 @@ function setupCodePractice() {
 		e.stopPropagation();
 		setFocus(!focused);
 	});
+	const presenterSwitch = document.getElementById("presenter-toggle-btn");
+	if (presenterSwitch) {
+		const present = tool("", "");
+		present.classList.add("cp-present-tool");
+		present.innerHTML = presenterSwitch.innerHTML;
+		tools.insertBefore(present, reset);
+		const mirror = () => {
+			const on = presenterOn();
+			present.setAttribute("aria-pressed", String(on));
+			present.classList.toggle("active", on);
+			present.title = presenterSwitch.title;
+			present.setAttribute("aria-label", presenterSwitch.getAttribute("aria-label") ?? "AI presenter");
+			canvas.setVisible(canvasOn());
+		};
+		present.addEventListener("click", () => presenterSwitch.click());
+		new MutationObserver(mirror).observe(presenterSwitch, {
+			attributes: true,
+			attributeFilter: ["aria-pressed", "title"]
+		});
+		mirror();
+	}
 	document.addEventListener("keydown", (e) => {
 		if (e.key !== "Enter" || !e.shiftKey || !(e.metaKey || e.ctrlKey) || root.hidden && !focused) return;
 		e.preventDefault();
@@ -37259,6 +37851,7 @@ function setupCodePractice() {
 	});
 	paintFocus();
 	paintFont();
+	canvas.setVisible(canvasOn());
 	window.addEventListener("algebench:codeview", retarget);
 	window.addEventListener("algebench:navchange", retarget);
 	retarget();

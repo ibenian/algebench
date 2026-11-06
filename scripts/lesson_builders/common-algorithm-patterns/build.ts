@@ -2361,6 +2361,37 @@ ${MD_TAIL}
         id: 'recursion', title: 'Solve smaller copies (recursion)', file: 'recursion.py', source: RECURSION_SOURCE,
         callEntryLine: 1,
         input: { x, n, fib }, trace: pow.trace,
+        sections: [
+            section(RECURSION_SOURCE, 'rec-power-base', 'The smallest copy answers itself', 'def power(', 'return 1', {
+                hint: 'Write the case that needs no recursion first. Any number to the power 0 is 1, and every chain of calls ends here.' }),
+            section(RECURSION_SOURCE, 'rec-power-trust', 'Trust the call on half the exponent', 'half = power(x, n // 2)', null, {
+                hint: 'Assume the smaller copy returns the right answer, and keep it in a name: it is one call, used twice below.',
+                prompt: 'Explain why calling power once and storing half gives about log n calls, while writing power(x, n // 2) * power(x, n // 2) would give about n.' }),
+            section(RECURSION_SOURCE, 'rec-power-combine', 'Combine: square it, with one more x if n is odd', 'if n % 2 == 0', 'return half * half * x', {
+                hint: 'Halving an odd exponent rounds down and loses one factor of x, so the odd case puts it back.' }),
+            section(RECURSION_SOURCE, 'rec-fib-base', 'Fibonacci stops at the first two numbers', 'def fib(', 'return n', {
+                hint: 'fib(0) is 0 and fib(1) is 1, which is n itself in both cases.' }),
+            section(RECURSION_SOURCE, 'rec-fib-branch', 'Two smaller copies, so the calls branch', 'return fib(n - 1) + fib(n - 2)', null, {
+                hint: 'Each call makes two more, and neither knows what the other already worked out.',
+                prompt: 'Explain why this line makes the call tree grow exponentially, and which calls are repeated, using the tree on screen.' }),
+        ],
+        annotations: [
+            doc('power', '`power(x, n)` returns `x` to the power `n`, in O(log n) calls and O(log n) stack depth.'),
+            doc('x', 'The base. It stays the same in every call.'),
+            doc('n', 'The exponent. It halves on each call, which is what reaches the base case quickly.', { source: RECURSION_SOURCE, start: 'def power(', end: 'return half * half * x' }),
+            doc('half', 'This call\'s answer for half the exponent: `x` to the power `n // 2`.'),
+            doc('fib', '`fib(n)` returns the `n`th Fibonacci number. Written this way it takes about O(1.6ⁿ) calls, but only O(n) stack depth.'),
+            doc('n', 'Which Fibonacci number to return. Each call asks for the two before it.', { source: RECURSION_SOURCE, start: 'def fib(', end: 'return fib(n - 1) + fib(n - 2)' }),
+            docExpr(RECURSION_SOURCE, 'if n == 0:', 'n == 0', 'The base case: nothing left to multiply. Without it, the calls would never stop.'),
+            docExpr(RECURSION_SOURCE, 'half = power(x, n // 2)', 'power(x, n // 2)', 'The one recursive call. This call waits on the stack until the smaller copy returns.'),
+            docExpr(RECURSION_SOURCE, 'half = power(x, n // 2)', 'n // 2', 'Halves the exponent, rounding down: `n` falls to 0 in about log₂ n calls.'),
+            docExpr(RECURSION_SOURCE, 'if n % 2 == 0:', 'n % 2 == 0', 'An even `n` halves exactly. An odd one rounds down and leaves one `x` over.'),
+            docExpr(RECURSION_SOURCE, 'return half * half', 'half * half', 'For an even `n`, the answer is the half times itself: one recursive call, used twice.'),
+            docExpr(RECURSION_SOURCE, 'return half * half * x', '* x', 'Puts back the factor the rounded-down halving lost.'),
+            docExpr(RECURSION_SOURCE, 'if n < 2:', 'n < 2', 'The base case, for `n` of 0 or 1. Every branch of the tree ends here.'),
+            docExpr(RECURSION_SOURCE, 'return fib(n - 1) + fib(n - 2)', 'fib(n - 1)', 'Runs to the bottom of its whole subtree before `fib(n - 2)` starts.'),
+            docExpr(RECURSION_SOURCE, 'return fib(n - 1) + fib(n - 2)', 'fib(n - 2)', 'Starts from scratch: it solves again what `fib(n - 1)` already solved. Remembering those answers is dynamic programming.'),
+        ],
         more: {
             data: { callsPow: callsTable(pow.parents), callsFib: callsTable(fb.parents), rec_fib: fb.trace },
             steps: [{

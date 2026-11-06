@@ -8,6 +8,8 @@ from __future__ import annotations
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
+from .canvas import CANVAS_RULES, CanvasMark
+
 
 class AssistStep(BaseModel):
     """One move at the keyboard: think aloud, type, then say why it works; or select a piece and talk about it."""
@@ -126,7 +128,10 @@ class CodeAssistSig(dspy.Signature):
     wrong, a typed line the part worth a second look. Select only text that is in the editor after that step.
 
     `request` is what the learner typed to you; with a scope other than "ask" it only refines it (e.g. "use
-    clearer names"), and never widens what that scope may write.
+    clearer names"), and never widens what that scope may write. It decides what the turn is about: `section` and
+    `cursor` only say where their cursor happens to be, and code that is finished is no reason not to do what they
+    ask. Words that refer back ("yeah, but draw it", "and the other one?") mean what `recent_turns` was about.
+    Everything you say goes to the learner, spoken: say "you", never "the learner".
 
     Steps are the chunks a person really writes in: a signature, an initialization, a loop header, the body of a
     branch; one to four lines each, in the order a programmer thinks of them, which is not always top to bottom
@@ -173,6 +178,7 @@ class CodeAssistSig(dspy.Signature):
     cursor: str = dspy.InputField(desc="the line of `typed` the learner's cursor is on, where they are writing; may be unknown")
     presenter: str = dspy.InputField(desc="on: the lesson's AI chat can show an idea on the scene and its scratchpad; off: it can't")
     hint_level: str = dspy.InputField(desc='while pairing, how much to help: "direct", "point", "question" or "vague"')
+    recent_turns: str = dspy.InputField(desc="the last few exchanges between you and the learner on this code, oldest first; may be empty")
     last_said: str = dspy.InputField(desc="while pairing, what you just said to the learner, which `request` may be replying to; may be empty")
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
@@ -184,11 +190,25 @@ class CodeAssistSig(dspy.Signature):
     needs_fix: bool = dspy.OutputField(desc='with scope "pair": true when this turn points at something in the typed code '
                                             'that has to be fixed or deleted before going on; false for a hint on a line '
                                             'being written, the next line, or nothing to say')
-    plan: str = dspy.OutputField(desc="two or three sentences on how you will approach it, said before typing")
+    plan: str = dspy.OutputField(desc="said aloud to the learner before you start: one or two sentences on what you will do (\"I'll box the loop\"), "
+                                        "not your reading of the request; empty for a small request")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")
     closing: str = dspy.OutputField(desc="one or two sentences handing the keyboard back")
     show: str = dspy.OutputField(desc="with the presenter on, when the idea is to be shown on the scene or the "
                                       "scratchpad: a request in English to the lesson's AI chat to show it; else empty")
 
+
+class CanvasStep(AssistStep):
+    """A step that can also draw on the code. Without the code canvas the assistant isn't told of these."""
+    draw: list[CanvasMark] = Field(default_factory=list, description="the marks you draw on the code as you say this step, in order: how you point at code")
+    erase_marks: list[str] = Field(default_factory=list, description="the names in `canvas_marks` to take off the code as this step "
+                                                                    "starts, or \"all\"; empty to leave them")
+
+
+#: The same assistant with the code canvas: only this one hears of it. The presenter being off, or no focus mode, is the
+#: plain signature above, so nothing about drawing reaches the model.
+CodeAssistCanvasSig = (CodeAssistSig.with_instructions(f"{CodeAssistSig.instructions}\n\n{CANVAS_RULES}")
+                       .append("canvas_marks", dspy.InputField(desc="what you have drawn on the code and not removed, one mark a line, each with its name; may be empty"), type_=str)
+                       .with_updated_fields("steps", type_=list[CanvasStep]))
 
 INPUT_FIELDS = tuple(CodeAssistSig.input_fields)

@@ -34,5 +34,11 @@ class CodeAssistRequest(BaseModel):
     hint_level: Literal["direct", "point", "question", "vague"] = "direct"
     #: Pairing: what the assistant just said to the learner, so that ``request`` can be read as a reply to it.
     last_said: str = Field(default="", max_length=600)
+    #: The last few exchanges on this block, oldest first, so that "yeah, but draw it" has something to refer to.
+    recent_turns: str = Field(default="", max_length=3000)
+    #: Focus mode: the assistant can draw on the code (its code canvas).
+    canvas: bool = False
+    #: What is on the code canvas now, each by its name, one line each.
+    canvas_marks: list[str] = Field(default_factory=list, max_length=40)
     #: The AI presenter is on: an idea can be handed to the chat, to show on the scene or its scratchpad.
     present: bool = False

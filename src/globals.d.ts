@@ -465,7 +465,8 @@ interface Window {
   algebenchTTSActive?: () => boolean;
   /** Whether state narration (step player) is on. */
   algebenchNarrating?: () => boolean;
-  algebenchSpeakText: (text: string, onEnd?: () => void) => void;
+  /** `owner` names who is speaking ('chat' by default): the others stop on 'algebench:voice'. */
+  algebenchSpeakText: (text: string, onEnd?: () => void, owner?: string) => void;
   /** Adds a turn answered outside the chat (the presenter's walk-through) to its history (src/chat.ts). */
   algebenchRecordChatTurn?: (question: string, answer: string) => void;
   /** Full Gemini transcript of the last turn — a debugging handle. */
