@@ -195,6 +195,16 @@ test('islands: counts the groups and labels every land cell with its group',()=>
  // A 1×1 island and an all-water grid.
  assert.equal(last(islandsTrace([[1]])).count,1);assert.equal(last(islandsTrace([[0,0],[0,0]])).count,0);
 });
+test('backtracking: the call stack holds each waiting call\'s start',()=>{
+ const {trace}=subsetsTrace([1,2,3]);
+ assert.deepEqual(trace[0]!.frames,[],'before the first call');
+ assert.deepEqual(trace[1]!.frames,[0],'backtrack(0)');
+ assert.equal(Math.max(...trace.map(fr=>(fr.frames as number[]).length)),4,'one call per number, and the first');
+ assert.ok(trace.some(fr=>(fr.frames as number[]).join()==='0,1,2,3'),'going deepest');
+ assert.deepEqual(last(trace).frames,[],'all returned');
+ for(const fr of trace)assert.equal((fr.frames as number[]).length,(fr.stack as number[]).reduce((a,b)=>a+b,0),'as many as are waiting');
+});
+
 test('recursion: a memo saves nothing on a chain, and a subtree on a branching tree',()=>{
  const plain=powerTrace(2,13),p=powerMemoTrace(2,13);
  assert.equal(p.hits,0,'no n comes twice');

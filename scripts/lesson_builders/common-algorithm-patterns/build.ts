@@ -2009,6 +2009,9 @@ ${MD_TAIL}
                 markers: [marker('start', tr('start'), TEAL, `${tr('start')} >= 0 and ${tr('start')} < ${nums.length}`), marker('i', tr('i'), PINK, `${tr('i')} >= 0`)] }),
             // The one shared path: grows on choose, shrinks on un-choose.
             array('path', 'path', [-3.2, -3.7, 0], { from: tr('path'), labelSide: 'left', highlightExpr: `idx == count(${tr('path')}) - 1 and (${tr('line')} == 7 or ${tr('line')} == 8)` }),
+            // The backtrack calls waiting, the running one on top, each by its start: the path the pink calls trace on the tree.
+            { id: 'stack', type: 'stack', itemType: 'number', origin: [7.2, 0.6, 0], cellSize: 1.35, fontSize: 16, showIndices: false,
+                lengthExpr: `arrayCount(${tr('frames')})`, valueExpr: `arrayAt(${tr('frames')}, idx)`, color: PINK, label: 'call stack', containerColor: TEAL },
             // out: every subset recorded so far, the newest lit as line 5 appends it.
             array('out', 'out', [-3.2, -5.5, 0], { from: tr('outText'), itemType: 'text', cellSize: 2.1, arrayColumns: 4, arrayHeight: 2.5, arrayCellHeight: 0.8, showIndices: false, color: '#b69bea', labelSide: 'left', highlightExpr: `idx == ${tr('out')} - 1 and ${tr('line')} == 5` }),
             { ...label('start', `${tr('start')} < 0 ? 'start: —' : concat('start = ', ${tr('start')})`, [4.6, -3.6, 0], ['calls', `${tr('cur')}`]), codeRef: { file: 'backtracking', line: 4 } },
