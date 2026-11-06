@@ -1978,6 +1978,37 @@ ${MD_TAIL}
         id: 'backtracking', title: 'Try, undo, retry (backtracking)', file: 'subsets.py', source: SUBSETS_SOURCE,
         callEntryLine: 4,
         input: { nums }, trace, more: { data: { subsetCalls: parents.map(p => ({ p })) }, steps: [], locations: [] },
+        sections: [
+            section(SUBSETS_SOURCE, 'bt-start', 'One list of answers, one shared path', 'def subsets(', 'out, path = [], []', {
+                hint: 'Every call works on the same path, so nothing is copied until an answer is recorded.' }),
+            section(SUBSETS_SOURCE, 'bt-record', 'Every path is an answer: record a copy', 'def backtrack(start)', 'out.append(path[:])', {
+                hint: 'For subsets each call records what it has, before choosing anything more. Record a copy: the path keeps changing.',
+                prompt: 'Explain why this appends path[:] rather than path, and what out would hold without the copy.' }),
+            section(SUBSETS_SOURCE, 'bt-choose', 'Choose: try each number from start on', 'for i in range(start, len(nums))', 'path.append(nums[i])', {
+                hint: 'Only numbers from start on, so a subset is built in one order and never appears twice.' }),
+            section(SUBSETS_SOURCE, 'bt-explore', 'Explore: everything that extends this choice', 'backtrack(i + 1)', null, {
+                hint: 'The call answers for every subset starting with this path, using only later numbers.' }),
+            section(SUBSETS_SOURCE, 'bt-undo', 'Un-choose: put the path back', 'path.pop()', null, {
+                hint: 'The path has to be as it was, so that the next number can take this one\'s place.',
+                prompt: 'Explain why popping here is what makes one shared path work across the whole tree, using the call stack on screen.' }),
+            section(SUBSETS_SOURCE, 'bt-run', 'Start from nothing, and return them all', 'backtrack(0)', 'return out', {
+                hint: 'The first call starts with an empty path and every number available.' }),
+        ],
+        annotations: [
+            doc('subsets', `\`subsets(nums)\` returns every subset of \`nums\`: 2ⁿ of them, in O(n · 2ⁿ) time, since each is copied once.`),
+            doc('nums', 'The numbers to choose from. Assumed distinct, so that no subset comes twice.'),
+            doc('out', 'Every subset recorded so far, each its own copy.'),
+            doc('path', 'The one choice in progress, shared by all the calls: appended to on the way down, popped on the way back.'),
+            doc('backtrack', '`backtrack(start)` records the path, then extends it with each number from `start` on. There is one call per subset, and the stack is at most n + 1 calls deep.'),
+            doc('start', 'The first index this call may choose from. It only moves forward, which keeps each subset in one order.'),
+            doc('i', 'The index being tried as the next number in the path.'),
+            docExpr(SUBSETS_SOURCE, 'out.append(path[:])', 'path[:]', 'A copy, in O(n). Appending `path` itself would store the same list every time, and it ends up empty.'),
+            docExpr(SUBSETS_SOURCE, 'for i in range(start, len(nums))', 'range(start, len(nums))', 'Only later numbers. Empty once `start` reaches the end, which is what ends a branch: there is no explicit base case.'),
+            docExpr(SUBSETS_SOURCE, 'path.append(nums[i])', 'nums[i]', 'The choice: this number is in every subset under this branch.'),
+            docExpr(SUBSETS_SOURCE, 'backtrack(i + 1)', 'i + 1', 'From the next index on, so this number can\'t be chosen again, and earlier ones aren\'t revisited.'),
+            docExpr(SUBSETS_SOURCE, 'path.pop()', 'path.pop()', 'The undo. It takes off exactly what `path.append` added, as everything the call below added has already been popped.'),
+            docBlock(SUBSETS_SOURCE, 'def backtrack(start)', 'path.pop()', 'One call per subset, so 2ⁿ calls. Together they are the decision tree on screen: each number is either in or out.'),
+        ],
         markdown: `# Try, undo, retry (backtracking)
 
 **Signal:** generate all permutations, subsets or combinations, or place pieces under constraints (N-Queens, Sudoku, word search).

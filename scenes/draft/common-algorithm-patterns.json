@@ -1840,6 +1840,29 @@
       "path": "patterns/subsets.py",
       "language": "python",
       "source": "def subsets(nums):\n    out, path = [], []\n\n    def backtrack(start):\n        out.append(path[:])\n        for i in range(start, len(nums)):\n            path.append(nums[i])\n            backtrack(i + 1)\n            path.pop()\n\n    backtrack(0)\n    return out",
+      "sections": [
+        {"id": "bt-start", "title": "One list of answers, one shared path", "from": 1, "to": 3, "hint": "Every call works on the same path, so nothing is copied until an answer is recorded."},
+        {"id": "bt-record", "title": "Every path is an answer: record a copy", "from": 4, "to": 5, "hint": "For subsets each call records what it has, before choosing anything more. Record a copy: the path keeps changing.", "prompt": "Explain why this appends path[:] rather than path, and what out would hold without the copy."},
+        {"id": "bt-choose", "title": "Choose: try each number from start on", "from": 6, "to": 7, "hint": "Only numbers from start on, so a subset is built in one order and never appears twice."},
+        {"id": "bt-explore", "title": "Explore: everything that extends this choice", "from": 8, "to": 8, "hint": "The call answers for every subset starting with this path, using only later numbers."},
+        {"id": "bt-undo", "title": "Un-choose: put the path back", "from": 9, "to": 10, "hint": "The path has to be as it was, so that the next number can take this one's place.", "prompt": "Explain why popping here is what makes one shared path work across the whole tree, using the call stack on screen."},
+        {"id": "bt-run", "title": "Start from nothing, and return them all", "from": 11, "to": 12, "hint": "The first call starts with an empty path and every number available."}
+      ],
+      "annotations": [
+        {"name": "subsets", "text": "`subsets(nums)` returns every subset of `nums`: 2ⁿ of them, in O(n · 2ⁿ) time, since each is copied once."},
+        {"name": "nums", "text": "The numbers to choose from. Assumed distinct, so that no subset comes twice."},
+        {"name": "out", "text": "Every subset recorded so far, each its own copy."},
+        {"name": "path", "text": "The one choice in progress, shared by all the calls: appended to on the way down, popped on the way back."},
+        {"name": "backtrack", "text": "`backtrack(start)` records the path, then extends it with each number from `start` on. There is one call per subset, and the stack is at most n + 1 calls deep."},
+        {"name": "start", "text": "The first index this call may choose from. It only moves forward, which keeps each subset in one order."},
+        {"name": "i", "text": "The index being tried as the next number in the path."},
+        {"line": 5, "col": 19, "endCol": 26, "text": "A copy, in O(n). Appending `path` itself would store the same list every time, and it ends up empty."},
+        {"line": 6, "col": 17, "endCol": 40, "text": "Only later numbers. Empty once `start` reaches the end, which is what ends a branch: there is no explicit base case."},
+        {"line": 7, "col": 24, "endCol": 31, "text": "The choice: this number is in every subset under this branch."},
+        {"line": 8, "col": 22, "endCol": 27, "text": "From the next index on, so this number can't be chosen again, and earlier ones aren't revisited."},
+        {"line": 9, "col": 12, "endCol": 22, "text": "The undo. It takes off exactly what `path.append` added, as everything the call below added has already been popped."},
+        {"line": 4, "endLine": 9, "text": "One call per subset, so 2ⁿ calls. Together they are the decision tree on screen: each number is either in or out."}
+      ],
       "locations": [
         {"line": 2, "scene": "backtracking", "step": "run", "snapshot": 0, "label": "Try, undo, retry (backtracking) · Start with no subsets and an empty path. nums = [1, 2, 3]."},
         {"line": 5, "scene": "backtracking", "step": "run", "snapshot": 1, "label": "Try, undo, retry (backtracking) · backtrack(0): record the path [] as a subset."},
