@@ -1192,10 +1192,30 @@ export const RECURSION_SOURCE = `def power(x, n):
         return half * half
     return half * half * x
 
+def power_memo(x, n, memo):
+    if n == 0:
+        return 1
+    if n in memo:
+        return memo[n]
+    half = power_memo(x, n // 2, memo)
+    if n % 2 == 0:
+        memo[n] = half * half
+    else:
+        memo[n] = half * half * x
+    return memo[n]
+
 def fib(n):
     if n < 2:
         return n
-    return fib(n - 1) + fib(n - 2)`;
+    return fib(n - 1) + fib(n - 2)
+
+def fib_memo(n, memo):
+    if n < 2:
+        return n
+    if n in memo:
+        return memo[n]
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo)
+    return memo[n]`;
 /**
  * A recursion as its call tree: calls are numbered as they are made (0 the first), and `parents` gives each
  * call's caller, so a view can lay the tree out and show the calls made so far. Per frame: count, calls made;
@@ -1203,11 +1223,11 @@ def fib(n):
  * text, each call as written, with its result once it returns; result, the value just returned (−1 none);
  * calls, the call-site lines of the calls still waiting, outermost first;
  * n, the argument of the call the code is in (−1 outside any call); half, that call's half (fast power: the
- * smaller copy's answer, −1 until it returns).
+ * smaller copy's answer, −1 until it returns); hit, 0/1 per call (answered from the memo); memo, the memo as written.
  */
 function callTree() {
-    const parents: number[] = [], text: string[] = [], stack: number[] = [], done: number[] = [], ns: number[] = [], halves: number[] = [], sites: number[] = [];
-    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], result: -1, n: -1, half: -1, calls: [] as number[] };
+    const parents: number[] = [], text: string[] = [], stack: number[] = [], done: number[] = [], ns: number[] = [], halves: number[] = [], sites: number[] = [], hits: number[] = [];
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], result: -1, n: -1, half: -1, calls: [] as number[], hit: [] as number[], memo: '{}' };
     const { trace, emit } = recorder(v);
     const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.stack = parents.map((_, i) => stack.includes(i) ? 1 : 0); v.calls = stack.map(i => sites[i]!).filter(l => l > 0); };
     // site: the source line that made the call (−1 for the first call, made from outside the code shown).
@@ -1215,12 +1235,16 @@ function callTree() {
         const id = parents.length; parents.push(parent); text.push(label); done.push(0); ns.push(n); halves.push(-1); sites.push(site);
         stack.push(id); v.cur = id; v.n = n; v.half = -1; sync(); return id;
     };
-    const leave = (id: number, value: number) => {
-        text[id] = `${text[id]} = ${value}`; done[id] = 1; stack.pop(); v.result = value; sync();
+    const leave = (id: number, value: number, fromMemo = false) => {
+        text[id] = `${text[id]} = ${value}`; done[id] = 1; stack.pop(); v.result = value;
+        if (fromMemo) { hits[id] = 1; text[id] += ' (memo)'; }
+        v.hit = parents.map((_, i) => hits[i] ?? 0);
+        sync();
     };
+    const setMemo = (memo: Map<number, number>) => { v.memo = `{${[...memo].map(([k, a]) => `${k}: ${a}`).join(', ')}}`; };
     const back = (id: number) => { v.cur = id; v.n = id >= 0 ? ns[id]! : -1; v.half = id >= 0 ? halves[id]! : -1; v.result = -1; sync(); };
     const setHalf = (id: number, value: number) => { halves[id] = value; v.half = value; };
-    return { trace, emit, parents, enter, leave, back, setHalf };
+    return { trace, emit, parents, enter, leave, back, setHalf, setMemo };
 }
 
 /** Fast power: power(x, n) solves one smaller copy, power(x, n // 2), so the calls form a chain about log n long. */
@@ -1245,26 +1269,81 @@ export function powerTrace(x: number, n: number) {
     return { trace: t.trace, parents: t.parents };
 }
 
-/** Fibonacci, naively: fib(n) solves two smaller copies, so the calls branch and the same fib(k) is solved again. */
-export function fibTrace(n: number) {
-    const t = callTree();
+/** Fast power with a memo: it is ready for a repeat, but a chain never asks the same n twice, so it never hits. */
+export function powerMemoTrace(x: number, n: number) {
+    const t = callTree(), memo = new Map<number, number>();
+    let hits = 0;
     const call = (k: number, parent: number): number => {
-        const id = t.enter(`fib(${k})`, parent, k, parent < 0 ? -1 : 12);
-        t.emit(10, `fib(${k}): is n below 2?`);
-        if (k < 2) { t.leave(id, k); t.emit(11, `Base case: fib(${k}) = ${k}.`); return k; }
-        t.emit(12, `fib(${k}) needs two smaller copies: fib(${k - 1}) first.`);
+        const id = t.enter(`power(${x}, ${k})`, parent, k, parent < 0 ? -1 : 14);
+        t.emit(10, `power_memo(${x}, ${k}): is n 0?`);
+        if (k === 0) { t.leave(id, 1); t.emit(11, `Base case: ${x}⁰ = 1.`); return 1; }
+        t.emit(12, `Is ${k} in the memo? No: nothing has asked for it before.`);
+        if (memo.has(k)) { hits++; t.leave(id, memo.get(k)!, true); t.emit(13, `${k} is in the memo: ${memo.get(k)}.`); return memo.get(k)!; }
+        t.emit(14, `The smaller copy: n // 2 = ${Math.floor(k / 2)}.`);
+        const half = call(Math.floor(k / 2), id);
+        t.back(id); t.setHalf(id, half);
+        const even = k % 2 === 0, value = even ? half * half : half * half * x;
+        t.emit(15, `Back with half = ${half}. Is ${k} even? ${even ? 'Yes' : 'No'}.`);
+        memo.set(k, value); t.setMemo(memo);
+        t.emit(even ? 16 : 18, `Remember it: memo[${k}] = ${value}.`);
+        t.leave(id, value);
+        t.emit(19, `power_memo(${x}, ${k}) returns ${value}.`);
+        return value;
+    };
+    const value = call(n, -1);
+    t.back(-1);
+    t.emit(19, `power_memo(${x}, ${n}) = ${value}: still ${t.parents.length} calls and ${hits} memo hits. Each call halves n, so no n comes twice: a chain has nothing to reuse, and the memo only costs space.`, 'Done');
+    return { trace: t.trace, parents: t.parents, hits };
+}
+
+/** Fibonacci with a memo: each fib(k) is solved once; asked again, the call ends at the memo instead of branching. */
+export function fibMemoTrace(n: number) {
+    const t = callTree(), memo = new Map<number, number>();
+    let hits = 0;
+    const call = (k: number, parent: number): number => {
+        const id = t.enter(`fib(${k})`, parent, k, parent < 0 ? -1 : 31);
+        t.emit(27, `fib_memo(${k}): is n below 2?`);
+        if (k < 2) { t.leave(id, k); t.emit(28, `Base case: fib(${k}) = ${k}.`); return k; }
+        t.emit(29, `Is ${k} in the memo? ${memo.has(k) ? `Yes: ${memo.get(k)}.` : 'No: this is the first time it is asked.'}`);
+        if (memo.has(k)) { hits++; t.leave(id, memo.get(k)!, true); t.emit(30, `No more calls: fib(${k}) = ${memo.get(k)}, from the memo. This whole subtree is saved.`); return memo.get(k)!; }
+        t.emit(31, `fib(${k}) needs two smaller copies: fib(${k - 1}) first.`);
         const a = call(k - 1, id);
         t.back(id);
-        t.emit(12, `fib(${k - 1}) = ${a}. Now fib(${k - 2}).`);
+        t.emit(31, `fib(${k - 1}) = ${a}. Now fib(${k - 2}).`);
         const b = call(k - 2, id);
         t.back(id);
+        memo.set(k, a + b); t.setMemo(memo);
+        t.emit(31, `Remember it: memo[${k}] = ${a} + ${b} = ${a + b}.`);
         t.leave(id, a + b);
-        t.emit(12, `fib(${k}) = ${a} + ${b} = ${a + b}.`);
+        t.emit(32, `fib_memo(${k}) returns ${a + b}.`);
         return a + b;
     };
     const value = call(n, -1);
     t.back(-1);
-    t.emit(12, `fib(${n}) = ${value}, from ${t.parents.length} calls: the same smaller copies are solved more than once, and the count grows exponentially. Remembering answers (memoization) turns this into dynamic programming.`, 'Done');
+    t.emit(32, `fib_memo(${n}) = ${value}, from ${t.parents.length} calls and ${hits} memo hit${hits === 1 ? '' : 's'}. Each fib(k) is solved once, so the work grows linearly: O(n) instead of exponential.`, 'Done');
+    return { trace: t.trace, parents: t.parents, hits };
+}
+
+/** Fibonacci, naively: fib(n) solves two smaller copies, so the calls branch and the same fib(k) is solved again. */
+export function fibTrace(n: number) {
+    const t = callTree();
+    const call = (k: number, parent: number): number => {
+        const id = t.enter(`fib(${k})`, parent, k, parent < 0 ? -1 : 24);
+        t.emit(22, `fib(${k}): is n below 2?`);
+        if (k < 2) { t.leave(id, k); t.emit(23, `Base case: fib(${k}) = ${k}.`); return k; }
+        t.emit(24, `fib(${k}) needs two smaller copies: fib(${k - 1}) first.`);
+        const a = call(k - 1, id);
+        t.back(id);
+        t.emit(24, `fib(${k - 1}) = ${a}. Now fib(${k - 2}).`);
+        const b = call(k - 2, id);
+        t.back(id);
+        t.leave(id, a + b);
+        t.emit(24, `fib(${k}) = ${a} + ${b} = ${a + b}.`);
+        return a + b;
+    };
+    const value = call(n, -1);
+    t.back(-1);
+    t.emit(24, `fib(${n}) = ${value}, from ${t.parents.length} calls: the same smaller copies are solved more than once, and the count grows exponentially. Remembering answers (memoization) turns this into dynamic programming.`, 'Done');
     return { trace: t.trace, parents: t.parents };
 }
 

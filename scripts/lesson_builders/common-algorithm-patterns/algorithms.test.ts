@@ -6,7 +6,7 @@ import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {execTree} from '../../../src/exec-tree.ts';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,trieSearchTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,trieSearchTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,powerMemoTrace,fibMemoTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
     PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,TOPO_SOURCE,HASH_MAP_SOURCE,
@@ -195,6 +195,30 @@ test('islands: counts the groups and labels every land cell with its group',()=>
  // A 1×1 island and an all-water grid.
  assert.equal(last(islandsTrace([[1]])).count,1);assert.equal(last(islandsTrace([[0,0],[0,0]])).count,0);
 });
+test('recursion: a memo saves nothing on a chain, and a subtree on a branching tree',()=>{
+ const plain=powerTrace(2,13),p=powerMemoTrace(2,13);
+ assert.equal(p.hits,0,'no n comes twice');
+ assert.deepEqual(p.parents,plain.parents,'the same calls');
+ assert.equal((last(p.trace).text as string[])[0],'power(2, 13) = 8192');
+ assert.equal(last(p.trace).memo,'{1: 2, 3: 8, 6: 64, 13: 8192}');
+ const f=fibMemoTrace(4),g=last(f.trace),texts=g.text as string[];
+ assert.equal(f.parents.length,7,'against 9 without');
+ assert.equal(f.hits,1);
+ assert.equal(texts[0],'fib(4) = 3');
+ assert.deepEqual(texts.filter(t=>t.includes('(memo)')),['fib(2) = 1 (memo)'],'the second fib(2) ends at the memo');
+ assert.equal((g.hit as number[]).reduce((a,b)=>a+b,0),1);
+ assert.equal(fibMemoTrace(10).parents.length,19);assert.equal(fibTrace(10).parents.length,177);
+ // Each line it stops on is in the function it means.
+ const lines=RECURSION_SOURCE.split('\n');
+ assert.ok(p.trace.every(fr=>fr.line>=10&&fr.line<=19));
+ assert.ok(f.trace.every(fr=>fr.line>=27&&fr.line<=32));
+ assert.ok(lines[30]!.includes('memo[n] = fib_memo('));assert.ok(fibTrace(4).trace.every(fr=>lines[fr.line-1]!.startsWith('    ')&&fr.line>=22&&fr.line<=24));
+ for(const run of [p,f])for(const fr of run.trace){
+  const on=(fr.stack as number[]).flatMap((x,i)=>x?[i]:[]);
+  on.forEach((i,k)=>assert.equal(k===0?-1:on[k-1],run.parents[i]));
+ }
+});
+
 test('recursion: fast power halves n each call; naive fib branches and repeats work',()=>{
  const p=powerTrace(2,13),f=last(p.trace);
  assert.equal(p.parents.length,5,'13, 6, 3, 1, 0');

@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, trieSearchTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine, twoSumTrace, subarraySumTrace, HASH_MAP_SOURCE, hashLine,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, trieSearchTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, powerMemoTrace, fibMemoTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine, twoSumTrace, subarraySumTrace, HASH_MAP_SOURCE, hashLine,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -2331,9 +2331,9 @@ ${MD_TAIL}
 // ── Recursion: the call tree, growing as calls are made ──
 (() => {
     const { x, n, fib } = IN.recursion;
-    const pow = powerTrace(x, n), fb = fibTrace(fib);
+    const pow = powerTrace(x, n), powMemo = powerMemoTrace(x, n), fb = fibTrace(fib), fbMemo = fibMemoTrace(fib);
     // The call tree over one run's table: gold where the code is, pink waiting on a smaller copy, teal returned.
-    const elements = (table: string, calls: string, spacing: number, withX: boolean): Json[] => {
+    const elements = (table: string, calls: string, spacing: number, withX: boolean, defLine: number, halfLine = 0, memoLine = 0): Json[] => {
         const c = (col: string) => `dataTable('${table}', frame, '${col}')`;
         const on = (col: string, i: string) => `arrayAt(${c(col)}, ${i}) == 1`;
         const parent = `dataTable('${calls}', idx, 'p')`;
@@ -2342,16 +2342,19 @@ ${MD_TAIL}
                 id: 'calls', type: 'graph', label: 'calls', lengthExpr: c('count'), valueExpr: `arrayAt(${c('text')}, idx)`,
                 treeLayout: { type: 'tidy', parentExpr: parent, origin: [0, 3.4, 0], spacing, levelGap: 1.3 },
                 nodeShape: 'rect', nodeWidth: 2.2, nodeHeight: 0.72, nodeCornerRadius: 0.16, valueLabel: 'inside', showIndices: false, axisLabels: 'plane',
-                colorExpr: `idx == ${c('cur')} ? '#9a7420' : (${on('stack', 'idx')} ? '#8a3f68' : (${on('done', 'idx')} ? '#2f7d66' : '#4a5560'))`,
+                // A call answered from the memo stands out: it is a whole subtree not walked.
+                colorExpr: `idx == ${c('cur')} ? '#9a7420' : (${on('stack', 'idx')} ? '#8a3f68' : (${on('hit', 'idx')} ? '#3f6fa8' : (${on('done', 'idx')} ? '#2f7d66' : '#4a5560')))`,
                 // Each call's edge to its caller; the waiting calls' path from the first call is lit.
                 connectTo: { indexExpr: parent, pinned: true, bendExpr: '0', color: '#7f93aa',
                     colorExpr: `${on('stack', 'idx')} and ${on('stack', parent)} ? '${PINK}' : ''`, highlightExpr: `${on('stack', 'idx')} and ${on('stack', parent)}` },
             },
             // The current call's arguments, wired to its node; x never changes, n halves (or drops by one or two).
-            ...(withX ? [{ ...label('x', `concat('x = ', ${inp('x')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: 1 } }] : []),
-            { ...label('n', `${c('n')} < 0 ? 'n: —' : concat('n = ', ${c('n')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: withX ? 1 : 9 } },
+            ...(withX ? [{ ...label('x', `concat('x = ', ${inp('x')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: defLine } }] : []),
+            { ...label('n', `${c('n')} < 0 ? 'n: —' : concat('n = ', ${c('n')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: defLine } },
             // Fast power's half: the smaller copy's answer, set on line 4 once that call returns.
-            ...(withX ? [{ ...label('half', `${c('half')} < 0 ? 'half: —' : concat('half = ', ${c('half')})`, [4.6, -3.6, 0]), codeRef: { file: 'recursion', line: 4 } }] : []),
+            ...(withX ? [{ ...label('half', `${c('half')} < 0 ? 'half: —' : concat('half = ', ${c('half')})`, [4.6, -3.6, 0]), codeRef: { file: 'recursion', line: halfLine } }] : []),
+            // What has been remembered so far.
+            ...(memoLine ? [{ ...label('memo', `concat('memo = ', ${c('memo')})`, [4.6, -3.6, 0]), codeRef: { file: 'recursion', line: memoLine } }] : []),
             label('returned', `${c('result')} < 0 ? 'returned: —' : concat('returned ', ${c('result')})`, [4.6, -3.6, 0]),
             label('depth', `concat('waiting calls: ', sum(${c('stack')}))`, [4.6, -3.6, 0]),
         ];
@@ -2369,11 +2372,28 @@ ${MD_TAIL}
                 prompt: 'Explain why calling power once and storing half gives about log n calls, while writing power(x, n // 2) * power(x, n // 2) would give about n.' }),
             section(RECURSION_SOURCE, 'rec-power-combine', 'Combine: square it, with one more x if n is odd', 'if n % 2 == 0', 'return half * half * x', {
                 hint: 'Halving an odd exponent rounds down and loses one factor of x, so the odd case puts it back.' }),
+            section(RECURSION_SOURCE, 'rec-pm-base', 'The same base case', 'def power_memo(', 'return 1', {
+                hint: 'A memo changes nothing about the smallest copy. It takes one more parameter, the dictionary shared by every call.' }),
+            section(RECURSION_SOURCE, 'rec-pm-check', 'Seen this n before? Answer from the memo', 'if n in memo:', 'return memo[n]', {
+                hint: 'Look before doing the work. A repeat ends here, with no smaller copy.',
+                prompt: 'Explain why this check never succeeds in fast power, and what that says about when a memo helps.' }),
+            section(RECURSION_SOURCE, 'rec-pm-half', 'Otherwise, the smaller copy', 'half = power_memo(', null, {
+                hint: 'The same trust as before, passing the same memo along.' }),
+            // These lines also stand in fast power above, and sections find the first: where they start is said outright.
+            { ...section(RECURSION_SOURCE, 'rec-pm-store', 'Remember the answer, then return it', 'memo[n] = half * half', 'return memo[n]', {
+                hint: 'Store before returning, so that the next time n is asked for, the check above answers it.' }), from: lineOf(RECURSION_SOURCE, 'if n % 2 == 0:', 'def power_memo(') },
             section(RECURSION_SOURCE, 'rec-fib-base', 'Fibonacci stops at the first two numbers', 'def fib(', 'return n', {
                 hint: 'fib(0) is 0 and fib(1) is 1, which is n itself in both cases.' }),
             section(RECURSION_SOURCE, 'rec-fib-branch', 'Two smaller copies, so the calls branch', 'return fib(n - 1) + fib(n - 2)', null, {
                 hint: 'Each call makes two more, and neither knows what the other already worked out.',
                 prompt: 'Explain why this line makes the call tree grow exponentially, and which calls are repeated, using the tree on screen.' }),
+            section(RECURSION_SOURCE, 'rec-fm-base', 'The same first two numbers', 'def fib_memo(', 'return n', {
+                hint: 'The base cases are cheap, so they come before the memo is looked at.' }),
+            { ...section(RECURSION_SOURCE, 'rec-fm-check', 'Solved already? Stop here', 'def fib_memo(', 'return memo[n]', {
+                hint: 'This is where a repeated call ends, with its whole subtree saved.' }), from: lineOf(RECURSION_SOURCE, 'if n in memo:', 'def fib_memo(') },
+            section(RECURSION_SOURCE, 'rec-fm-store', 'Solve each number once, and remember it', 'memo[n] = fib_memo(', 'return memo[n]', {
+                hint: 'The two smaller copies share one memo, so whatever the first solves, the second finds.',
+                prompt: 'Explain why sharing one memo between the two calls turns exponential work into linear work, using the tree on screen.' }),
         ],
         annotations: [
             doc('power', '`power(x, n)` returns `x` to the power `n`, in O(log n) calls and O(log n) stack depth.'),
@@ -2382,6 +2402,14 @@ ${MD_TAIL}
             doc('half', 'This call\'s answer for half the exponent: `x` to the power `n // 2`.'),
             doc('fib', '`fib(n)` returns the `n`th Fibonacci number. Written this way it takes about O(1.6ⁿ) calls, but only O(n) stack depth.'),
             doc('n', 'Which Fibonacci number to return. Each call asks for the two before it.', { source: RECURSION_SOURCE, start: 'def fib(', end: 'return fib(n - 1) + fib(n - 2)' }),
+            doc('power_memo', '`power_memo(x, n, memo)` is fast power with a memo. It still makes the same O(log n) calls, and now also holds O(log n) entries, for no saving.'),
+            doc('fib_memo', '`fib_memo(n, memo)` returns the `n`th Fibonacci number, solving each number once: O(n) time and O(n) space, down from about O(1.6ⁿ) calls.'),
+            doc('memo', 'A dictionary from `n` to its answer. Every call shares this one, so what one call solves, the others can reuse.'),
+            doc('n', 'The exponent, and the memo\'s key. It only ever halves, so no value of it comes twice.', { source: RECURSION_SOURCE, start: 'def power_memo(', end: 'memo[n] = half * half * x' }),
+            doc('n', 'Which Fibonacci number to return, and the memo\'s key. The same `n` is asked for from different branches.', { source: RECURSION_SOURCE, start: 'def fib_memo(', end: 'memo[n] = fib_memo(' }),
+            docExpr(RECURSION_SOURCE, 'if n in memo:', 'n in memo', 'Has this been solved already? A dictionary answers in O(1). In fast power, it never has.'),
+            docExpr(RECURSION_SOURCE, 'memo[n] = half * half * x', 'memo[n]', 'The answer is stored here before it is returned.'),
+            docExpr(RECURSION_SOURCE, 'memo[n] = fib_memo(', 'fib_memo(n - 2, memo)', 'By now `fib_memo(n - 1, memo)` has solved this, so it ends at the memo. That is the whole saving.'),
             docExpr(RECURSION_SOURCE, 'if n == 0:', 'n == 0', 'The base case: nothing left to multiply. Without it, the calls would never stop.'),
             docExpr(RECURSION_SOURCE, 'half = power(x, n // 2)', 'power(x, n // 2)', 'The one recursive call. This call waits on the stack until the smaller copy returns.'),
             docExpr(RECURSION_SOURCE, 'half = power(x, n // 2)', 'n // 2', 'Halves the exponent, rounding down: `n` falls to 0 in about log₂ n calls.'),
@@ -2393,16 +2421,24 @@ ${MD_TAIL}
             docExpr(RECURSION_SOURCE, 'return fib(n - 1) + fib(n - 2)', 'fib(n - 2)', 'Starts from scratch: it solves again what `fib(n - 1)` already solved. Remembering those answers is dynamic programming.'),
         ],
         more: {
-            data: { callsPow: callsTable(pow.parents), callsFib: callsTable(fb.parents), rec_fib: fb.trace },
-            steps: [{
-                id: 'fib', title: 'Two smaller copies (Fibonacci)', description: 'Naive Fibonacci: two smaller copies per call, so the call tree branches and repeats work.',
-                descriptionExpr: `dataTable('rec_fib', frame, 'message')`,
+            data: { callsPow: callsTable(pow.parents), callsPowMemo: callsTable(powMemo.parents), callsFib: callsTable(fb.parents), callsFibMemo: callsTable(fbMemo.parents),
+                rec_pow_memo: powMemo.trace, rec_fib: fb.trace, rec_fib_memo: fbMemo.trace },
+            steps: ([
+                ['pow-memo', 'Fast power with a memo', 'A memo on a chain: no n comes twice, so it never hits and saves nothing.', 'rec_pow_memo', powMemo.trace.length, 9, elements('rec_pow_memo', 'callsPowMemo', 2.35, true, 9, 14, 16)],
+                ['fib', 'Two smaller copies (Fibonacci)', 'Naive Fibonacci: two smaller copies per call, so the call tree branches and repeats work.', 'rec_fib', fb.trace.length, 21, elements('rec_fib', 'callsFib', 2.35, false, 21)],
+                ['fib-memo', 'Fibonacci with a memo', 'A memo on a branching tree: each fib(k) is solved once, and a repeat ends at the memo.', 'rec_fib_memo', fbMemo.trace.length, 26, elements('rec_fib_memo', 'callsFibMemo', 2.35, false, 26, 0, 31)],
+            ] as const).map(([id, title, description, table, frames, entry, add]) => ({
+                id, title, description, descriptionExpr: `dataTable('${table}', frame, 'message')`,
                 remove: [{ id: '*' }, { type: 'slider' }],
-                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: fb.trace.length - 1, step: 1, default: 0 }],
-                codeRef: { file: 'recursion', lineExpr: `dataTable('rec_fib', frame, 'line')`, callsExpr: `dataTable('rec_fib', frame, 'calls')`, callEntryLine: 9 },
-                add: elements('rec_fib', 'callsFib', 2.35, false),
-            }],
-            locations: fb.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'fib', snapshot, label: `Fibonacci · ${f.message}` })),
+                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: frames - 1, step: 1, default: 0 }],
+                codeRef: { file: 'recursion', lineExpr: `dataTable('${table}', frame, 'line')`, callsExpr: `dataTable('${table}', frame, 'calls')`, callEntryLine: entry },
+                add,
+            })),
+            locations: [
+                ...powMemo.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'pow-memo', snapshot, label: `Fast power with a memo · ${f.message}` })),
+                ...fb.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'fib', snapshot, label: `Fibonacci · ${f.message}` })),
+                ...fbMemo.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'fib-memo', snapshot, label: `Fibonacci with a memo · ${f.message}` })),
+            ],
         },
         markdown: `# Solve smaller copies (recursion)
 
@@ -2415,11 +2451,16 @@ The scene draws every call as a node of the **call tree**, under the call that m
 - **Fast power** (this step): \`power(x, n)\` needs one smaller copy, \`power(x, n // 2)\`, so the calls form a chain only about log₂ n long: ${pow.parents.length} calls for n = ${n}, instead of ${n} multiplications.
 - **Fibonacci** (next step): \`fib(n)\` needs **two** smaller copies, so the tree branches, and the same copy is solved again and again: fib(${fib}) already makes ${fb.parents.length} calls, and the count grows exponentially. Remembering each answer (memoization) is exactly dynamic programming.
 
+**A memo after each.** Remembering answers (**memoization**) only helps when the same smaller copy is asked for again, and the two functions show both sides:
+
+- **Fast power with a memo:** still ${powMemo.parents.length} calls and ${powMemo.hits} hits. A chain never asks for the same \`n\` twice, so the memo saves nothing and costs space.
+- **Fibonacci with a memo:** ${fbMemo.parents.length} calls instead of ${fb.parents.length} for fib(${fib}), and the gap widens quickly as n grows: each number is solved once, O(n) instead of exponential. Blue calls ended at the memo.
+
 ${MD_TAIL}
 
 **Practice:** Pow(x, n), Merge Two Sorted Lists, Sort an Array (merge sort), Fibonacci Number, Climbing Stairs.`,
-        prompt: 'Explain base case, trusting the recursive call, and the call stack. Ask the learner to predict what each call returns before the player reveals it, and why naive Fibonacci repeats work.',
-        elements: elements('trace', 'callsPow', 2.35, true),
+        prompt: 'Explain base case, trusting the recursive call, and the call stack. Ask the learner to predict what each call returns before the player reveals it, why naive Fibonacci repeats work, and why a memo helps Fibonacci but not fast power.',
+        elements: elements('trace', 'callsPow', 2.35, true, 1, 4),
     });
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
     Object.assign(first, { title: 'One smaller copy (fast power)', description: 'Fast power: one smaller copy per call, so the calls form a short chain.' });
