@@ -27359,7 +27359,8 @@
               "highlightExpr": "idx == dataTable('trace', frame, 'read') or (idx == dataTable('trace', frame, 'i') and (dataTable('trace', frame, 'line') == 7 or dataTable('trace', frame, 'line') == 3))",
               "markers": [
                 {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'i')", "color": "#f1c65b"},
-                {"type": "step_marker", "indexName": "read", "indexExpr": "dataTable('trace', frame, 'read')", "color": "#e67db0"}
+                {"type": "step_marker", "indexName": "i − 1", "indexExpr": "dataTable('trace', frame, 'read')", "visibleExpr": "dataTable('trace', frame, 'line') == 5", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "i − 2", "indexExpr": "dataTable('trace', frame, 'read')", "visibleExpr": "dataTable('trace', frame, 'line') == 6", "color": "#e67db0"}
               ]
             },
             {

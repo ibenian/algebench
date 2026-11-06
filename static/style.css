@@ -5751,6 +5751,10 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-structure .code-line.code-inactive.code-in-section .code-line-number { box-shadow: inset -3px 0 0 color-mix(in srgb, var(--text-color) 18%, transparent); }
 .code-section-head.executing .code-section-title { color: color-mix(in srgb, var(--section-tone) 55%, var(--text-color)); }
 .code-section-title { font-weight: 600; }
+/* Sections other than the one the active line is in step back. */
+.code-section-head, .code-line[data-section] code { transition: opacity .2s; }
+.code-section-head.code-section-away, .code-line.code-section-away code { opacity: .6; }
+.code-section-head.code-section-away:hover, .code-line.code-section-away:hover code { opacity: .85; }
 /* In the hidden-code modes a title opens and closes its section's code; the chevron says which. */
 .code-section-chevron { display: none; width: 1ch; color: var(--section-tone); transition: transform .15s; }
 .code-structure-blocks .code-section-chevron, .code-structure-outline .code-section-chevron { display: inline-block; }

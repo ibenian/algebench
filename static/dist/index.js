@@ -31289,7 +31289,7 @@ function setupCodePanel() {
 			to: Math.min(s.to, scope.to)
 		} : s) : all;
 		body.querySelectorAll(".code-line").forEach((row) => {
-			row.classList.remove("code-in-section", "code-section-first", "code-section-last", "code-section-revealed");
+			row.classList.remove("code-in-section", "code-section-first", "code-section-last", "code-section-revealed", "code-section-away");
 			row.style.removeProperty("--section-tone");
 			delete row.dataset.section;
 			const line = Number(row.dataset.line);
@@ -31379,6 +31379,7 @@ function setupCodePanel() {
 		running = new Set([...lastLines].map((line) => sectionAt(sections, line)?.id).filter((id) => !!id));
 		for (const key of [...shut]) if (!running.has(key.slice(key.indexOf(":") + 1))) shut.delete(key);
 		body.querySelectorAll(".code-section-head").forEach((head) => head.classList.toggle("executing", running.has(head.dataset.section)));
+		body.querySelectorAll(".code-section-head, .code-line[data-section]").forEach((el) => el.classList.toggle("code-section-away", running.size > 0 && !running.has(el.dataset.section)));
 		if (settings.structureMode !== "plain") sections.forEach(paintReveal);
 	}
 	function loadSettings() {

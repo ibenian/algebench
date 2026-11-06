@@ -1153,7 +1153,7 @@ ${MD_TAIL}
         }),
         array('dp', 'dp', [-5.175, -0.9, 0], {
             from: tr('dp'), color: '#b69bea', highlightExpr: `idx == ${tr('read')} or (idx == ${tr('i')} and (${tr('line')} == 7 or ${tr('line')} == 3))`,
-            markers: [marker('i', tr('i')), marker('read', tr('read'), PINK)],
+            markers: [marker('i', tr('i')), marker('i − 1', tr('read'), PINK, `${tr('line')} == 5`), marker('i − 2', tr('read'), PINK, `${tr('line')} == 6`)],
         }),
         label('skip', `concat('skip = ', ${tr('hasSkip')} == 1 ? ${tr('skip')} : '—')`, [-4, -3.6, 0]),
         label('take', `concat('take = ', ${tr('hasTake')} == 1 ? ${tr('take')} : '—')`, [-4, -3.6, 0]),

@@ -711,7 +711,7 @@ export function setupCodePanel(): void {
         // keeps its part inside, so the function's opening lines still have their title.
         const sections=scope?all.filter(s=>s.to>=scope.from&&s.from<=scope.to).map(s=>s.from<scope.from||s.to>scope.to?{...s,from:Math.max(s.from,scope.from),to:Math.min(s.to,scope.to)}:s):all;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
-            row.classList.remove('code-in-section','code-section-first','code-section-last','code-section-revealed');row.style.removeProperty('--section-tone');delete row.dataset.section;
+            row.classList.remove('code-in-section','code-section-first','code-section-last','code-section-revealed','code-section-away');row.style.removeProperty('--section-tone');delete row.dataset.section;
             // Outside the structured function, or in no section (no title could reveal it), the code stays plain.
             const line=Number(row.dataset.line);
             row.classList.toggle('code-outside-structure',(!!scope&&(line<scope.from||line>scope.to))||!sectionAt(sections,line));
@@ -765,6 +765,8 @@ export function setupCodePanel(): void {
         // A section the reader closed while it ran opens again the next time it runs.
         for(const key of [...shut])if(!running.has(key.slice(key.indexOf(':')+1)))shut.delete(key);
         body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section!)));
+        // The other sections step back a little, so the one running stands out. With nothing running, none do.
+        body.querySelectorAll<HTMLElement>('.code-section-head, .code-line[data-section]').forEach(el=>el.classList.toggle('code-section-away',running.size>0&&!running.has(el.dataset.section!)));
         if(settings.structureMode!=='plain')sections.forEach(paintReveal);
     }
     /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
