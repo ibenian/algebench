@@ -42,6 +42,9 @@ const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practic
 interface Attempt { text: string; peeked: number[]; assisted?: number[]; paired?: Record<number, number>; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
 interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number; cursor_line?: number; draw?: CodeMark[]; erase_marks?: string[]}[]; closing: string; needs_fix?: boolean }
+/** What the Fun fact preset asks of the assistant, and what the chat shows as the learner's message. */
+const FUN_FACT_ASKED = 'Tell me a fun fact about this algorithm.';
+const FUN_FACT_REQUEST = `${FUN_FACT_ASKED} One fact: where it came from, a surprising place it is used, or a quirk of how it works. Only what you are sure is true: no dates, names or numbers you are unsure of, and don't overstate (the idea behind something is not its exact code). Explain it on the code where it fits, and type nothing in my editor.`;
 /** What the Reason through complexity preset asks of the assistant. */
 const COMPLEXITY_REQUEST = 'Reason through the runtime and space complexity, and explain it on the code.';
 /** How much a pairing turn helps (Pair with me), most first: the choice stays until changed. */
@@ -52,7 +55,7 @@ const HINT_LEVELS: {level: HintLevel; label: string; title: string; start: strin
     {level: 'question', label: 'Question', title: 'I only ask a question, for you to reason it out', start: 'OK, you type. After each line you finish, I\'ll only ask you a question to reason through.', noun: 'Question'},
     {level: 'vague', label: 'Vague', title: 'I only say what may break, not where or how to fix it', start: 'OK, you type. After each line you finish, I\'ll only say what may break, not where.', noun: 'Think about'},
 ];
-type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'complexity' | 'ask' | 'quiz' | 'series' | 'grade' | 'pairing' | 'pair' | 'hint' | 'finish';
+type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'complexity' | 'funfact' | 'ask' | 'quiz' | 'series' | 'grade' | 'pairing' | 'pair' | 'hint' | 'finish';
 /** One question of a quiz (Quiz me), and how it went: sent with the next ask, so the questions build on each other. */
 interface QuizTurn { question: string; kind: 'type' | 'answer'; outcome: 'correct' | 'partly' | 'incorrect' | 'shown' | 'skipped'; answer: string }
 type AssistStep = AssistPlan['steps'][number];
@@ -1046,6 +1049,7 @@ export function setupCodePractice(): void {
             ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
             ['quiz', 'Ask me a question', 'I ask you a question about the algorithm, setting it up in your code as an interviewer would'],
             ['series', 'Quiz me', 'A quiz: question after question, each building on the last, in a teaching order. Any other choice ends it'],
+            ['funfact', 'Fun fact', 'A fun fact about this algorithm: where it came from, a surprising use, or a quirk. I type nothing'],
             ['pairing', 'Pair with me', 'You type, and I help as much as the Hints level says: from starting each line, down to only saying what may break'],
         ];
         for (const [scope, text, title] of choices) {
@@ -1309,6 +1313,9 @@ export function setupCodePractice(): void {
         // Complexity is a walk through the code with one question in mind: nothing is typed.
         const complexity = scope === 'complexity';
         if (complexity) scope = 'narrate';
+        // A fun fact is a question for the assistant, with nothing typed.
+        const funFact = scope === 'funfact';
+        if (funFact) { scope = 'ask';request = [FUN_FACT_REQUEST, request].filter(Boolean).join('\n'); }
         // Quiz me starts a series; any other choice ends one (the series' own next question and its grading go on).
         // Pair with me starts pairing; a question, a hint, a fix or finishing a line keep it; anything else ends it.
         const pairStart = scope === 'pairing', userCaret = input.selectionStart;userCaretAt = userCaret;resumeAt = -1;
@@ -1356,10 +1363,10 @@ export function setupCodePractice(): void {
             span = first === last ? `line ${first}` : `lines ${first}–${last}`;
             request = [`Only the part I selected, ${span} (nothing outside it):`, input.value.slice(a, b), request].filter(Boolean).join('\n');
         }
-        const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: complexity ? (picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST) : picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
+        const asked = funFact ? FUN_FACT_ASKED : {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: complexity ? (picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST) : picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
             section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.', ask: request,
             quiz: starting ? (own ? `Quiz me on this: ${own}` : 'Quiz me.') : own ? `Ask me a question about this: ${own}` : 'Ask me a question.',
-            complexity: '', series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.',
+            complexity: '', funfact: '', series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.',
             pairing: '', pair: 'Let\'s pair: you type, and I\'ll help when you need it.', hint: 'Give me a hint.', finish: 'Finish this line for me.'}[scope];
         // The next question of a quiz, and pairing's next line, come by themselves: no message from the learner for them.
         const finishing = scope === 'finish';

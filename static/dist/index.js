@@ -35853,6 +35853,9 @@ var FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘⇧Enter" : "C
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
+/** What the Fun fact preset asks of the assistant, and what the chat shows as the learner's message. */
+var FUN_FACT_ASKED = "Tell me a fun fact about this algorithm.";
+var FUN_FACT_REQUEST = `${FUN_FACT_ASKED} One fact: where it came from, a surprising place it is used, or a quirk of how it works. Only what you are sure is true: no dates, names or numbers you are unsure of, and don't overstate (the idea behind something is not its exact code). Explain it on the code where it fits, and type nothing in my editor.`;
 /** What the Reason through complexity preset asks of the assistant. */
 var COMPLEXITY_REQUEST = "Reason through the runtime and space complexity, and explain it on the code.";
 var HINT_LEVELS = [
@@ -37274,6 +37277,11 @@ function setupCodePractice() {
 				"A quiz: question after question, each building on the last, in a teaching order. Any other choice ends it"
 			],
 			[
+				"funfact",
+				"Fun fact",
+				"A fun fact about this algorithm: where it came from, a surprising use, or a quirk. I type nothing"
+			],
+			[
 				"pairing",
 				"Pair with me",
 				"You type, and I help as much as the Hints level says: from starting each line, down to only saying what may break"
@@ -37620,6 +37628,11 @@ function setupCodePractice() {
 		if (scope === "grade" && !quiz) return;
 		const complexity = scope === "complexity";
 		if (complexity) scope = "narrate";
+		const funFact = scope === "funfact";
+		if (funFact) {
+			scope = "ask";
+			request = [FUN_FACT_REQUEST, request].filter(Boolean).join("\n");
+		}
 		const pairStart = scope === "pairing", userCaret = input.selectionStart;
 		userCaretAt = userCaret;
 		resumeAt = -1;
@@ -37691,7 +37704,7 @@ function setupCodePractice() {
 				request
 			].filter(Boolean).join("\n");
 		}
-		const asked = {
+		const asked = funFact ? FUN_FACT_ASKED : {
 			fix: "Fix the errors in what I typed, without writing ahead.",
 			narrate: complexity ? picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST : picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
 			next: "Help me with the next step.",
@@ -37700,6 +37713,7 @@ function setupCodePractice() {
 			ask: request,
 			quiz: starting ? own ? `Quiz me on this: ${own}` : "Quiz me." : own ? `Ask me a question about this: ${own}` : "Ask me a question.",
 			complexity: "",
+			funfact: "",
 			series: "",
 			grade: pending?.kind === "answer" ? own : "Check my answer.",
 			pairing: "",
