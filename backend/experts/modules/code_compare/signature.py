@@ -64,6 +64,11 @@ class CodeCompareSig(dspy.Signature):
     may be in another order, several lines may do what one does, and one may do what several do. Consistent names of
     their own are fine. A different approach that works is not an error: mark it "alternate" and say so.
 
+    A function's name and the order of its parameters are theirs to choose, like any name: the function is judged by what it
+    does with what it is given. A header that differs only in these is "equivalent", and earns no step and no debrief point.
+    It is "incorrect" only when the code itself then disagrees with it: a body that treats a parameter as the other one, or a
+    call in `typed` that passes them in the wrong order. Nothing outside these two pieces of code exists to call it.
+
     `matches` is the diff. Each is one logical part: a run of lines on the original side and a run of lines on theirs. Keep
     parts small and local, so the learner sees many precise matches and not one big block. The function header is a part;
     so is each initialization, each loop header, each `if` or `else`, and each statement in a body. A loop's or a branch's
@@ -84,7 +89,7 @@ class CodeCompareSig(dspy.Signature):
     repeat the steps, and it doesn't flatter.
 
     `summary` opens: one sentence on how close it is. `closing` ends: one sentence on what to do next, for instance
-    what to go back and fix. Don't dictate the fixes line by line: they can now see the original.
+    what to go back and fix. Don't dictate the fixes line by line.
 
     Everything you say is spoken: short plain sentences, "you" and "your code". Never read code out symbol by symbol."""
 
@@ -92,6 +97,7 @@ class CodeCompareSig(dspy.Signature):
     original: str = dspy.InputField(desc="the original code, with line numbers")
     typed: str = dspy.InputField(desc="the learner's code, with line numbers")
     recent_turns: str = dspy.InputField(desc="the last few exchanges with the learner on this code, oldest first; may be empty")
+    hint_level: str = dspy.InputField(desc='how much you may give away about what they haven\'t got right: "direct", "point", "question" or "vague"')
 
     same_behaviour: bool = dspy.OutputField(desc="true when the learner's code does what the original does, for every input")
     summary: str = dspy.OutputField(desc="one sentence, said first, on how close their code is")
@@ -103,8 +109,7 @@ class CodeCompareSig(dspy.Signature):
 
 class CompareAskSig(dspy.Signature):
     """A learner is looking at their code beside the original it was written from, with your comparison of the two, and asks
-    you about it. Answer what they ask, and no more, in the terms of these two pieces of code. The original is on their
-    screen, so you can talk about it freely.
+    you about it. Answer what they ask, and no more, in the terms of these two pieces of code.
 
     `about`, when not empty, is the part they pressed the AI button on: their question is about that part. Words that
     refer back ("why not?") mean what `recent_turns` was about. Asked to explain a difference, explain your verdict on that part:
@@ -122,16 +127,34 @@ class CompareAskSig(dspy.Signature):
     about: str = dspy.InputField(desc="the part they asked about; may be empty")
     question: str = dspy.InputField(desc="what they asked")
     recent_turns: str = dspy.InputField(desc="the last few exchanges with the learner on this code, oldest first; may be empty")
+    hint_level: str = dspy.InputField(desc='how much you may give away about what they haven\'t got right: "direct", "point", "question" or "vague"')
 
     steps: list[CompareStep] = dspy.OutputField(desc="the answer said piece by piece, each pointing at its code; may be empty")
     answer: str = dspy.OutputField(desc="the answer, or with steps one sentence finishing it")
 
+
+REVEAL_RULES = """Code can't be run here: nothing in this lesson executes it, and the learner has only this editor. Never suggest running, executing or testing it. To check code, they trace it by hand, walking an input through the lines.
+
+They still have to work out the parts marked "incorrect" or "missing", and `hint_level` says how much you may give away about
+those parts, whether or not the original is on their screen. It holds for all you say: `summary`, every `comment`, every `say`, `debrief`,
+`closing`, and an answer to a question, even one asking for the answer. Parts they have right can be talked about freely.
+- "direct": say plainly what is wrong or missing and what fixes it, without reciting whole lines of the original.
+- "point": say where to look and ask about it, leading them to the place. Never what to write, nor what the original has there.
+- "question": one question that makes them reason it out. It doesn't say what is wrong or where, and doesn't hold its own answer.
+- "vague": one or two examples of what may break (an input, an edge case, an order of events) to trace by hand. Not where the problem is, what
+  the code gives instead, what the right result would be, or how to fix it.
+Below "direct", never quote or paraphrase those parts of the original. With "question" and "vague", `summary`, `debrief` and `closing` don't say what
+is wrong or unfinished either, not even which part of the code or what it still has to do: `summary` says only how close they are and
+what they have right, `debrief` holds only what they have firmly (empty if nothing yet), and `closing` only sends them back to try."""
 
 CANVAS_RULES = """You can also draw on the code as you talk, as a teacher at a board: `draw` on their code, `draw_original` on the
 original. Each step that is about particular code draws on it: ring the name or expression that differs on both sides,
 box the lines of a block that belongs elsewhere, a cross on what is wrong, a check on what is right, an arrow from a line
 to the line it needs, a few words beside a line of their code (a value at that point). A few marks that say one thing. A
 step's marks replace the last step's, so draw again what you still mean."""
+
+CodeCompareSig = CodeCompareSig.with_instructions(f"{CodeCompareSig.instructions}\n\n{REVEAL_RULES}")
+CompareAskSig = CompareAskSig.with_instructions(f"{CompareAskSig.instructions}\n\n{REVEAL_RULES}")
 
 #: The same comparer with the code canvas: only this one hears of drawing.
 CodeCompareCanvasSig = (CodeCompareSig.with_instructions(f"{CodeCompareSig.instructions}\n\n{CANVAS_RULES}")

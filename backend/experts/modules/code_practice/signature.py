@@ -95,6 +95,10 @@ class CodePracticeSig(dspy.Signature):
     `notes`, or the same misunderstanding again), not for a typo or a step
     they are getting right. Empty otherwise, and always empty when
     `presenter` is off.
+
+    Code can't be run here: nothing in this lesson executes it, and the learner has only this editor. Never
+    suggest running, executing or testing it. To check code, they trace it by hand, walking an input through the
+    lines.
     """
 
     language: str = dspy.InputField(desc="the programming language")

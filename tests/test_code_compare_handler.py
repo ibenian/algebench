@@ -102,3 +102,22 @@ def test_a_question_is_answered_about_the_comparison_on_screen(monkeypatch):
     out = h.code_compare(_req(question=" why? ", about="original 2, yours 1", comparison="original 1 ~ yours 1: exact"))["result"]
     assert set(seen) == set(ASK_FIELDS) and seen["question"] == "why?"
     assert out["closing"] == "Because of the bound." and len(out["steps"]) == intent.MAX_ANSWER_STEPS and out["matches"] == []
+
+
+def test_question_and_vague_give_no_place_away(monkeypatch):
+    def answer():
+        step = CompareCanvasStep(say="Think.", point=Pointing(line=2), draw=[CanvasMark(kind="circle", line=2)], draw_original=[CanvasMark(kind="cross", line=2)])
+        return intent.CodeCompare(matches=[_m(1, 1, 1, 1, "equivalent", "Your name."), _m(2, 2, 2, 2, "incorrect", "Add one."), _m(3, 3, verdict="missing", comment="The return.")], steps=[step])
+    monkeypatch.setattr(h, "compare_code", lambda *_, **__: answer())
+    for level in ("question", "vague"):
+        out = h.code_compare(_req(hint_level=level))["result"]
+        assert [m["comment"] for m in out["matches"]] == ["Your name.", "", ""]
+        assert out["steps"][0]["point"]["line"] == 0 and not out["steps"][0]["draw"] and not out["steps"][0]["draw_original"]
+    many = lambda *_, **__: intent.CodeCompare(steps=[CompareCanvasStep(say="Think.")] * 5)
+    monkeypatch.setattr(h, "compare_code", many)
+    assert len(h.code_compare(_req(hint_level="question"))["result"]["steps"]) == 1
+    assert len(h.code_compare(_req(hint_level="vague"))["result"]["steps"]) == 2
+    monkeypatch.setattr(h, "compare_code", lambda *_, **__: answer())
+    for level in ("point", "direct"):
+        out = h.code_compare(_req(hint_level=level))["result"]
+        assert out["matches"][1]["comment"] == "Add one." and out["steps"][0]["point"]["line"] == 2

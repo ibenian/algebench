@@ -38,10 +38,17 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
     let pointing: ComparePoint | null = null;
     // The part being asked about stays lit once the pointer leaves.
     let pinned: string | null = null;
+    let gaps = new Map<CompareMatch, HTMLElement>();
     const canvasOn = (side: () => string[], rows: () => HTMLElement[]) => createCodeCanvas({stack: grid, rowAt: k => rows()[k], editor: o.host, charWidth: o.charWidth, text: () => side().join('\n'), hand: o.hand});
     const leftInk = canvasOn(() => left, () => leftRows), rightInk = canvasOn(() => right, () => rightRows);
     grid.append(laser);
 
+    function askButton(m: CompareMatch) {
+        const ai = el('button', 'cmp-ask');ai.type = 'button';ai.textContent = '✦';
+        ai.title = `${m.yours_from ? 'Explain this difference' : 'Help with this part'} (${describePart(m)}). ⌘-click to ask your own question`;ai.setAttribute('aria-label', ai.title);
+        ai.addEventListener('click', e => { pinned = String(matches.indexOf(m));hover(pinned);o.ask(m, e.metaKey || e.ctrlKey); });
+        return ai;
+    }
     function noteOf(m: CompareMatch) {
         const note = el('div', 'cmp-note'), chip = el('span', 'cmp-chip');
         chip.textContent = LABELS[m.verdict] ?? m.verdict;
@@ -61,18 +68,28 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
                 n.textContent = String(k);code.textContent = lines[k - 1] || ' ';
                 rows[k - 1] = code;
                 line.append(n, code);group.append(line);
-                // Ask about this part: on its first line, on the side that says what it is.
-                if (k === from && (noted || !m.yours_from)) {
-                    const ai = el('button', 'cmp-ask');ai.type = 'button';ai.textContent = '✦';
-                    ai.title = `Explain this difference (${describePart(m)}). ⌘-click to ask your own question`;ai.setAttribute('aria-label', ai.title);
-                    ai.addEventListener('click', e => { pinned = String(matches.indexOf(m));hover(pinned);o.ask(m, e.metaKey || e.ctrlKey); });
-                    line.append(ai);
-                }
+                // Ask about this part: on its first line on their side. Blank lines have nothing to ask about; a part they
+                // haven't written has it on its placeholder.
+                if (k === from && noted && lines.slice(from - 1, to).some(text => text.trim())) line.append(askButton(m));
             }
             // Said once: under their code, or under the original's when theirs has nothing for it.
             if (m.verdict !== 'exact' || m.comment) { if (noted || !m.yours_from) group.append(noteOf(m)); }
             return group;
         }));
+    }
+    /** A part they haven't written has a place on their side too: a gap after what they wrote just before it in the original. */
+    function paintGaps() {
+        gaps = new Map();
+        const parts = [...matches].filter(m => m.original_from).sort((a, b) => a.original_from - b.original_from);
+        let anchor: Element = rightCol.firstElementChild!;
+        for (const m of parts) {
+            if (m.yours_from) { anchor = rightRows[m.yours_to - 1]?.closest('.cmp-part') ?? anchor;continue; }
+            if (m.verdict !== 'missing') continue;
+            const gap = el('div', 'cmp-part cmp-missing cmp-gap');
+            gap.textContent = 'not in your code yet';gap.dataset.match = String(matches.indexOf(m));
+            gap.append(askButton(m));
+            anchor.after(gap);anchor = gap;gaps.set(m, gap);
+        }
     }
     /** Pointed at, a part stands out with its other side and the ribbon between them; the rest step back. */
     function hover(match: string | null) {
@@ -87,8 +104,9 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         const width = mid.offsetWidth;
         links.setAttribute('width', String(width));links.setAttribute('height', String(grid.scrollHeight));
         for (const m of matches) {
-            if (!m.original_from || !m.yours_from) continue;
-            const a = leftRows[m.original_from - 1], b = leftRows[m.original_to - 1], c = rightRows[m.yours_from - 1], d = rightRows[m.yours_to - 1];
+            if (!m.original_from) continue;
+            const a = leftRows[m.original_from - 1], b = leftRows[m.original_to - 1];
+            const c = m.yours_from ? rightRows[m.yours_from - 1] : gaps.get(m), d = m.yours_from ? rightRows[m.yours_to - 1] : gaps.get(m);
             if (!a || !b || !c || !d) continue;
             const y0 = a.offsetTop, y1 = b.offsetTop + b.offsetHeight, y2 = c.offsetTop, y3 = d.offsetTop + d.offsetHeight, h = width / 2;
             const path = document.createElementNS(SVG, 'path');
@@ -119,11 +137,13 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         lines.forEach((text, k) => { if (text && rows[k]) paintTokens(rows[k]!, lineTokens(body!.tokens!, k + 1)); });
     }
     return {
-        show(result: CompareResult, original: string[], typed: string[], language: string) {
+        show(result: CompareResult, original: string[], typed: string[], language: string, blurred = false) {
+            grid.classList.toggle('cmp-blurred', blurred);
             left = original;right = typed;matches = result.matches;leftRows = [];rightRows = [];pointing = null;pinned = null;
             leftInk.clear();rightInk.clear();laser.replaceChildren();
             paintSide(leftCol, 'Original', left, m => [m.original_from, m.original_to], leftRows, false);
             paintSide(rightCol, 'Your code', right, m => [m.yours_from, m.yours_to], rightRows, true);
+            paintGaps();
             o.host.scrollTop = 0;
             paintLinks();
             void highlight(left, leftRows, language);void highlight(right, rightRows, language);

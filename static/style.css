@@ -6260,6 +6260,10 @@ body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context ho
 .cmp-part.cmp-hot, .cmp-part.cmp-exact.cmp-hot { background: color-mix(in srgb, var(--cmp-tone) 24%, transparent); }
 .cmp-links path.cmp-hot { fill: color-mix(in srgb, var(--cmp-tone) 45%, transparent); stroke: var(--cmp-tone); }
 .cmp-line { align-items: center; }
+.cmp-gap { margin-left: 2.4em; padding: 0 10px; border: 1px dashed var(--cmp-tone); border-left-width: 3px; border-radius: 4px; font: italic 13px/2 var(--ui-font, system-ui, sans-serif); color: color-mix(in srgb, var(--cmp-tone) 75%, var(--text-color)); }
+.cp-focus .cmp-gap { font-size: 16px; }
+/* Hide code: what they have right already may show; what is wrong or still to write stays hidden. */
+.cmp-blurred .cmp-side:first-child :is(.cmp-incorrect, .cmp-missing) .cmp-code { filter: blur(6px); user-select: none; }
 .cmp-ask { flex: none; margin-left: .6em; padding: 0 .4em; line-height: 1.4; font-size: .7em; border: 1px solid color-mix(in srgb, #a78bfa 60%, transparent); border-radius: 6px; background: color-mix(in srgb, #a78bfa 16%, transparent); color: #c4b5fd; cursor: pointer; opacity: 0; transition: opacity .15s; }
 .cmp-part.cmp-hot .cmp-ask, .cmp-ask:focus-visible { opacity: 1; }
 .cmp-ask:hover { background: color-mix(in srgb, #a78bfa 34%, transparent); }

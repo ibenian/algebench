@@ -35615,6 +35615,7 @@ function createCompareView(o) {
 	let left = [], right = [], leftRows = [], rightRows = [], matches = [];
 	let pointing = null;
 	let pinned = null;
+	let gaps = /* @__PURE__ */ new Map();
 	const canvasOn = (side, rows) => createCodeCanvas({
 		stack: grid,
 		rowAt: (k) => rows()[k],
@@ -35625,6 +35626,19 @@ function createCompareView(o) {
 	});
 	const leftInk = canvasOn(() => left, () => leftRows), rightInk = canvasOn(() => right, () => rightRows);
 	grid.append(laser);
+	function askButton(m) {
+		const ai = el$1("button", "cmp-ask");
+		ai.type = "button";
+		ai.textContent = "✦";
+		ai.title = `${m.yours_from ? "Explain this difference" : "Help with this part"} (${describePart(m)}). ⌘-click to ask your own question`;
+		ai.setAttribute("aria-label", ai.title);
+		ai.addEventListener("click", (e) => {
+			pinned = String(matches.indexOf(m));
+			hover(pinned);
+			o.ask(m, e.metaKey || e.ctrlKey);
+		});
+		return ai;
+	}
 	function noteOf(m) {
 		const note = el$1("div", "cmp-note"), chip = el$1("span", "cmp-chip");
 		chip.textContent = LABELS[m.verdict] ?? m.verdict;
@@ -35647,25 +35661,33 @@ function createCompareView(o) {
 				rows[k - 1] = code;
 				line.append(n, code);
 				group.append(line);
-				if (k === from && (noted || !m.yours_from)) {
-					const ai = el$1("button", "cmp-ask");
-					ai.type = "button";
-					ai.textContent = "✦";
-					ai.title = `Explain this difference (${describePart(m)}). ⌘-click to ask your own question`;
-					ai.setAttribute("aria-label", ai.title);
-					ai.addEventListener("click", (e) => {
-						pinned = String(matches.indexOf(m));
-						hover(pinned);
-						o.ask(m, e.metaKey || e.ctrlKey);
-					});
-					line.append(ai);
-				}
+				if (k === from && noted && lines.slice(from - 1, to).some((text) => text.trim())) line.append(askButton(m));
 			}
 			if (m.verdict !== "exact" || m.comment) {
 				if (noted || !m.yours_from) group.append(noteOf(m));
 			}
 			return group;
 		}));
+	}
+	/** A part they haven't written has a place on their side too: a gap after what they wrote just before it in the original. */
+	function paintGaps() {
+		gaps = /* @__PURE__ */ new Map();
+		const parts = [...matches].filter((m) => m.original_from).sort((a, b) => a.original_from - b.original_from);
+		let anchor = rightCol.firstElementChild;
+		for (const m of parts) {
+			if (m.yours_from) {
+				anchor = rightRows[m.yours_to - 1]?.closest(".cmp-part") ?? anchor;
+				continue;
+			}
+			if (m.verdict !== "missing") continue;
+			const gap = el$1("div", "cmp-part cmp-missing cmp-gap");
+			gap.textContent = "not in your code yet";
+			gap.dataset.match = String(matches.indexOf(m));
+			gap.append(askButton(m));
+			anchor.after(gap);
+			anchor = gap;
+			gaps.set(m, gap);
+		}
 	}
 	/** Pointed at, a part stands out with its other side and the ribbon between them; the rest step back. */
 	function hover(match) {
@@ -35681,8 +35703,9 @@ function createCompareView(o) {
 		links.setAttribute("width", String(width));
 		links.setAttribute("height", String(grid.scrollHeight));
 		for (const m of matches) {
-			if (!m.original_from || !m.yours_from) continue;
-			const a = leftRows[m.original_from - 1], b = leftRows[m.original_to - 1], c = rightRows[m.yours_from - 1], d = rightRows[m.yours_to - 1];
+			if (!m.original_from) continue;
+			const a = leftRows[m.original_from - 1], b = leftRows[m.original_to - 1];
+			const c = m.yours_from ? rightRows[m.yours_from - 1] : gaps.get(m), d = m.yours_from ? rightRows[m.yours_to - 1] : gaps.get(m);
 			if (!a || !b || !c || !d) continue;
 			const y0 = a.offsetTop, y1 = b.offsetTop + b.offsetHeight, y2 = c.offsetTop, y3 = d.offsetTop + d.offsetHeight, h = width / 2;
 			const path = document.createElementNS(SVG, "path");
@@ -35737,7 +35760,8 @@ function createCompareView(o) {
 		});
 	}
 	return {
-		show(result, original, typed, language) {
+		show(result, original, typed, language, blurred = false) {
+			grid.classList.toggle("cmp-blurred", blurred);
 			left = original;
 			right = typed;
 			matches = result.matches;
@@ -35750,6 +35774,7 @@ function createCompareView(o) {
 			laser.replaceChildren();
 			paintSide(leftCol, "Original", left, (m) => [m.original_from, m.original_to], leftRows, false);
 			paintSide(rightCol, "Your code", right, (m) => [m.yours_from, m.yours_to], rightRows, true);
+			paintGaps();
 			o.host.scrollTop = 0;
 			paintLinks();
 			highlight(left, leftRows, language);
@@ -37138,7 +37163,7 @@ function setupCodePractice() {
 		if (assisting) return;
 		askAbout = m;
 		if (!ownWords) {
-			askCompare("Explain this difference.");
+			askCompare(m.yours_from ? "Explain this difference." : "Help me with this part I haven't written yet.");
 			return;
 		}
 		const msg = report.lastElementChild;
@@ -37514,20 +37539,23 @@ function setupCodePractice() {
 				expected: block,
 				typed,
 				recent_turns: recentTurns(),
-				canvas: canvasOn()
+				canvas: canvasOn(),
+				hint_level: hintLevel()
 			});
 			if (assisting !== run) throw new Stopped();
 			if (!out.result) throw new Error(out.reason ?? "No comparison came back.");
-			const reference = block.split("\n"), start = current.from;
-			const seen = score.lines.filter((l) => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? "")).map((l) => l.line);
-			attempt.peeked = [.../* @__PURE__ */ new Set([...attempt.peeked, ...seen])];
-			persist();
-			render(false);
+			const reference = block.split("\n"), start = current.from, blurred = current.hidden();
+			if (!blurred) {
+				const seen = score.lines.filter((l) => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? "")).map((l) => l.line);
+				attempt.peeked = [.../* @__PURE__ */ new Set([...attempt.peeked, ...seen])];
+				persist();
+				render(false);
+			}
 			comparing = true;
 			comparedText = typed;
 			root.classList.add("cp-comparing");
 			paintCompareTool();
-			compareView.show(out.result, reference, typed.split("\n"), current.file.language ?? "");
+			compareView.show(out.result, reference, typed.split("\n"), current.file.language ?? "", blurred);
 			compareView.setVisible(canvasOn());
 			reportSummary.textContent = "✦ comparing with the original";
 			const opening = bubble("cp-assist-plan");
@@ -37565,6 +37593,7 @@ function setupCodePractice() {
 				recent_turns: recentTurns(),
 				canvas: canvasOn(),
 				question,
+				hint_level: hintLevel(),
 				comparison: compareView.describe().slice(0, 8e3),
 				about: about ? `${describePart(about)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ""}`.slice(0, 600) : ""
 			});

@@ -984,7 +984,7 @@ export function setupCodePractice(): void {
     function askAboutPart(m: CompareMatch, ownWords: boolean) {
         if (assisting) return;
         askAbout = m;
-        if (!ownWords) { void askCompare('Explain this difference.');return; }
+        if (!ownWords) { void askCompare(m.yours_from ? 'Explain this difference.' : 'Help me with this part I haven\'t written yet.');return; }
         const msg = report.lastElementChild as HTMLElement | null;
         if (msg) offerHelp(msg);
         report.querySelector<HTMLInputElement>('.cmp-ask-input')?.focus();
@@ -1258,15 +1258,18 @@ export function setupCodePractice(): void {
         const typed = input.value.trimEnd();
         if (!typed.trim()) { offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'Type some code first, then I can compare it with the original.'})));return; }
         await compareTurn(announce ? 'Compare my code with the original.' : '', async (run, bubble) => {
-            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed, recent_turns: recentTurns(), canvas: canvasOn()}) as {result?: CompareResult; reason?: string};
+            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed, recent_turns: recentTurns(), canvas: canvasOn(), hint_level: hintLevel()}) as {result?: CompareResult; reason?: string};
             if (assisting !== run) throw new Stopped();
             if (!out.result) throw new Error(out.reason ?? 'No comparison came back.');
             // The original is on screen from here: what isn't right yet is seen, so correcting it scores as seen.
-            const reference = block.split('\n'), start = current!.from;
-            const seen = score!.lines.filter(l => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? '')).map(l => l.line);
-            attempt.peeked = [...new Set([...attempt.peeked, ...seen])];persist();render(false);
+            // With Hide code on, what isn't done yet stays blurred: nothing they still have to write has been seen.
+            const reference = block.split('\n'), start = current!.from, blurred = current!.hidden();
+            if (!blurred) {
+                const seen = score!.lines.filter(l => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? '')).map(l => l.line);
+                attempt.peeked = [...new Set([...attempt.peeked, ...seen])];persist();render(false);
+            }
             comparing = true;comparedText = typed;root.classList.add('cp-comparing');paintCompareTool();
-            compareView.show(out.result, reference, typed.split('\n'), current!.file.language ?? '');
+            compareView.show(out.result, reference, typed.split('\n'), current!.file.language ?? '', blurred);
             compareView.setVisible(canvasOn());
             reportSummary.textContent = '✦ comparing with the original';
             const opening = bubble('cp-assist-plan');
@@ -1287,7 +1290,7 @@ export function setupCodePractice(): void {
         if (!current || !score || assisting || !comparing) return;
         const about = askAbout;
         await compareTurn(about ? `About ${describePart(about)}: ${question}` : question, async (run, bubble) => {
-            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed: comparedText, recent_turns: recentTurns(), canvas: canvasOn(), question,
+            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed: comparedText, recent_turns: recentTurns(), canvas: canvasOn(), question, hint_level: hintLevel(),
                 comparison: compareView.describe().slice(0, 8000), about: about ? `${describePart(about)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ''}`.slice(0, 600) : ''}) as {result?: CompareResult; reason?: string};
             if (assisting !== run) throw new Stopped();
             if (!out.result) throw new Error(out.reason ?? 'No answer came back.');

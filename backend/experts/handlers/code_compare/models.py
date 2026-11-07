@@ -1,6 +1,8 @@
 """The wire shape of ``POST /api/expert/code_compare``. Nothing here is stored."""
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.handlers.code_practice.models import MAX_CODE_CHARS
@@ -14,6 +16,8 @@ class CodeCompareRequest(BaseModel):
     expected: str = Field(min_length=1, max_length=MAX_CODE_CHARS)
     typed: str = Field(min_length=1, max_length=MAX_CODE_CHARS)
     recent_turns: str = Field(default="", max_length=3000)
+    #: How much may be given away about the parts not yet right.
+    hint_level: Literal["direct", "point", "question", "vague"] = "direct"
     #: A question about the comparison already on screen, instead of a new comparison.
     question: str = Field(default="", max_length=600)
     #: That comparison as the client has it, one part a line, and the part the question is about.

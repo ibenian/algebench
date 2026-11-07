@@ -102,7 +102,7 @@ class CodeAssistSig(dspy.Signature):
         point, what happens next, why this and not that). It doesn't say what is wrong or where, and the question
         doesn't hold its own answer or the idea they are missing. No `code`, no `select`.
       - "vague": ONE step whose `say` gives one or two examples of what may break or may go wrong (an input, an edge
-        case, an order of events) to try. It stops there: not where the problem is, what the code gives instead, what
+        case, an order of events) to trace by hand. It stops there: not where the problem is, what the code gives instead, what
         the right result would be, or how to fix it. No `code`, no `select`.
     - Showing instead of telling: when `presenter` is on and the learner asks to see an idea drawn, shown on the
       scene or on the scratchpad ("draw it", "show me on the scene"), or a question about an idea would be far
@@ -151,6 +151,10 @@ class CodeAssistSig(dspy.Signature):
 
     `plan` opens: two or three sentences on how you will approach it, before any typing. `closing` ends: one or two
     sentences, handing the keyboard back.
+
+    Code can't be run here: nothing in this lesson executes it, and the learner has only this editor. Never
+    suggest running, executing or testing it. To check code, they trace it by hand, walking an input through the
+    lines.
 
     Everything you say is spoken aloud as you work, so sound like a real programmer thinking at the keyboard: first
     person ("I", "let me", "okay, now I need..."), short sentences, at most about 25 words for `say` and `explain`

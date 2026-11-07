@@ -48,6 +48,10 @@ class QuizAskSig(dspy.Signature):
     code they should end up with and why; the learner doesn't see it until they ask. `plan` opens: one short
     sentence to the learner on what you'll test ("Let's see how well you know..."). Speak plainly and warmly, in
     the first person, to the learner as "you"; backticks only briefly.
+
+    Code can't be run here: nothing in this lesson executes it, and the learner has only this editor. Never
+    suggest running, executing or testing it. To check code, they trace it by hand, walking an input through the
+    lines.
     """
 
     language: str = dspy.InputField(desc="the programming language")
@@ -96,6 +100,10 @@ class QuizGradeSig(dspy.Signature):
     One to four steps, or none when the answer was fully right and there is nothing worth showing. `feedback` ends: two to four spoken sentences: what they got right,
     what was missing or wrong and the idea behind it, warmly; with "incorrect", give the right answer and why.
     Speak plainly, in the first person; backticks only briefly.
+
+    Code can't be run here: nothing in this lesson executes it, and the learner has only this editor. Never
+    suggest running, executing or testing it. To check code, they trace it by hand, walking an input through the
+    lines.
     """
 
     language: str = dspy.InputField(desc="the programming language")
