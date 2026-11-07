@@ -36454,7 +36454,7 @@ function setupCodePractice() {
 		score = null;
 		render(false);
 		canvas.clear();
-		closeCompare();
+		closeCompare(false);
 		const wanted = key;
 		loadAttempt(lessonId(), v.file.path, wanted).then((found) => {
 			if (key !== wanted) return;
@@ -36804,6 +36804,13 @@ function setupCodePractice() {
 			});
 			waiting.remove();
 			if (seq !== reviewSeq) return;
+			if (out.compare) {
+				attempt.reviewed = sent;
+				persist();
+				reportSummary.textContent = "";
+				compare(false);
+				return;
+			}
 			attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
 			const before = new Set((attempt.issues ?? []).map((n) => n.note));
 			if (out.result) {
@@ -36947,20 +36954,33 @@ function setupCodePractice() {
 	const compareTool = tool("⇄ Compare", "");
 	compareTool.classList.add("cp-coach-only");
 	tools.insertBefore(compareTool, helpTool);
-	let comparing = false, comparedText = "", askAbout = null;
+	let comparing = false, comparedText = "", askAbout = null, pairAfterCompare = false;
 	function paintCompareTool() {
 		compareTool.textContent = comparing ? "✕ Close compare" : "⇄ Compare";
 		compareTool.setAttribute("aria-pressed", String(comparing));
 		compareTool.title = comparing ? "Back to your code (Esc)" : "Compare your code with the original, side by side, and hear what matters. What you see of the original counts as seen";
 	}
 	paintCompareTool();
-	function closeCompare() {
-		if (!comparing) return;
+	function closeCompare(goOn = true) {
+		if (!comparing) {
+			pairAfterCompare = false;
+			return;
+		}
 		comparing = false;
+		askAbout = null;
 		root.classList.remove("cp-comparing");
 		compareView.clear();
 		paintCompareTool();
+		if (goOn && pairAfterCompare) {
+			pairing = true;
+			pairWait();
+		}
+		pairAfterCompare = false;
 		if (assisting) stopAssist();
+		else {
+			const asked = report.querySelector(".cp-help")?.closest(".chat-msg");
+			if (asked) offerHelp(asked);
+		}
 		if (!root.hidden) input.focus();
 	}
 	compareTool.addEventListener("click", () => {
@@ -37128,6 +37148,14 @@ function setupCodePractice() {
 	function helpChoices() {
 		if (comparing) return compareAsk();
 		const row = el("div", "cp-help");
+		const compareChoice = () => {
+			const b = el("button", "cp-help-btn");
+			b.type = "button";
+			b.textContent = "Compare with the original";
+			b.title = "I show your code beside the original and go through what matters. What you see of the original counts as seen";
+			b.addEventListener("click", () => void compare());
+			return b;
+		};
 		const label = el("span", "cp-help-label");
 		label.textContent = "Help me:";
 		const ask = el("form", "cp-help-ask");
@@ -37161,6 +37189,7 @@ function setupCodePractice() {
 			line("hint", "Give me a hint", "A hint for the line you are on, not the code");
 			line("finish", "Finish this line", "I finish the line you are on (it counts as AI-typed), then start the next");
 			line("fix", "Fix it", "I fix what is wrong in your code, deleting what doesn't belong, and write nothing new. We keep pairing");
+			if (input.value.trim()) row.append(compareChoice());
 			const end = el("button", "cp-help-btn cp-quiz-end");
 			end.type = "button";
 			end.textContent = "End pairing";
@@ -37216,6 +37245,7 @@ function setupCodePractice() {
 			]
 		];
 		for (const [scope, text, title] of choices) {
+			if (scope === "pairing" && input.value.trim()) row.append(compareChoice());
 			const b = el("button", "cp-help-btn");
 			b.type = "button";
 			b.textContent = text;
@@ -37421,6 +37451,7 @@ function setupCodePractice() {
 	/** A turn in Compare: the keyboard held read only while `work` talks; whatever comes of it, handed back after. */
 	async function compareTurn(asked, work) {
 		if (!current || !score) return;
+		if (pairing) pairAfterCompare = true;
 		pairing = false;
 		clearTimeout(pairIdle);
 		series = null;
@@ -37434,7 +37465,7 @@ function setupCodePractice() {
 		if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 		report.querySelectorAll(".cp-help").forEach((h) => h.remove());
 		if (report.hidden) foldReport(false);
-		message("user", Object.assign(el("div", ""), { textContent: asked }));
+		if (asked) message("user", Object.assign(el("div", ""), { textContent: asked }));
 		root.classList.add("cp-assisting");
 		input.readOnly = true;
 		takeBack.hidden = false;
@@ -37469,7 +37500,7 @@ function setupCodePractice() {
 		compareView.endPointing();
 	};
 	/** Compare takes the turn: the original opens beside their code, read only, and the agent walks through what matters. */
-	async function compare() {
+	async function compare(announce = true) {
 		if (!current || !score || assisting) return;
 		setFocus(true);
 		const typed = input.value.trimEnd();
@@ -37477,7 +37508,7 @@ function setupCodePractice() {
 			offerHelp(message("assistant", Object.assign(el("div", ""), { textContent: "Type some code first, then I can compare it with the original." })));
 			return;
 		}
-		await compareTurn("Compare my code with the original.", async (run, bubble) => {
+		await compareTurn(announce ? "Compare my code with the original." : "", async (run, bubble) => {
 			const out = await invokeExpert("code_compare", {
 				language: current.file.language ?? "",
 				expected: block,
@@ -37654,7 +37685,7 @@ function setupCodePractice() {
 		const waiting = message("assistant", el("div", "chat-loading"));
 		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
 		turnWords = [];
-		let ended = false, nextAfter = false, pointed = null, leaveOn = 0, proposal = "";
+		let ended = false, nextAfter = false, compareNext = false, pointed = null, leaveOn = 0, proposal = "";
 		const hintWas = asked === "Give me a hint.";
 		try {
 			const where = {
@@ -37707,6 +37738,11 @@ function setupCodePractice() {
 			});
 			waiting.remove();
 			if (assisting !== run) throw new Stopped();
+			if (out.compare) {
+				compareNext = true;
+				ended = true;
+				return;
+			}
 			if (out.answered) proposal = proposedBefore;
 			if (pairing && (scope === "pair" || scope === "ask")) pairSaid = out.reason ?? out.result?.steps.at(-1)?.say ?? "";
 			if (out.quiet) {
@@ -37843,6 +37879,10 @@ function setupCodePractice() {
 		} finally {
 			if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked && own ? `${own}` : asked ?? ""}\nYou: ${turnWords.join(" ")}`);
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
+			if (compareNext && key === blockKey) {
+				compare(false);
+				return;
+			}
 			if (ended && pairing && key === blockKey) {
 				leavePointing(pointed, leaveOn);
 				trimPairTail();
@@ -38195,7 +38235,7 @@ function setupCodePractice() {
 		persist();
 		render(false);
 		canvas.clear();
-		closeCompare();
+		closeCompare(false);
 		turns = [];
 		input.focus();
 		if (hintsOn()) review(false);

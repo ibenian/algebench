@@ -462,7 +462,7 @@ export function setupCodePractice(): void {
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
-        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();closeCompare();
+        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();closeCompare(false);
         const wanted = key;
         void loadAttempt(lessonId(), v.file.path, wanted).then(found => {
             if (key !== wanted) return;
@@ -734,9 +734,11 @@ export function setupCodePractice(): void {
                 match: score.typed.map((t, j) => ({typed: j + 1, score: Math.round(100 * t.similarity), ...(t.reference != null ? {reference: t.reference} : {})}))
                     .filter((_, j) => !score!.typed[j]!.neutral).slice(0, 400),
                 attempts: attempt.reviews[id] ?? 0, hints: hintsOn(), present: presenterOn(),
-            }) as {result?: Review; reason?: string};
+            }) as {result?: Review; reason?: string; compare?: boolean};
             waiting.remove();
             if (seq !== reviewSeq) return;
+            // A comment asked for a comparison: Compare answers it, not a review.
+            if (out.compare) { attempt.reviewed = sent;persist();reportSummary.textContent = '';void compare(false);return; }
             attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
             // What was open before, so a carried issue is hinted at rather than spelled out again.
             const before = new Set((attempt.issues ?? []).map(n => n.note));
@@ -840,16 +842,24 @@ export function setupCodePractice(): void {
     const compareTool = tool('⇄ Compare', '');
     compareTool.classList.add('cp-coach-only');
     tools.insertBefore(compareTool, helpTool);
-    let comparing = false, comparedText = '', askAbout: CompareMatch | null = null;
+    // Pairing rests while the split is open, and goes on when it closes.
+    let comparing = false, comparedText = '', askAbout: CompareMatch | null = null, pairAfterCompare = false;
     function paintCompareTool() {
         compareTool.textContent = comparing ? '✕ Close compare' : '⇄ Compare';compareTool.setAttribute('aria-pressed', String(comparing));
         compareTool.title = comparing ? 'Back to your code (Esc)' : 'Compare your code with the original, side by side, and hear what matters. What you see of the original counts as seen';
     }
     paintCompareTool();
-    function closeCompare() {
-        if (!comparing) return;
-        comparing = false;root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
+    function closeCompare(goOn = true) {
+        if (!comparing) { pairAfterCompare = false;return; }
+        comparing = false;askAbout = null;root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
+        if (goOn && pairAfterCompare) { pairing = true;pairWait(); }
+        pairAfterCompare = false;
         if (assisting) stopAssist();
+        else {
+            // The box asked about the comparison, which is gone: the usual Help me takes its place.
+            const asked = report.querySelector('.cp-help')?.closest<HTMLElement>('.chat-msg');
+            if (asked) offerHelp(asked);
+        }
         if (!root.hidden) input.focus();
     }
     compareTool.addEventListener('click', () => { if (comparing) closeCompare();else void compare(); });
@@ -982,6 +992,13 @@ export function setupCodePractice(): void {
     function helpChoices(): HTMLElement {
         if (comparing) return compareAsk();
         const row = el('div', 'cp-help');
+        // Compare is its own turn, not a scope of the assistant's: the same as the toolbar's button.
+        const compareChoice = () => {
+            const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = 'Compare with the original';
+            b.title = 'I show your code beside the original and go through what matters. What you see of the original counts as seen';
+            b.addEventListener('click', () => void compare());
+            return b;
+        };
         const label = el('span', 'cp-help-label');label.textContent = 'Help me:';
         // In their own words: sent alone (Enter), it is the whole request; with a button, it says how to go about it.
         const ask = el('form', 'cp-help-ask');
@@ -1010,6 +1027,7 @@ export function setupCodePractice(): void {
             line('hint', 'Give me a hint', 'A hint for the line you are on, not the code');
             line('finish', 'Finish this line', 'I finish the line you are on (it counts as AI-typed), then start the next');
             line('fix', 'Fix it', 'I fix what is wrong in your code, deleting what doesn\'t belong, and write nothing new. We keep pairing');
+            if (input.value.trim()) row.append(compareChoice());
             const end = el('button', 'cp-help-btn cp-quiz-end');end.type = 'button';end.textContent = 'End pairing';end.title = 'Stop pairing';
             end.addEventListener('click', () => { pairing = false;clearTimeout(pairIdle);offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'OK, no more pairing. Here if you need me.'}))); });
             row.append(end);
@@ -1028,6 +1046,8 @@ export function setupCodePractice(): void {
             ['pairing', 'Pair with me', 'You type, and I help as much as the Hints level says: from starting each line, down to only saying what may break'],
         ];
         for (const [scope, text, title] of choices) {
+            // Pair with me stays beside the hint level it goes by, last on the row.
+            if (scope === 'pairing' && input.value.trim()) row.append(compareChoice());
             const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
             b.addEventListener('click', () => void assist(scope, words.value.trim()));row.append(b);
         }
@@ -1193,13 +1213,15 @@ export function setupCodePractice(): void {
     /** A turn in Compare: the keyboard held read only while `work` talks; whatever comes of it, handed back after. */
     async function compareTurn(asked: string, work: (run: number, bubble: (cls: string) => HTMLElement) => Promise<void>) {
         if (!current || !score) return;
+        if (pairing) pairAfterCompare = true;
         pairing = false;clearTimeout(pairIdle);series = null;quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null;fixProposed = '';
         const run = ++assistSeq, blockKey = key;assisting = run;
         clearTimeout(idle);reviewSeq++;
         if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
         report.querySelectorAll('.cp-help').forEach(h => h.remove());
         if (report.hidden) foldReport(false);
-        message('user', Object.assign(el('div', ''), {textContent: asked}));
+        // Asked for in their own words, it is already there.
+        if (asked) message('user', Object.assign(el('div', ''), {textContent: asked}));
         root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
         reportSummary.textContent = 'comparing…';
         const exactBefore = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line));
@@ -1230,12 +1252,12 @@ export function setupCodePractice(): void {
         compareView.endPointing();
     };
     /** Compare takes the turn: the original opens beside their code, read only, and the agent walks through what matters. */
-    async function compare() {
+    async function compare(announce = true) {
         if (!current || !score || assisting) return;
         setFocus(true);
         const typed = input.value.trimEnd();
         if (!typed.trim()) { offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'Type some code first, then I can compare it with the original.'})));return; }
-        await compareTurn('Compare my code with the original.', async (run, bubble) => {
+        await compareTurn(announce ? 'Compare my code with the original.' : '', async (run, bubble) => {
             const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed, recent_turns: recentTurns(), canvas: canvasOn()}) as {result?: CompareResult; reason?: string};
             if (assisting !== run) throw new Stopped();
             if (!out.result) throw new Error(out.reason ?? 'No comparison came back.');
@@ -1343,7 +1365,7 @@ export function setupCodePractice(): void {
         const waiting = message('assistant', el('div', 'chat-loading'));
         waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
         turnWords = [];
-        let ended = false, nextAfter = false, pointed: [number, number] | null = null, leaveOn = 0, proposal = '';
+        let ended = false, nextAfter = false, compareNext = false, pointed: [number, number] | null = null, leaveOn = 0, proposal = '';
         const hintWas = asked === 'Give me a hint.';
         try {
             const where = {language: current.file.language ?? '', expected: block, first_line: current.from,
@@ -1359,9 +1381,11 @@ export function setupCodePractice(): void {
                 // own pulls them away from the line they are typing.
                 : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && !canvasOn() && (!pairing || scope === 'ask'), hint_level: pairing ? hintLevel() : 'direct', last_said: said.slice(0, 600), recent_turns: recentTurns(), canvas: canvasOn(), canvas_marks: canvasOn() ? canvas.describe().slice(0, 40) : [], cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
-                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string; quiet?: boolean; answered?: boolean};
+                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string; quiet?: boolean; answered?: boolean; compare?: boolean};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
+            // They asked for a comparison: Compare does that, once this turn is handed back.
+            if (out.compare) { compareNext = true;ended = true;return; }
             if (out.answered) proposal = proposedBefore;   // a fix it proposed still stands
             if (pairing && (scope === 'pair' || scope === 'ask')) pairSaid = out.reason ?? out.result?.steps.at(-1)?.say ?? '';
             if (out.quiet) {
@@ -1476,6 +1500,7 @@ export function setupCodePractice(): void {
         } finally {
             if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked && own ? `${own}` : asked ?? ''}\nYou: ${turnWords.join(' ')}`);
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
+            if (compareNext && key === blockKey) { void compare(false);return; }
             if (ended && pairing && key === blockKey) { leavePointing(pointed, leaveOn);trimPairTail();fixProposed = proposal; }
             // In a quiz, a judged answer leads to the next question; pairing, a finished line to the next line.
             if (ended && nextAfter) nextInSeries();
@@ -1707,7 +1732,7 @@ export function setupCodePractice(): void {
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
         stopAssist(true);quiz = null;series = null;pairing = false;clearTimeout(pairIdle);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
-        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();closeCompare();turns = [];input.focus();
+        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();closeCompare(false);turns = [];input.focus();
         if (hintsOn()) void review(false);
     });
     // The editor's font size, one for each mode: A− and A+ on its header, the size between them back to the default.

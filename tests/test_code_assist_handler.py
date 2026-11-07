@@ -356,3 +356,10 @@ def test_the_talk_so_far_reaches_the_model():
     assert h.render_inputs(_req(recent_turns=" Learner: why?\nYou: Because. "))["recent_turns"] == "Learner: why?\nYou: Because."
     assert h.render_inputs(_req())["recent_turns"] == ""
 
+
+
+def test_a_request_for_a_comparison_goes_to_the_clients_compare(monkeypatch):
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(compare=True, closing="words"))
+    assert h.code_assist(_req(scope="ask", request="compare it with the original")) == {"compare": True}
+    assert h.code_assist(_req(scope="pair", request="I just finished line 2: `# compare it`")) == {"compare": True}
+    assert "compare" not in h.code_assist(_req(scope="next")), "only the learner's own words can ask for it"

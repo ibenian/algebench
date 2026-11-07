@@ -2,7 +2,7 @@
 
 Returns ``{"result": {plan, steps: [{say, code, explain}], closing}}``, or ``{"reason": ...}`` when the assistant
 failed or has only words; pairing's last word adds ``"complete": true`` when the learner's code is done and right,
-and a pairing turn with nothing to say at its hint level is ``{"quiet": true}``. Each step's ``code`` is the whole editor after it; the client types the difference, so a step may add,
+a pairing turn with nothing to say at its hint level is ``{"quiet": true}``, and a request for a comparison is ``{"compare": true}``, for the client's Compare. Each step's ``code`` is the whole editor after it; the client types the difference, so a step may add,
 change or remove lines anywhere.
 """
 from __future__ import annotations
@@ -161,6 +161,8 @@ def code_assist(req: CodeAssistRequest) -> dict:
     out = assist_code(req.scope, editor_text=req.typed, canvas=req.canvas, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
+    if out.compare and req.scope in ("ask", "pair"):
+        return {"compare": True}   # the client runs its Compare
     if out.show and req.present:
         # Shown on the view by the chat, not typed here: what was said, and the request for it.
         return {"reason": out.closing or SHOWING, "show": out.show}

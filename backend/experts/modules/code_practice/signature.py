@@ -141,6 +141,10 @@ class CodePracticeSig(dspy.Signature):
              "markdown, code in backticks; empty when there are no notes")
     line_notes: list[LineNote] = dspy.OutputField(
         desc="remarks on specific typed lines that are wrong, as a JSON list; [] when none are")
+    compare: bool = dspy.OutputField(
+        desc="true when a new note asks to see or go through how their code differs from the reference (a comparison, a diff, "
+             "'how close am I to the original?'): the editor has its own Compare for that, and it opens instead of this "
+             "review. False for everything else, a question about one line included")
     show: str = dspy.OutputField(
         desc="with the presenter on, and only for a real conceptual gap: a request in English to the AI chat "
              "to explain a concept by showing it on the scene or the scratchpad; empty almost always")

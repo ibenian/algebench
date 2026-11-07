@@ -151,6 +151,8 @@ def code_practice(req: CodePracticeRequest) -> dict:
     review = review_code(**inputs)
     if review.error:
         return {"reason": review.error}
+    if review.compare and inputs["notes"]:
+        return {"compare": True}   # the client runs its Compare
     if not inputs["notes"]:
         # No new note: comments already answered are not answered again.
         review.reply = ""
@@ -178,4 +180,4 @@ def code_practice(req: CodePracticeRequest) -> dict:
         review.direction = ""
     log.info("%s %s: %d%% (%s), %d note(s)", LOG_TAG, req.section.title if req.section else "whole block",
              review.score, review.verdict, len(review.line_notes))
-    return {"result": review.model_dump(exclude={"error"})}
+    return {"result": review.model_dump(exclude={"error", "compare"})}

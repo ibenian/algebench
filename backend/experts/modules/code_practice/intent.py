@@ -39,6 +39,8 @@ class CodeReview(BaseModel):
     reply: str = ""
     reminder: str = ""
     show: str = ""
+    #: A new note asks for a comparison with the reference: the editor's Compare does that, not this review.
+    compare: bool = False
     line_notes: list[LineNote] = Field(default_factory=list)
     #: Set when the CALL failed, so a crash isn't shown as a review.
     error: str = ""
@@ -89,5 +91,6 @@ def review_code(**inputs) -> CodeReview:
         reply=_clean(out.reply),
         reminder=_clean(out.reminder),
         show=_request(getattr(out, "show", "")),
+        compare=getattr(out, "compare", False) is True,
         line_notes=[n for n in (out.line_notes or []) if isinstance(n, LineNote)][:MAX_NOTES],
     )

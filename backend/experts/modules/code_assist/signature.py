@@ -194,6 +194,9 @@ class CodeAssistSig(dspy.Signature):
                                         "not your reading of the request; empty for a small request")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")
     closing: str = dspy.OutputField(desc="one or two sentences handing the keyboard back")
+    compare: bool = dspy.OutputField(desc='true when `request` (while pairing, the comment line it says they just finished) asks to see or go through how the learner\'s code differs from the reference '
+                                          '(a comparison, a diff, "how close am I to the original?"): the editor has its own Compare for that, and it '
+                                          'opens instead of anything here, so give no steps. False for everything else, a question about one line included')
     show: str = dspy.OutputField(desc="with the presenter on, when the idea is to be shown on the scene or the "
                                       "scratchpad: a request in English to the lesson's AI chat to show it; else empty")
 
