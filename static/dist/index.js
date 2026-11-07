@@ -12779,9 +12779,9 @@ var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttr
 function setupPresenter() {
 	const btn = document.getElementById("presenter-toggle-btn");
 	if (!btn) return;
-	let on = false;
+	let on = true;
 	try {
-		on = localStorage.getItem(PREF_KEY) === "1";
+		on = localStorage.getItem(PREF_KEY) !== "0";
 	} catch {}
 	const paint = () => {
 		btn.setAttribute("aria-pressed", String(on));

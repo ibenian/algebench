@@ -1871,8 +1871,9 @@ export const presenterOn = () => document.getElementById('presenter-toggle-btn')
 export function setupPresenter(): void {
     const btn = document.getElementById('presenter-toggle-btn');
     if (!btn) return;
-    let on = false;
-    try { on = localStorage.getItem(PREF_KEY) === '1'; } catch { /* storage off: off */ }
+    // On by default: only turning it off is remembered.
+    let on = true;
+    try { on = localStorage.getItem(PREF_KEY) !== '0'; } catch { /* storage off: on */ }
     const paint = () => {
         btn.setAttribute('aria-pressed', String(on));btn.classList.toggle('active', on);
         btn.title = on ? 'AI presenter is on: questions about the view are answered as a walk-through with a pointer (click to turn off)'
