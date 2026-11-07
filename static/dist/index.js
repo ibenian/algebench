@@ -29199,9 +29199,9 @@ var PAD = 10;
 var CHAR = 6.4;
 /** Rows left empty between separate functions' trees. */
 var ROOT_GAP = .4;
-var SVG$1 = "http://www.w3.org/2000/svg";
+var SVG$2 = "http://www.w3.org/2000/svg";
 function svg$2(tag, attrs) {
-	const el = document.createElementNS(SVG$1, tag);
+	const el = document.createElementNS(SVG$2, tag);
 	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
 	return el;
 }
@@ -35425,7 +35425,7 @@ var INKS = /* @__PURE__ */ new Set([
 	"orange",
 	"pink"
 ]);
-var SVG = "http://www.w3.org/2000/svg";
+var SVG$1 = "http://www.w3.org/2000/svg";
 function createCodeCanvas(o) {
 	const layer = document.createElement("div");
 	layer.className = "cp-canvas";
@@ -35437,7 +35437,7 @@ function createCodeCanvas(o) {
 			return o.charWidth();
 		},
 		row(k) {
-			const row = o.paint.children[k];
+			const row = o.rowAt(k);
 			return row ? {
 				left: row.offsetLeft,
 				top: row.offsetTop,
@@ -35448,16 +35448,16 @@ function createCodeCanvas(o) {
 	const inkOf = (color) => INKS.has(color) ? `ai-ink-${color}` : "";
 	function paintMark(mark, svg, animate, strokes) {
 		const ink = inkOf(mark.color);
-		const g = document.createElementNS(SVG, "g");
+		const g = document.createElementNS(SVG$1, "g");
 		if (ink) g.classList.add(ink);
 		if (mark.fill) {
-			const f = document.createElementNS(SVG, "path");
+			const f = document.createElementNS(SVG$1, "path");
 			f.setAttribute("d", mark.fill);
 			f.classList.add("cp-canvas-fill");
 			g.append(f);
 		}
 		for (const d of mark.paths) {
-			const p = document.createElementNS(SVG, "path");
+			const p = document.createElementNS(SVG$1, "path");
 			p.setAttribute("d", d);
 			p.setAttribute("pathLength", "1");
 			if (animate) {
@@ -35487,7 +35487,7 @@ function createCodeCanvas(o) {
 		const laid = layoutMarks(marks, lines, metrics);
 		layer.style.width = `${laid.width}px`;
 		layer.style.height = `${laid.height}px`;
-		const svg = document.createElementNS(SVG, "svg");
+		const svg = document.createElementNS(SVG$1, "svg");
 		layer.append(svg);
 		let last = null;
 		const strokes = [];
@@ -35574,6 +35574,236 @@ function createCodeCanvas(o) {
 			shown = 0;
 			layer.replaceChildren();
 			layer.style.width = layer.style.height = "0";
+		}
+	};
+}
+//#endregion
+//#region src/code-compare.ts
+/**
+* Compare: the learner's code beside the original, each side in its own order, the logical parts the code_compare expert
+* matched joined across the middle. A connector that crosses another is a part out of order. The agent points with
+* the laser and draws on either side (two code canvases) as it talks. Read only.
+*/
+var SVG = "http://www.w3.org/2000/svg";
+var LABELS = {
+	exact: "exact",
+	equivalent: "logically equivalent",
+	alternate: "alternate solution",
+	incorrect: "incorrect",
+	missing: "missing",
+	extra: "extra"
+};
+function el$1(tag, cls) {
+	const e = document.createElement(tag);
+	e.className = cls;
+	return e;
+}
+/** A part as the learner and the model read it: which lines on each side. */
+function describePart(m) {
+	const run = (name, a, b) => a ? `${name} ${a === b ? `line ${a}` : `lines ${a}-${b}`}` : "";
+	return [run("original", m.original_from, m.original_to), run("your code", m.yours_from, m.yours_to)].filter(Boolean).join(", ");
+}
+function createCompareView(o) {
+	const grid = el$1("div", "cmp-grid");
+	const leftCol = el$1("div", "cmp-side"), mid = el$1("div", "cmp-mid"), rightCol = el$1("div", "cmp-side");
+	const links = document.createElementNS(SVG, "svg");
+	links.classList.add("cmp-links");
+	mid.append(links);
+	grid.append(leftCol, mid, rightCol);
+	o.host.append(grid);
+	const laser = el$1("div", "cp-ai-selection");
+	let left = [], right = [], leftRows = [], rightRows = [], matches = [];
+	let pointing = null;
+	let pinned = null;
+	const canvasOn = (side, rows) => createCodeCanvas({
+		stack: grid,
+		rowAt: (k) => rows()[k],
+		editor: o.host,
+		charWidth: o.charWidth,
+		text: () => side().join("\n"),
+		hand: o.hand
+	});
+	const leftInk = canvasOn(() => left, () => leftRows), rightInk = canvasOn(() => right, () => rightRows);
+	grid.append(laser);
+	function noteOf(m) {
+		const note = el$1("div", "cmp-note"), chip = el$1("span", "cmp-chip");
+		chip.textContent = LABELS[m.verdict] ?? m.verdict;
+		note.append(chip, document.createTextNode(m.comment ? ` ${m.comment}` : ""));
+		return note;
+	}
+	/** One side: its lines in their own order, each part's lines together with its verdict and comment under them. */
+	function paintSide(col, title, lines, part, rows, noted) {
+		const head = el$1("div", "cmp-head");
+		head.textContent = title;
+		const parts = matches.filter((m) => part(m)[0]).sort((a, b) => part(a)[0] - part(b)[0]);
+		col.replaceChildren(head, ...parts.map((m) => {
+			const group = el$1("div", `cmp-part cmp-${m.verdict}`);
+			group.dataset.match = String(matches.indexOf(m));
+			const [from, to] = part(m);
+			for (let k = from; k <= to; k++) {
+				const line = el$1("div", "cmp-line"), n = el$1("span", "cmp-n"), code = el$1("span", "cmp-code");
+				n.textContent = String(k);
+				code.textContent = lines[k - 1] || " ";
+				rows[k - 1] = code;
+				line.append(n, code);
+				group.append(line);
+				if (k === from && (noted || !m.yours_from)) {
+					const ai = el$1("button", "cmp-ask");
+					ai.type = "button";
+					ai.textContent = "✦";
+					ai.title = `Explain this difference (${describePart(m)}). ⌘-click to ask your own question`;
+					ai.setAttribute("aria-label", ai.title);
+					ai.addEventListener("click", (e) => {
+						pinned = String(matches.indexOf(m));
+						hover(pinned);
+						o.ask(m, e.metaKey || e.ctrlKey);
+					});
+					line.append(ai);
+				}
+			}
+			if (m.verdict !== "exact" || m.comment) {
+				if (noted || !m.yours_from) group.append(noteOf(m));
+			}
+			return group;
+		}));
+	}
+	/** Pointed at, a part stands out with its other side and the ribbon between them; the rest step back. */
+	function hover(match) {
+		grid.classList.toggle("cmp-hovering", match != null);
+		grid.querySelectorAll("[data-match]").forEach((e) => e.classList.toggle("cmp-hot", e.dataset.match === match));
+	}
+	grid.addEventListener("mouseover", (e) => hover(e.target.closest("[data-match]")?.dataset.match ?? pinned));
+	grid.addEventListener("mouseleave", () => hover(pinned));
+	/** A ribbon across the middle for each part both sides have: from its lines on the left to its lines on the right. */
+	function paintLinks() {
+		links.replaceChildren();
+		const width = mid.offsetWidth;
+		links.setAttribute("width", String(width));
+		links.setAttribute("height", String(grid.scrollHeight));
+		for (const m of matches) {
+			if (!m.original_from || !m.yours_from) continue;
+			const a = leftRows[m.original_from - 1], b = leftRows[m.original_to - 1], c = rightRows[m.yours_from - 1], d = rightRows[m.yours_to - 1];
+			if (!a || !b || !c || !d) continue;
+			const y0 = a.offsetTop, y1 = b.offsetTop + b.offsetHeight, y2 = c.offsetTop, y3 = d.offsetTop + d.offsetHeight, h = width / 2;
+			const path = document.createElementNS(SVG, "path");
+			path.setAttribute("d", `M0 ${y0} C${h} ${y0} ${h} ${y2} ${width} ${y2} L${width} ${y3} C${h} ${y3} ${h} ${y1} 0 ${y1} Z`);
+			path.classList.add(`cmp-${m.verdict}`);
+			path.dataset.match = String(matches.indexOf(m));
+			links.append(path);
+		}
+	}
+	function paintLaser() {
+		laser.replaceChildren();
+		if (!pointing?.line) return null;
+		const isLeft = pointing.side === "original", lines = isLeft ? left : right, rows = isLeft ? leftRows : rightRows;
+		const metrics = {
+			charWidth: o.charWidth(),
+			row(k) {
+				const r = rows[k];
+				return r ? {
+					left: r.offsetLeft,
+					top: r.offsetTop,
+					height: r.offsetHeight
+				} : null;
+			}
+		};
+		const span = resolveSpan(lines, pointing.line, 0, pointing.text);
+		const box = span && spanBox(span, lines, metrics);
+		if (!box) return null;
+		const mark = el$1("div", "cp-ai-sel");
+		Object.assign(mark.style, {
+			left: `${box.left}px`,
+			top: `${box.top}px`,
+			width: `${box.width}px`,
+			height: `${box.height}px`
+		});
+		laser.append(mark);
+		return mark;
+	}
+	async function highlight(lines, rows, language) {
+		if (!language || !lines.join("").trim()) return;
+		const res = await fetch("/api/code/highlight", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				language,
+				source: lines.join("\n")
+			})
+		}).catch(() => null);
+		const body = res?.ok ? await res.json() : null;
+		if (!Array.isArray(body?.tokens) || rows !== leftRows && rows !== rightRows) return;
+		lines.forEach((text, k) => {
+			if (text && rows[k]) paintTokens(rows[k], lineTokens(body.tokens, k + 1));
+		});
+	}
+	return {
+		show(result, original, typed, language) {
+			left = original;
+			right = typed;
+			matches = result.matches;
+			leftRows = [];
+			rightRows = [];
+			pointing = null;
+			pinned = null;
+			leftInk.clear();
+			rightInk.clear();
+			laser.replaceChildren();
+			paintSide(leftCol, "Original", left, (m) => [m.original_from, m.original_to], leftRows, false);
+			paintSide(rightCol, "Your code", right, (m) => [m.yours_from, m.yours_to], rightRows, true);
+			o.host.scrollTop = 0;
+			paintLinks();
+			highlight(left, leftRows, language);
+			highlight(right, rightRows, language);
+		},
+		/** One point of the walk: the last point's marks go, the laser on what this one is about, then what it draws. */
+		async step(step, drawing) {
+			leftInk.erase(["all"]);
+			rightInk.erase(["all"]);
+			pointing = step.point?.line ? step.point : null;
+			const mark = paintLaser();
+			if (mark) {
+				const top = mark.offsetTop;
+				if (top < o.host.scrollTop + 30 || top > o.host.scrollTop + o.host.clientHeight - 60) o.host.scrollTop = Math.max(0, top - 80);
+				const b = mark.getBoundingClientRect();
+				await o.hand.moveTo(b.left + b.width / 2, b.top + b.height);
+				o.hand.done();
+			}
+			if (!drawing) return;
+			await rightInk.play(step.draw ?? []);
+			await leftInk.play(step.draw_original ?? []);
+		},
+		/** The comparison as the model is told it, for a question about it. */
+		describe() {
+			return matches.map((m) => `${describePart(m)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ""}`).join("\n");
+		},
+		unpin() {
+			pinned = null;
+			hover(null);
+		},
+		/** The walk is over: the laser goes, the last marks stay. */
+		endPointing() {
+			pointing = null;
+			laser.replaceChildren();
+		},
+		redraw() {
+			paintLinks();
+			leftInk.redraw();
+			rightInk.redraw();
+			paintLaser();
+		},
+		setVisible(on) {
+			leftInk.setVisible(on);
+			rightInk.setVisible(on);
+		},
+		clear() {
+			leftInk.clear();
+			rightInk.clear();
+			pointing = null;
+			pinned = null;
+			laser.replaceChildren();
+			leftCol.replaceChildren();
+			rightCol.replaceChildren();
+			links.replaceChildren();
 		}
 	};
 }
@@ -36224,6 +36454,7 @@ function setupCodePractice() {
 		score = null;
 		render(false);
 		canvas.clear();
+		closeCompare();
 		const wanted = key;
 		loadAttempt(lessonId(), v.file.path, wanted).then((found) => {
 			if (key !== wanted) return;
@@ -36685,7 +36916,7 @@ function setupCodePractice() {
 	stack.append(keptSelection, aiSelection, aiCaret);
 	const canvas = createCodeCanvas({
 		stack,
-		paint,
+		rowAt: (k) => paint.children[k],
 		editor,
 		charWidth: () => {
 			measure();
@@ -36697,6 +36928,44 @@ function setupCodePractice() {
 			moveTo: pointerTo,
 			done: pointerDone
 		}
+	});
+	const compareHost = el("div", "cp-compare");
+	editor.after(compareHost);
+	const compareView = createCompareView({
+		host: compareHost,
+		charWidth: () => {
+			measure();
+			return charWidth;
+		},
+		hand: {
+			trace: pointerTrace,
+			moveTo: pointerTo,
+			done: pointerDone
+		},
+		ask: askAboutPart
+	});
+	const compareTool = tool("⇄ Compare", "");
+	compareTool.classList.add("cp-coach-only");
+	tools.insertBefore(compareTool, helpTool);
+	let comparing = false, comparedText = "", askAbout = null;
+	function paintCompareTool() {
+		compareTool.textContent = comparing ? "✕ Close compare" : "⇄ Compare";
+		compareTool.setAttribute("aria-pressed", String(comparing));
+		compareTool.title = comparing ? "Back to your code (Esc)" : "Compare your code with the original, side by side, and hear what matters. What you see of the original counts as seen";
+	}
+	paintCompareTool();
+	function closeCompare() {
+		if (!comparing) return;
+		comparing = false;
+		root.classList.remove("cp-comparing");
+		compareView.clear();
+		paintCompareTool();
+		if (assisting) stopAssist();
+		if (!root.hidden) input.focus();
+	}
+	compareTool.addEventListener("click", () => {
+		if (comparing) closeCompare();
+		else compare();
 	});
 	let turns = [], turnWords = [];
 	const recentTurns = () => turns.slice(-4).join("\n").slice(-2800);
@@ -36821,7 +37090,43 @@ function setupCodePractice() {
 		return focusSection(score, input.value.slice(0, input.selectionStart).split("\n").length - 1, sections);
 	}
 	/** What the learner can ask for: the next step, the rest of the section they are on, or the rest of the block. */
+	/** While comparing, Help me is one box: a question about what is on screen. Everything else is back at the editor. */
+	function compareAsk() {
+		const row = el("div", "cp-help");
+		const label = el("span", "cp-help-label");
+		label.textContent = askAbout ? `Ask about ${describePart(askAbout)}:` : "Ask about this comparison:";
+		const ask = el("form", "cp-help-ask");
+		const words = el("input", "cp-help-input cmp-ask-input");
+		words.type = "text";
+		words.maxLength = 600;
+		words.placeholder = "e.g. \"why does the order matter here?\"";
+		words.setAttribute("aria-label", "Your question about the comparison");
+		const send = el("button", "cp-help-send");
+		send.type = "submit";
+		send.textContent = "➤";
+		send.title = "Ask (Enter)";
+		ask.append(words, send);
+		ask.addEventListener("submit", (e) => {
+			e.preventDefault();
+			if (words.value.trim()) askCompare(words.value.trim());
+		});
+		row.append(label, ask);
+		return row;
+	}
+	/** The AI button on a part: the expert explains what it found there; with Cmd/Ctrl, the learner's own question. */
+	function askAboutPart(m, ownWords) {
+		if (assisting) return;
+		askAbout = m;
+		if (!ownWords) {
+			askCompare("Explain this difference.");
+			return;
+		}
+		const msg = report.lastElementChild;
+		if (msg) offerHelp(msg);
+		report.querySelector(".cmp-ask-input")?.focus();
+	}
 	function helpChoices() {
+		if (comparing) return compareAsk();
 		const row = el("div", "cp-help");
 		const label = el("span", "cp-help-label");
 		label.textContent = "Help me:";
@@ -37113,8 +37418,135 @@ function setupCodePractice() {
 		canvas.erase(step.erase_marks ?? []);
 		return canvas.play(step.draw ?? []);
 	};
+	/** A turn in Compare: the keyboard held read only while `work` talks; whatever comes of it, handed back after. */
+	async function compareTurn(asked, work) {
+		if (!current || !score) return;
+		pairing = false;
+		clearTimeout(pairIdle);
+		series = null;
+		quiz?.card.querySelector(".cp-quiz-controls")?.remove();
+		quiz = null;
+		fixProposed = "";
+		const run = ++assistSeq, blockKey = key;
+		assisting = run;
+		clearTimeout(idle);
+		reviewSeq++;
+		if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+		report.querySelectorAll(".cp-help").forEach((h) => h.remove());
+		if (report.hidden) foldReport(false);
+		message("user", Object.assign(el("div", ""), { textContent: asked }));
+		root.classList.add("cp-assisting");
+		input.readOnly = true;
+		takeBack.hidden = false;
+		helpTool.hidden = true;
+		reportSummary.textContent = "comparing…";
+		const exactBefore = new Set(score.lines.filter((l) => l.similarity === 1).map((l) => l.line));
+		const assistedBefore = new Set(attempt.assisted);
+		const waiting = message("assistant", el("div", "chat-loading"));
+		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
+		turnWords = [];
+		let ended = false;
+		const bubble = (cls) => {
+			waiting.remove();
+			return message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
+		};
+		try {
+			await work(run, bubble);
+			ended = true;
+		} catch (e) {
+			waiting.remove();
+			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
+		} finally {
+			waiting.remove();
+			askAbout = null;
+			compareView.unpin();
+			if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked}\nYou: ${turnWords.join(" ")}`);
+			handBack(run, blockKey, exactBefore, assistedBefore, ended);
+		}
+	}
+	const walk = async (steps, run, bubble) => {
+		for (const step of steps) await Promise.all([say(step.say, bubble("cp-assist-step"), run), compareView.step(step, canvasOn())]);
+		compareView.endPointing();
+	};
+	/** Compare takes the turn: the original opens beside their code, read only, and the agent walks through what matters. */
+	async function compare() {
+		if (!current || !score || assisting) return;
+		setFocus(true);
+		const typed = input.value.trimEnd();
+		if (!typed.trim()) {
+			offerHelp(message("assistant", Object.assign(el("div", ""), { textContent: "Type some code first, then I can compare it with the original." })));
+			return;
+		}
+		await compareTurn("Compare my code with the original.", async (run, bubble) => {
+			const out = await invokeExpert("code_compare", {
+				language: current.file.language ?? "",
+				expected: block,
+				typed,
+				recent_turns: recentTurns(),
+				canvas: canvasOn()
+			});
+			if (assisting !== run) throw new Stopped();
+			if (!out.result) throw new Error(out.reason ?? "No comparison came back.");
+			const reference = block.split("\n"), start = current.from;
+			const seen = score.lines.filter((l) => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? "")).map((l) => l.line);
+			attempt.peeked = [.../* @__PURE__ */ new Set([...attempt.peeked, ...seen])];
+			persist();
+			render(false);
+			comparing = true;
+			comparedText = typed;
+			root.classList.add("cp-comparing");
+			paintCompareTool();
+			compareView.show(out.result, reference, typed.split("\n"), current.file.language ?? "");
+			compareView.setVisible(canvasOn());
+			reportSummary.textContent = "✦ comparing with the original";
+			const opening = bubble("cp-assist-plan");
+			if (out.result.same_behaviour) {
+				opening.closest(".chat-msg")?.classList.add("cp-msg-perfect");
+				const badge = el("span", "cp-verdict cp-verdict-correct");
+				badge.textContent = "✓ Same behaviour";
+				opening.append(badge, el("div", ""));
+			}
+			await say(out.result.summary, opening.lastElementChild ?? opening, run);
+			await walk(out.result.steps, run, bubble);
+			if (out.result.debrief?.length) {
+				const body = bubble("cp-assist-step cmp-debrief");
+				const head = el("div", "cp-assist-head");
+				head.textContent = "Debrief";
+				body.append(head);
+				for (const point of out.result.debrief) {
+					const line = el("div", "cp-assist-say");
+					body.append(line);
+					await say(point, line, run);
+				}
+			}
+			await say(out.result.closing || "Over to you.", bubble("cp-assist-close"), run);
+		});
+	}
+	/** A question about the comparison on screen: answered there, pointing and drawing, with the split left open. */
+	async function askCompare(question) {
+		if (!current || !score || assisting || !comparing) return;
+		const about = askAbout;
+		await compareTurn(about ? `About ${describePart(about)}: ${question}` : question, async (run, bubble) => {
+			const out = await invokeExpert("code_compare", {
+				language: current.file.language ?? "",
+				expected: block,
+				typed: comparedText,
+				recent_turns: recentTurns(),
+				canvas: canvasOn(),
+				question,
+				comparison: compareView.describe().slice(0, 8e3),
+				about: about ? `${describePart(about)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ""}`.slice(0, 600) : ""
+			});
+			if (assisting !== run) throw new Stopped();
+			if (!out.result) throw new Error(out.reason ?? "No answer came back.");
+			reportSummary.textContent = "✦ comparing with the original";
+			await walk(out.result.steps, run, bubble);
+			await say(out.result.closing, bubble("cp-assist-close"), run);
+		});
+	}
 	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
+		closeCompare();
 		if (scope === "grade" && !quiz) return;
 		const pairStart = scope === "pairing", userCaret = input.selectionStart;
 		userCaretAt = userCaret;
@@ -37763,6 +38195,7 @@ function setupCodePractice() {
 		persist();
 		render(false);
 		canvas.clear();
+		closeCompare();
 		turns = [];
 		input.focus();
 		if (hintsOn()) review(false);
@@ -37779,6 +38212,7 @@ function setupCodePractice() {
 		fontUp.disabled = fontSize() >= MAX_FONT;
 		charWidth = 0;
 		redrawMarks();
+		if (comparing) compareView.redraw();
 	}
 	function setFont(size) {
 		const next = size === void 0 ? void 0 : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
@@ -37801,6 +38235,7 @@ function setupCodePractice() {
 	}
 	setFocus = (on) => {
 		if (on === focused) return;
+		if (!on) closeCompare();
 		focused = on;
 		if (on && !root.classList.contains("open")) flipOpen();
 		root.classList.toggle("cp-focus", on);
@@ -37833,6 +38268,7 @@ function setupCodePractice() {
 			present.title = presenterSwitch.title;
 			present.setAttribute("aria-label", presenterSwitch.getAttribute("aria-label") ?? "AI presenter");
 			canvas.setVisible(canvasOn());
+			compareView.setVisible(canvasOn());
 		};
 		present.addEventListener("click", () => presenterSwitch.click());
 		new MutationObserver(mirror).observe(presenterSwitch, {
@@ -37847,6 +38283,12 @@ function setupCodePractice() {
 		e.stopPropagation();
 		setFocus(!focused);
 	}, true);
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && comparing && !e.defaultPrevented) {
+			e.preventDefault();
+			closeCompare();
+		}
+	});
 	document.addEventListener("keydown", (e) => {
 		if (e.key === "Escape" && focused && !e.defaultPrevented) setFocus(false);
 	});

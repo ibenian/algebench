@@ -29,12 +29,12 @@ export interface CodeCanvas {
 /** The hand that draws: the page's pointer, given by the caller, so this layer knows nothing of the 3D view. */
 export interface CanvasHand { trace(path: SVGPathElement, live: () => boolean): Promise<void>; moveTo(x: number, y: number): Promise<void>; done(): void }
 
-export function createCodeCanvas(o: {stack: HTMLElement; paint: HTMLElement; editor: HTMLElement; charWidth: () => number; text: () => string; hand: CanvasHand}): CodeCanvas {
+export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) => HTMLElement | undefined; editor: HTMLElement; charWidth: () => number; text: () => string; hand: CanvasHand}): CodeCanvas {
     const layer = document.createElement('div');layer.className = 'cp-canvas';layer.setAttribute('aria-hidden', 'true');
     o.stack.append(layer);
     let marks: CodeMark[] = [], lines: string[] = [], shown = 0, run = 0, named = 0;
     const metrics = {get charWidth() { return o.charWidth(); }, row(k: number) {
-        const row = o.paint.children[k] as HTMLElement | undefined;
+        const row = o.rowAt(k);
         return row ? {left: row.offsetLeft, top: row.offsetTop, height: row.offsetHeight} : null;
     }};
     const inkOf = (color: string) => INKS.has(color) ? `ai-ink-${color}` : '';

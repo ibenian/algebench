@@ -6236,6 +6236,34 @@ body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context ho
 .cp-focus .cp-help, .cp-focus .cp-quiz-controls { zoom: .5; }   /* a message's buttons: back to their own size */
 /* The code canvas (code-canvas.ts): the agent's marks over the code, in focus mode. It scrolls with the code and takes
    no clicks, so the editor under it stays the learner's. */
+/* Compare (src/code-compare.ts): the original beside the learner's code, its logical parts joined across the middle. */
+.cp-compare { display: none; flex: 1 1 80px; min-height: 80px; overflow: auto; border: 1px solid var(--ai-tone, var(--border-color)); border-radius: 6px;
+    background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: var(--cp-font, 12px)/1.9 ui-monospace, monospace; }
+.code-practice.cp-comparing .cp-compare { display: block; }
+.code-practice.cp-comparing .cp-editor, .code-practice.cp-comparing .cp-sections { display: none; }
+.cmp-grid { position: relative; display: grid; grid-template-columns: minmax(max-content, 1fr) 72px minmax(max-content, 1fr); min-width: 100%; width: max-content; padding-bottom: 12px; }
+.cmp-mid { position: relative; }
+.cmp-links { position: absolute; left: 0; top: 0; overflow: visible; }
+.cmp-links path { stroke-width: 1; fill: color-mix(in srgb, var(--cmp-tone) 22%, transparent); stroke: color-mix(in srgb, var(--cmp-tone) 70%, transparent); }
+.cmp-head { position: sticky; top: 0; z-index: 3; padding: 2px 10px; font: 600 12px/1.8 var(--ui-font, system-ui, sans-serif); text-transform: uppercase; letter-spacing: .06em; color: var(--muted-color); background: var(--panel-bg); border-bottom: 1px solid var(--border-color); }
+.cmp-exact { --cmp-tone: #4fb39a; } .cmp-equivalent { --cmp-tone: #5ba4e6; } .cmp-alternate { --cmp-tone: #a78bfa; }
+.cmp-incorrect { --cmp-tone: #e0645c; } .cmp-missing { --cmp-tone: #e3b04f; } .cmp-extra { --cmp-tone: #d36ba6; }
+.cmp-part { border-left: 3px solid var(--cmp-tone); margin: 3px 0; background: color-mix(in srgb, var(--cmp-tone) 9%, transparent); }
+.cmp-part.cmp-exact { background: none; }
+.cmp-line { display: flex; white-space: pre; }
+.cmp-n { flex: none; width: 2.4em; padding-right: .7em; text-align: right; opacity: .45; }
+.cmp-code { flex: none; }
+.cmp-note { width: 0; min-width: 100%; box-sizing: border-box; padding: 2px 10px 5px calc(2.4em + 0px); font: 13px/1.45 var(--ui-font, system-ui, sans-serif); color: var(--text-color); white-space: normal; }
+.cmp-chip { margin-right: 4px; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--cmp-tone); background: color-mix(in srgb, var(--cmp-tone) 18%, transparent); }
+.cmp-part, .cmp-links path { transition: opacity .15s, background-color .15s, fill .15s; }
+.cmp-hovering .cmp-part:not(.cmp-hot), .cmp-hovering .cmp-links path:not(.cmp-hot) { opacity: .5; }
+.cmp-part.cmp-hot, .cmp-part.cmp-exact.cmp-hot { background: color-mix(in srgb, var(--cmp-tone) 24%, transparent); }
+.cmp-links path.cmp-hot { fill: color-mix(in srgb, var(--cmp-tone) 45%, transparent); stroke: var(--cmp-tone); }
+.cmp-line { align-items: center; }
+.cmp-ask { flex: none; margin-left: .6em; padding: 0 .4em; line-height: 1.4; font-size: .7em; border: 1px solid color-mix(in srgb, #a78bfa 60%, transparent); border-radius: 6px; background: color-mix(in srgb, #a78bfa 16%, transparent); color: #c4b5fd; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.cmp-part.cmp-hot .cmp-ask, .cmp-ask:focus-visible { opacity: 1; }
+.cmp-ask:hover { background: color-mix(in srgb, #a78bfa 34%, transparent); }
+.cp-focus .cmp-note { font-size: 18px; } .cp-focus .cmp-chip { font-size: 14px; }
 .cp-canvas { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; --ink: #7dffcf; }
 .cp-canvas[hidden] { display: none; }
 .cp-canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }

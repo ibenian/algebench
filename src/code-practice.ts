@@ -23,6 +23,8 @@ import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
 import { editsBetween, keystrokes, backspaces, keyDelay, findSelection } from '/code-assist-play.js';
 import { createCodeCanvas } from '/code-canvas.js';
+import { createCompareView, describePart } from '/code-compare.js';
+import type { CompareMatch, CompareResult } from '/code-compare.js';
 import type { CodeMark } from '/code-canvas-core.js';
 
 /** The coach looks again after this long without typing. */
@@ -460,7 +462,7 @@ export function setupCodePractice(): void {
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
-        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();
+        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();closeCompare();
         const wanted = key;
         void loadAttempt(lessonId(), v.file.path, wanted).then(found => {
             if (key !== wanted) return;
@@ -829,8 +831,28 @@ export function setupCodePractice(): void {
     const keptSelection = el('div', 'cp-ai-selection cp-kept-selection');
     stack.append(keptSelection, aiSelection, aiCaret);
     // The agent's whiteboard over the code: in focus mode with the presenter on, on its turn (code-canvas.ts).
-    const canvas = createCodeCanvas({stack, paint, editor, charWidth: () => { measure();return charWidth; }, text: () => input.value,
+    const canvas = createCodeCanvas({stack, rowAt: k => paint.children[k] as HTMLElement | undefined, editor, charWidth: () => { measure();return charWidth; }, text: () => input.value,
         hand: {trace: pointerTrace, moveTo: pointerTo, done: pointerDone}});
+    // Compare: the original beside their code, in the editor's place, while the agent walks through the difference.
+    const compareHost = el('div', 'cp-compare');
+    editor.after(compareHost);
+    const compareView = createCompareView({host: compareHost, charWidth: () => { measure();return charWidth; }, hand: {trace: pointerTrace, moveTo: pointerTo, done: pointerDone}, ask: askAboutPart});
+    const compareTool = tool('⇄ Compare', '');
+    compareTool.classList.add('cp-coach-only');
+    tools.insertBefore(compareTool, helpTool);
+    let comparing = false, comparedText = '', askAbout: CompareMatch | null = null;
+    function paintCompareTool() {
+        compareTool.textContent = comparing ? '✕ Close compare' : '⇄ Compare';compareTool.setAttribute('aria-pressed', String(comparing));
+        compareTool.title = comparing ? 'Back to your code (Esc)' : 'Compare your code with the original, side by side, and hear what matters. What you see of the original counts as seen';
+    }
+    paintCompareTool();
+    function closeCompare() {
+        if (!comparing) return;
+        comparing = false;root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
+        if (assisting) stopAssist();
+        if (!root.hidden) input.focus();
+    }
+    compareTool.addEventListener('click', () => { if (comparing) closeCompare();else void compare(); });
     // The talk on this block so far, for words that refer back to it (code_assist's recent_turns).
     let turns: string[] = [], turnWords: string[] = [];
     const recentTurns = () => turns.slice(-4).join('\n').slice(-2800);
@@ -935,7 +957,30 @@ export function setupCodePractice(): void {
         return focusSection(score, input.value.slice(0, input.selectionStart).split('\n').length - 1, sections);
     }
     /** What the learner can ask for: the next step, the rest of the section they are on, or the rest of the block. */
+    /** While comparing, Help me is one box: a question about what is on screen. Everything else is back at the editor. */
+    function compareAsk(): HTMLElement {
+        const row = el('div', 'cp-help');
+        const label = el('span', 'cp-help-label');label.textContent = askAbout ? `Ask about ${describePart(askAbout)}:` : 'Ask about this comparison:';
+        const ask = el('form', 'cp-help-ask');
+        const words = el('input', 'cp-help-input cmp-ask-input');words.type = 'text';words.maxLength = 600;
+        words.placeholder = 'e.g. "why does the order matter here?"';words.setAttribute('aria-label', 'Your question about the comparison');
+        const send = el('button', 'cp-help-send');send.type = 'submit';send.textContent = '➤';send.title = 'Ask (Enter)';
+        ask.append(words, send);
+        ask.addEventListener('submit', e => { e.preventDefault();if (words.value.trim()) void askCompare(words.value.trim()); });
+        row.append(label, ask);
+        return row;
+    }
+    /** The AI button on a part: the expert explains what it found there; with Cmd/Ctrl, the learner's own question. */
+    function askAboutPart(m: CompareMatch, ownWords: boolean) {
+        if (assisting) return;
+        askAbout = m;
+        if (!ownWords) { void askCompare('Explain this difference.');return; }
+        const msg = report.lastElementChild as HTMLElement | null;
+        if (msg) offerHelp(msg);
+        report.querySelector<HTMLInputElement>('.cmp-ask-input')?.focus();
+    }
     function helpChoices(): HTMLElement {
+        if (comparing) return compareAsk();
         const row = el('div', 'cp-help');
         const label = el('span', 'cp-help-label');label.textContent = 'Help me:';
         // In their own words: sent alone (Enter), it is the whole request; with a button, it says how to go about it.
@@ -1145,8 +1190,93 @@ export function setupCodePractice(): void {
         canvas.erase(step.erase_marks ?? []);
         return canvas.play(step.draw ?? []);
     };
+    /** A turn in Compare: the keyboard held read only while `work` talks; whatever comes of it, handed back after. */
+    async function compareTurn(asked: string, work: (run: number, bubble: (cls: string) => HTMLElement) => Promise<void>) {
+        if (!current || !score) return;
+        pairing = false;clearTimeout(pairIdle);series = null;quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null;fixProposed = '';
+        const run = ++assistSeq, blockKey = key;assisting = run;
+        clearTimeout(idle);reviewSeq++;
+        if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+        report.querySelectorAll('.cp-help').forEach(h => h.remove());
+        if (report.hidden) foldReport(false);
+        message('user', Object.assign(el('div', ''), {textContent: asked}));
+        root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
+        reportSummary.textContent = 'comparing…';
+        const exactBefore = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line));
+        const assistedBefore = new Set(attempt.assisted);
+        const waiting = message('assistant', el('div', 'chat-loading'));
+        waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
+        turnWords = [];
+        let ended = false;
+        const bubble = (cls: string) => {
+            waiting.remove();
+            return message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
+        };
+        try {
+            await work(run, bubble);
+            ended = true;
+        } catch (e) {
+            waiting.remove();
+            if (!(e instanceof Stopped) && assisting === run) message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: (e as Error).message}));
+        } finally {
+            waiting.remove();
+            askAbout = null;compareView.unpin();
+            if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked}\nYou: ${turnWords.join(' ')}`);
+            handBack(run, blockKey, exactBefore, assistedBefore, ended);
+        }
+    }
+    const walk = async (steps: CompareResult['steps'], run: number, bubble: (cls: string) => HTMLElement) => {
+        for (const step of steps) await Promise.all([say(step.say, bubble('cp-assist-step'), run), compareView.step(step, canvasOn())]);
+        compareView.endPointing();
+    };
+    /** Compare takes the turn: the original opens beside their code, read only, and the agent walks through what matters. */
+    async function compare() {
+        if (!current || !score || assisting) return;
+        setFocus(true);
+        const typed = input.value.trimEnd();
+        if (!typed.trim()) { offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'Type some code first, then I can compare it with the original.'})));return; }
+        await compareTurn('Compare my code with the original.', async (run, bubble) => {
+            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed, recent_turns: recentTurns(), canvas: canvasOn()}) as {result?: CompareResult; reason?: string};
+            if (assisting !== run) throw new Stopped();
+            if (!out.result) throw new Error(out.reason ?? 'No comparison came back.');
+            // The original is on screen from here: what isn't right yet is seen, so correcting it scores as seen.
+            const reference = block.split('\n'), start = current!.from;
+            const seen = score!.lines.filter(l => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? '')).map(l => l.line);
+            attempt.peeked = [...new Set([...attempt.peeked, ...seen])];persist();render(false);
+            comparing = true;comparedText = typed;root.classList.add('cp-comparing');paintCompareTool();
+            compareView.show(out.result, reference, typed.split('\n'), current!.file.language ?? '');
+            compareView.setVisible(canvasOn());
+            reportSummary.textContent = '✦ comparing with the original';
+            const opening = bubble('cp-assist-plan');
+            if (out.result.same_behaviour) { opening.closest('.chat-msg')?.classList.add('cp-msg-perfect');const badge = el('span', 'cp-verdict cp-verdict-correct');badge.textContent = '✓ Same behaviour';opening.append(badge, el('div', '')); }
+            await say(out.result.summary, (opening.lastElementChild as HTMLElement | null) ?? opening, run);
+            await walk(out.result.steps, run, bubble);
+            // What to take away from it, once the walk is done.
+            if (out.result.debrief?.length) {
+                const body = bubble('cp-assist-step cmp-debrief');
+                const head = el('div', 'cp-assist-head');head.textContent = 'Debrief';body.append(head);
+                for (const point of out.result.debrief) { const line = el('div', 'cp-assist-say');body.append(line);await say(point, line, run); }
+            }
+            await say(out.result.closing || 'Over to you.', bubble('cp-assist-close'), run);
+        });
+    }
+    /** A question about the comparison on screen: answered there, pointing and drawing, with the split left open. */
+    async function askCompare(question: string) {
+        if (!current || !score || assisting || !comparing) return;
+        const about = askAbout;
+        await compareTurn(about ? `About ${describePart(about)}: ${question}` : question, async (run, bubble) => {
+            const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed: comparedText, recent_turns: recentTurns(), canvas: canvasOn(), question,
+                comparison: compareView.describe().slice(0, 8000), about: about ? `${describePart(about)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ''}`.slice(0, 600) : ''}) as {result?: CompareResult; reason?: string};
+            if (assisting !== run) throw new Stopped();
+            if (!out.result) throw new Error(out.reason ?? 'No answer came back.');
+            reportSummary.textContent = '✦ comparing with the original';
+            await walk(out.result.steps, run, bubble);
+            await say(out.result.closing, bubble('cp-assist-close'), run);
+        });
+    }
     async function assist(scope: AssistScope, request = '') {
         if (!current || !score || assisting) return;
+        closeCompare();
         if (scope === 'grade' && !quiz) return;
         // Quiz me starts a series; any other choice ends one (the series' own next question and its grading go on).
         // Pair with me starts pairing; a question, a hint, a fix or finishing a line keep it; anything else ends it.
@@ -1577,7 +1707,7 @@ export function setupCodePractice(): void {
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
         stopAssist(true);quiz = null;series = null;pairing = false;clearTimeout(pairIdle);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
-        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();turns = [];input.focus();
+        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();closeCompare();turns = [];input.focus();
         if (hintsOn()) void review(false);
     });
     // The editor's font size, one for each mode: A− and A+ on its header, the size between them back to the default.
@@ -1591,6 +1721,7 @@ export function setupCodePractice(): void {
         fontDown.disabled = fontSize() <= MIN_FONT;fontUp.disabled = fontSize() >= MAX_FONT;
         charWidth = 0;   // measured again for what is drawn over the code
         redrawMarks();
+        if (comparing) compareView.redraw();
     }
     function setFont(size: number | undefined) {
         const next = size === undefined ? undefined : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
@@ -1612,6 +1743,7 @@ export function setupCodePractice(): void {
     }
     setFocus = (on: boolean) => {
         if (on === focused) return;
+        if (!on) closeCompare();
         focused = on;
         // Without the folded panel's body there would be nothing to focus on: entering opens it, and it stays open.
         if (on && !root.classList.contains('open')) flipOpen();
@@ -1635,7 +1767,7 @@ export function setupCodePractice(): void {
             const on = presenterOn();
             present.setAttribute('aria-pressed', String(on));present.classList.toggle('active', on);
             present.title = presenterSwitch.title;present.setAttribute('aria-label', presenterSwitch.getAttribute('aria-label') ?? 'AI presenter');
-            canvas.setVisible(canvasOn());
+            canvas.setVisible(canvasOn());compareView.setVisible(canvasOn());
         };
         present.addEventListener('click', () => presenterSwitch.click());
         new MutationObserver(mirror).observe(presenterSwitch, {attributes: true, attributeFilter: ['aria-pressed', 'title']});
@@ -1646,7 +1778,8 @@ export function setupCodePractice(): void {
         if (e.key !== 'Enter' || !e.shiftKey || !(e.metaKey || e.ctrlKey) || (root.hidden && !focused)) return;
         e.preventDefault();e.stopPropagation();setFocus(!focused);
     }, true);
-    // Registered after the assistant's Esc, which marks the key as used.
+    // Registered after the assistant's Esc, which marks the key as used. Compare closes before focus mode does.
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && comparing && !e.defaultPrevented) { e.preventDefault();closeCompare(); } });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && focused && !e.defaultPrevented) setFocus(false); });
     paintFocus();paintFont();canvas.setVisible(canvasOn());
     window.addEventListener('algebench:codeview', retarget);
