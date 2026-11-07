@@ -1214,6 +1214,34 @@ ${MD_TAIL}
     pattern({
         id: 'dp-2d', title: 'Fill a table (2D dynamic programming)', file: 'lcs.py', source: LCS_SOURCE,
         input: { a: [...a], b: [...b] }, trace: lcsTrace(a, b),
+        sections: [
+            section(LCS_SOURCE, 'lcs-table', 'Make a table of every pair of prefixes', 'def lcs(', 'dp = [[0] * (len(a) + 1)', {
+                hint: 'One cell for each prefix of b with each prefix of a. An empty prefix shares nothing, so the first row and column stay 0.' }),
+            section(LCS_SOURCE, 'lcs-fill', 'Fill it row by row', 'for i in range(1, len(b) + 1)', 'for j in range(1, len(a) + 1)', {
+                hint: 'In this order, the cells above and to the left are always ready before the cell that needs them.' }),
+            section(LCS_SOURCE, 'lcs-match', 'Same letter: extend the answer before both', 'if b[i - 1] == a[j - 1]', 'dp[i][j] = dp[i - 1][j - 1] + 1', {
+                hint: 'When the last letters agree, they can end the common subsequence, so the rest comes from both prefixes without them.',
+                prompt: 'Explain why a match reads the diagonal cell and adds one, and why it is safe to use the matching letters right away.' }),
+            section(LCS_SOURCE, 'lcs-miss', 'Different letters: drop one, keep the better', 'else:', 'dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])', {
+                hint: 'The two last letters can\'t both end the subsequence, so at least one goes. Try each and keep the longer result.' }),
+            section(LCS_SOURCE, 'lcs-answer', 'The corner holds the answer', 'return dp[-1][-1]', null, {
+                hint: 'The last cell compares all of a with all of b.' }),
+        ],
+        annotations: [
+            doc('lcs', '`lcs(a, b)` returns the length of the longest common subsequence of `a` and `b`: letters in the same order, not necessarily adjacent. O(len(a) · len(b)) time and space.'),
+            doc('a', 'The first string. Its prefixes run across the table\'s columns.'),
+            doc('b', 'The second string. Its prefixes run down the table\'s rows.'),
+            doc('dp', '`dp[i][j]` is the length of the longest common subsequence of the first `i` letters of `b` and the first `j` letters of `a`.'),
+            doc('i', 'How many letters of `b` are in play: the table\'s row.'),
+            doc('j', 'How many letters of `a` are in play: the table\'s column.'),
+            docExpr(LCS_SOURCE, 'dp = [[0] * (len(a) + 1)', 'for _ in range(len(b) + 1)', 'A new list for each row, so writing one row leaves the others alone. `[[0] * n] * m` would make every row the same list.'),
+            docExpr(LCS_SOURCE, 'if b[i - 1] == a[j - 1]', 'b[i - 1] == a[j - 1]', 'The last letters of the two prefixes: `i` and `j` count letters, so the last ones sit at index `i - 1` and `j - 1`.'),
+            docExpr(LCS_SOURCE, 'dp[i][j] = dp[i - 1][j - 1] + 1', 'dp[i - 1][j - 1]', 'The diagonal: both prefixes without their matching last letter. That pair adds 1 to it.'),
+            docExpr(LCS_SOURCE, 'dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])', 'dp[i - 1][j]', 'The cell above: drop the last letter of `b`.'),
+            docExpr(LCS_SOURCE, 'dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])', 'dp[i][j - 1]', 'The cell to the left: drop the last letter of `a`.'),
+            docExpr(LCS_SOURCE, 'return dp[-1][-1]', 'dp[-1][-1]', 'The bottom-right corner: all of `b` against all of `a`.'),
+            docBlock(LCS_SOURCE, 'for i in range(1, len(b) + 1)', 'dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])', 'Each of the `len(a) · len(b)` cells is filled once from three neighbours: O(len(a) · len(b)), not the exponential number of subsequences.'),
+        ],
         markdown: `# Fill a table (2D dynamic programming)
 
 **Signal:** two sequences to align or compare (common subsequence, edit distance), or a grid walked right and down. The state needs two indices.
