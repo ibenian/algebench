@@ -1324,6 +1324,15 @@ def grid_scene(header):
             label('old', f"concat('old = ', {b('old')})", None, LB('old = image[sr][sc]'), 'grid-graphs'),
             {**label('check', b('checkText'), None, LB('if 0 <= nr < rows'), 'grid-graphs'), 'highlightExpr': f"{b('line')} == {LB('if 0 <= nr < rows')}"}]],
     ]
+    # Row numbers down the left, column numbers along the top: cells are named (r, c) in the code.
+    marks = [*[{'id': f'ff-row-{r}', 'type': 'text', 'text': str(r), 'position': [round(-5.6 - 0.8 * cell, 3), round(3.5 - r * cell, 3), 0],
+                'color': '#8aa0b8', 'fontSize': 12} for r in range(rows)],
+             *[{'id': f'ff-col-{k}', 'type': 'text', 'text': str(k), 'position': [round(-5.6 + k * cell, 3), round(3.5 + 0.75 * cell, 3), 0],
+                'color': '#8aa0b8', 'fontSize': 12} for k in range(cols)],
+             {'id': 'ff-row-head', 'type': 'text', 'text': 'r \\ c', 'position': [round(-5.6 - 0.8 * cell, 3), round(3.5 + 0.75 * cell, 3), 0],
+              'color': '#6b7a8c', 'fontSize': 10}]
+    elements += marks
+    bfs_elements += marks
     return run_scene('grid-graphs', 'A grid is a graph (islands, flood fill)', header, f"""**Signal:** a 2D grid of cells, with moves up, down, left and right: flood fill, islands, mazes, rotting oranges.
 
 A grid **is** a graph, just not written as one: every cell is a node, and two cells are joined when they touch side by side. There is no adjacency list to build. The neighbours of `(r, c)` come from four offsets, `(1, 0)`, `(-1, 0)`, `(0, 1)` and `(0, -1)`, and a test: inside the grid, and the right kind of cell. Every traversal from the earlier scenes then works unchanged.

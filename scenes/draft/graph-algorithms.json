@@ -14651,6 +14651,110 @@
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "grid-graphs", "line": 10},
               "highlightExpr": "dataTable('trace', frame, 'line') == 10"
+            },
+            {
+              "id": "ff-row-0",
+              "type": "text",
+              "text": "0",
+              "position": [-6.4, 3.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-1",
+              "type": "text",
+              "text": "1",
+              "position": [-6.4, 2.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-2",
+              "type": "text",
+              "text": "2",
+              "position": [-6.4, 1.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-3",
+              "type": "text",
+              "text": "3",
+              "position": [-6.4, 0.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-4",
+              "type": "text",
+              "text": "4",
+              "position": [-6.4, -0.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-5",
+              "type": "text",
+              "text": "5",
+              "position": [-6.4, -1.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-0",
+              "type": "text",
+              "text": "0",
+              "position": [-5.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-1",
+              "type": "text",
+              "text": "1",
+              "position": [-4.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-2",
+              "type": "text",
+              "text": "2",
+              "position": [-3.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-3",
+              "type": "text",
+              "text": "3",
+              "position": [-2.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-4",
+              "type": "text",
+              "text": "4",
+              "position": [-1.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-5",
+              "type": "text",
+              "text": "5",
+              "position": [-0.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-head",
+              "type": "text",
+              "text": "r \\ c",
+              "position": [-6.4, 4.25, 0],
+              "color": "#6b7a8c",
+              "fontSize": 10
             }
           ]
         },
@@ -14744,6 +14848,110 @@
               "textExpr": "dataTable('ff_bfs', frame, 'checkText')",
               "codeRef": {"file": "grid-graphs", "line": 30},
               "highlightExpr": "dataTable('ff_bfs', frame, 'line') == 30"
+            },
+            {
+              "id": "ff-row-0",
+              "type": "text",
+              "text": "0",
+              "position": [-6.4, 3.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-1",
+              "type": "text",
+              "text": "1",
+              "position": [-6.4, 2.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-2",
+              "type": "text",
+              "text": "2",
+              "position": [-6.4, 1.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-3",
+              "type": "text",
+              "text": "3",
+              "position": [-6.4, 0.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-4",
+              "type": "text",
+              "text": "4",
+              "position": [-6.4, -0.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-5",
+              "type": "text",
+              "text": "5",
+              "position": [-6.4, -1.5, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-0",
+              "type": "text",
+              "text": "0",
+              "position": [-5.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-1",
+              "type": "text",
+              "text": "1",
+              "position": [-4.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-2",
+              "type": "text",
+              "text": "2",
+              "position": [-3.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-3",
+              "type": "text",
+              "text": "3",
+              "position": [-2.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-4",
+              "type": "text",
+              "text": "4",
+              "position": [-1.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-col-5",
+              "type": "text",
+              "text": "5",
+              "position": [-0.6, 4.25, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ff-row-head",
+              "type": "text",
+              "text": "r \\ c",
+              "position": [-6.4, 4.25, 0],
+              "color": "#6b7a8c",
+              "fontSize": 10
             }
           ]
         }
