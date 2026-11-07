@@ -6151,7 +6151,7 @@ body:has(.push-array) #legend { display: none; }
 .cp-tool:hover { background: var(--btn-bg); border-color: color-mix(in srgb, var(--accent-color) 30%, transparent); transform: translateY(-1px); }
 .cp-speak { display: inline-grid; place-items: center; padding: 2px 6px; }
 .cp-speak[aria-pressed="true"] { color: var(--accent-color); }
-.cp-tool[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 88%, transparent); border-color: color-mix(in srgb, var(--accent-color) 36%, transparent); color: var(--text-color); }
+.cp-tool[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 88%, transparent); border-color: color-mix(in srgb, var(--accent-color) 36%, transparent); color: var(--page-bg); }   /* on-accent text */
 .cp-body { display: flex; flex-direction: column; min-height: 0; flex: 1; padding: 10px 14px 10px; gap: 8px; overflow-y: auto; position: relative; }
 .cp-sections { display: flex; flex-wrap: wrap; gap: 4px; }
 .cp-sections[hidden] { display: none; }
