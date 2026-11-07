@@ -916,7 +916,7 @@ export function setupCodePractice(): void {
     let fixProposed = '';
     /** What the assistant last said while pairing: what the answer box's words may be replying to. */
     let pairSaid = '';
-    const PAIR_IDLE_MS = 25000;
+    const PAIR_IDLE_MS = 60000;
     // Typing in the answer box counts as much as typing in the editor.
     report.addEventListener('input', () => pairWait());
     const caretLine = () => input.value.slice(0, input.selectionStart).split('\n').length - 1;
@@ -1662,9 +1662,10 @@ export function setupCodePractice(): void {
             const line = input.value.slice(start, input.selectionStart);
             const indent = /^\s*/.exec(line)![0] + (/[:{[(]\s*$/.test(line) ? INDENT : '');
             insert('\n' + indent);
-            // With Shift (or, while pairing, Cmd/Ctrl) it is only a new line: the AI doesn't take a turn.
+            // With Shift (or, while pairing, Cmd/Ctrl) it is only a new line: the AI doesn't take a turn. Shift also keeps
+            // the blank lines at the end, so the learner can leave room.
             const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
-            if (pairing) { trimPairTail();if (line.trim() && !quiet) pairLineDone(); }
+            if (pairing) { if (!e.shiftKey) trimPairTail();if (line.trim() && !quiet) pairLineDone(); }
             else if (coachOn() && !quiet) void review(false);
         }
     });

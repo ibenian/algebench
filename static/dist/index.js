@@ -37077,7 +37077,7 @@ function setupCodePractice() {
 	let fixProposed = "";
 	/** What the assistant last said while pairing: what the answer box's words may be replying to. */
 	let pairSaid = "";
-	const PAIR_IDLE_MS = 25e3;
+	const PAIR_IDLE_MS = 6e4;
 	report.addEventListener("input", () => pairWait());
 	const caretLine = () => input.value.slice(0, input.selectionStart).split("\n").length - 1;
 	function pairWait() {
@@ -38152,7 +38152,7 @@ function setupCodePractice() {
 			insert("\n" + (/^\s*/.exec(line)[0] + (/[:{[(]\s*$/.test(line) ? INDENT : "")));
 			const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
 			if (pairing) {
-				trimPairTail();
+				if (!e.shiftKey) trimPairTail();
 				if (line.trim() && !quiet) pairLineDone();
 			} else if (coachOn() && !quiet) review(false);
 		}
