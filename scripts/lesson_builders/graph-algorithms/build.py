@@ -885,6 +885,57 @@ def centers_trace(n, edges):
     return trace, adj
 
 
+def degrees_annotations():
+    """The Code panel's hover docs for the degrees scene: the town judge, then the tree centres."""
+    S = DEGREES_SOURCE
+    judge = ('def find_judge', 'return -1')
+    tree = ('def tree_centers', 'return list(leaves)')
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        # The town judge
+        doc('find_judge', 'Returns the one person everyone trusts and who trusts nobody, or `-1`. $O(V + E)$ time, $O(V)$ space.'),
+        doc('n', 'How many people there are, numbered `0` to `n - 1`.', *judge, S),
+        doc('trust', 'The directed edges: a pair `(a, b)` means `a` trusts `b`. Pairs are assumed distinct, or the counts would be too high.'),
+        doc('indeg', '`indeg[p]` is the **in-degree** of `p`: how many people trust them.'),
+        doc('outdeg', '`outdeg[p]` is the **out-degree** of `p`: how many people they trust.'),
+        doc('a', 'The person giving trust: the edge leaves `a`.'),
+        doc('b', 'The person receiving trust: the edge enters `b`.'),
+        doc('p', 'The person being checked.'),
+        doc_block(S, 'outdeg[a] += 1', 'indeg[b] += 1', 'Each edge adds one to both counts, so the two arrays each sum '
+                  'to $E$. The edge itself is never stored: the counts are all this problem needs.'),
+        doc_expr(S, 'if indeg[p] == n - 1', 'indeg[p] == n - 1 and outdeg[p] == 0', 'Trusted by all $n - 1$ others, '
+                 'trusting nobody. At most one person can pass: a second judge would have to be trusted by the first, '
+                 'who trusts nobody.'),
+        # The tree centres
+        doc('tree_centers', 'Returns the centre of a tree, the one or two nodes with the shortest distance to their '
+            'farthest node, by peeling leaves round by round. $O(V)$ time and space, since a tree has $V - 1$ edges.'),
+        doc('n', 'How many nodes the tree has, numbered `0` to `n - 1`.', *tree, S),
+        doc('edges', 'The tree\'s edges, as undirected pairs `(u, v)`.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds the neighbours of `u`.'),
+        doc('degree', '`degree[u]` counts the neighbours of `u` still in the tree. It falls as leaves are peeled.'),
+        doc('u', 'One end of the current edge.'),
+        doc('v', 'The other end of the current edge.'),
+        doc('leaves', 'The nodes to peel, the current round at the front and the next round joining at the back.'),
+        doc('i', 'A node being tested for being a leaf.'),
+        doc('remaining', 'How many nodes are still in the tree.'),
+        doc('leaf', 'The node being peeled now.'),
+        doc('nb', 'A neighbour of `leaf`.'),
+        doc_expr(S, 'leaves = deque', 'i for i in range(n) if degree[i] == 1', 'A generator expression: it hands the '
+                 'nodes of degree 1 to `deque` one at a time. As the only argument, it needs no brackets of its own.'),
+        doc_expr(S, 'while remaining > 2', 'remaining > 2', 'A tree has one centre or two. Three or more nodes left '
+                 'always include a leaf that is not a centre, so peeling goes on.'),
+        doc_expr(S, 'for _ in range(len(leaves))', 'range(len(leaves))', 'Counted once, before the round starts, so '
+                 'this peels only the current leaves. Those that join during the round wait for the next one. Peeling '
+                 'in whole rounds keeps every side shrinking at the same rate.'),
+        doc_expr(S, 'degree[nb] -= 1', 'degree[nb] -= 1', 'The leaf is gone, so `nb` has one neighbour fewer. A neighbour '
+                 'peeled earlier just drops below 1, and the check below ignores it.'),
+        doc_expr(S, 'if degree[nb] == 1', 'degree[nb] == 1', 'Exactly one neighbour left: `nb` has just become a leaf. '
+                 'Its count passes 1 only once, so it joins the queue only once.'),
+        doc_expr(S, 'return list(leaves)', 'list(leaves)', 'The one or two nodes left. A one-node tree has no node of '
+                 'degree 1, so this returns `[]`: handle `n == 1` first if the problem allows it.'),
+    ]
+
+
 def degrees_scene(header):
     jt, (ct, tadj) = judge_trace(JUDGE_N, JUDGE_TRUST), centers_trace(TREE_N, TREE_EDGES)
     LJ = lambda t: line_of(DEGREES_SOURCE, t, 'def find_judge')
@@ -1004,7 +1055,7 @@ Repeatedly remove the nodes whose degree has hit a threshold, updating their nei
 
 **Practice:** Find the Town Judge, Find Center of Star Graph, Minimum Number of Vertices to Reach All Nodes, Maximal Network Rank, Minimum Height Trees.""",
         'Explain in-degree and out-degree, and peeling by degree. Ask the learner to predict the counts after each edge, who the judge is, and which nodes become leaves after each peeling round.',
-        'degrees.py', DEGREES_SOURCE, jt, judge_elements,
+        'degrees.py', DEGREES_SOURCE, jt, judge_elements, annotations=degrees_annotations(),
         data={'people': [{'x': x, 'y': y, 'out': o} for (x, y), o in zip(JUDGE_POS, outs)],
               'treeNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(TREE_POS, tadj)]},
         first={'title': 'Read the counts (town judge)', 'description': 'Count in- and out-degrees, then find who everyone trusts.'},
