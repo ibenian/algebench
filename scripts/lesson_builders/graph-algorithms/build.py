@@ -1205,6 +1205,63 @@ def grid_bfs_trace(image, start, color):
     return trace
 
 
+def grid_annotations():
+    """The Code panel's hover docs for the grid scene: flood fill by recursion, then by a queue."""
+    S = GRID_SOURCE
+    fill = ('def fill(r, c)', 'fill(r + dr, c + dc)')
+    bfs = ('def flood_fill_bfs', 'queue.append((nr, nc))')
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        doc('flood_fill', 'Paints the region of same-coloured cells around `(sr, sc)` with `color`, by recursive DFS. '
+            'Changes `image` in place and returns it. $O(R \\cdot C)$ time, and up to $O(R \\cdot C)$ recursion depth.'),
+        doc('flood_fill_bfs', 'The same fill with a queue: the region grows in rings from the start. '
+            '$O(R \\cdot C)$ time and space, with no recursion.'),
+        doc('image', 'The grid of colours, a list of rows. Each cell is a node, joined to the cells above, below, left and right.'),
+        doc('sr', 'The starting cell\'s row.'),
+        doc('sc', 'The starting cell\'s column.'),
+        doc('color', 'The new colour to paint the region with.'),
+        doc('rows', 'How many rows the image has: valid row indices are `0` to `rows - 1`.'),
+        doc('cols', 'How many columns the image has: valid column indices are `0` to `cols - 1`.'),
+        doc('old', 'The colour being replaced: the starting cell\'s colour. A cell belongs to the region if it has this colour.'),
+        doc('fill', 'Paints `(r, c)` and everything connected to it in the old colour. It is nested, so it can use '
+            '`image`, `old`, `color`, `rows` and `cols` without taking them as arguments.'),
+        doc('dr', 'The row step: `1` down, `-1` up, `0` for a step sideways.'),
+        doc('dc', 'The column step: `1` right, `-1` left, `0` for a step up or down.'),
+        doc('r', 'This call\'s row. It may be off the image: the check below decides.', *fill, S),
+        doc('c', 'This call\'s column. It may be off the image: the check below decides.', *fill, S),
+        doc('r', 'The row of the cell just taken from the queue.', *bfs, S),
+        doc('c', 'The column of the cell just taken from the queue.', *bfs, S),
+        doc('nr', 'The neighbour\'s row. It may be off the image, which the next line checks.'),
+        doc('nc', 'The neighbour\'s column. It may be off the image, which the next line checks.'),
+        doc('queue', 'Cells already painted whose neighbours are still to be checked, oldest first.'),
+        doc_expr(S, 'if old == color', 'old == color', 'Painting with the colour already there would leave every cell '
+                 'still `old`. Nothing would count as visited, and the fill would go round forever.'),
+        doc_expr(S, 'if not (0 <= r < rows', '0 <= r < rows and 0 <= c < cols', 'Inside the image. This must come '
+                 'before `image[r][c]`: `-1` would not fail, since Python reads it as the last row or column.'),
+        doc_expr(S, 'if not (0 <= r < rows', 'image[r][c] != old', 'Another colour, or a cell already painted. '
+                 'Painting is the visited mark, so no separate `visited` grid is needed.'),
+        doc_expr(S, '        image[r][c] = color', 'image[r][c] = color', 'Painted before spreading, so a neighbour '
+                 'that reaches back here finds the new colour and stops.'),
+        doc_expr(S, 'for dr, dc in', '((1, 0), (-1, 0), (0, 1), (0, -1))', 'Down, up, right, left: the four '
+                 'neighbours. Diagonals are not included, so cells that touch only at a corner are not connected.'),
+        doc_expr(S, 'fill(r + dr, c + dc)', 'fill(r + dr, c + dc)', 'Called without checking: the new call checks its '
+                 'cell first thing. A long winding region can go deeper than Python\'s default recursion limit of '
+                 '1000, which the queue version avoids.'),
+        doc_expr(S, '    fill(sr, sc)', 'fill(sr, sc)', 'One call fills the whole region, through the calls it makes.'),
+        doc_expr(S, '    image[sr][sc] = color', 'image[sr][sc] = color', 'Painted as it is queued, like every cell '
+                 'below, so no cell can be queued twice.'),
+        doc_expr(S, 'queue = deque([(sr, sc)])', 'deque([(sr, sc)])', 'The queue starts with the start cell. The cells '
+                 'are `(row, column)` tuples.'),
+        doc_expr(S, 'r, c = queue.popleft()', 'queue.popleft()', 'Takes the oldest cell, so cells are handled in order '
+                 'of their distance from the start.'),
+        doc_expr(S, 'if 0 <= nr < rows', '0 <= nr < rows and 0 <= nc < cols and image[nr][nc] == old',
+                 'Checked before queueing, unlike the recursive version, which checks on arrival. The bounds come first, '
+                 'so `image[nr][nc]` is never read off the image.'),
+        doc_block(S, 'while queue', 'queue.append((nr, nc))', 'Each cell is queued at most once and checks four '
+                  'neighbours, so the loop does $O(R \\cdot C)$ work.'),
+    ]
+
+
 def grid_scene(header):
     image, (sr, sc), color = IMAGE, FILL_START, FILL_COLOR
     rows, cols = len(image), len(image[0])
@@ -1287,7 +1344,7 @@ Gold is the call running now, pink cells wait on the call stack, and the edge fr
 
 **Practice:** Flood Fill, Number of Islands, Max Area of Island, Surrounded Regions, Rotting Oranges, Shortest Path in Binary Matrix.""",
         'Explain how a grid is a graph with neighbours from four offsets, and how flood fill uses the new colour as its visited mark. Ask the learner to predict which calls return at once and why, and why the enclosed 0 and the bottom-left block stay unfilled.',
-        'flood_fill.py', GRID_SOURCE, trace, elements,
+        'flood_fill.py', GRID_SOURCE, trace, elements, annotations=grid_annotations(),
         data={'cells': cells}, call_entry=line_of(GRID_SOURCE, 'def fill(r, c)'),
         first={'title': 'Flood fill by DFS (recursion)', 'description': 'Flood fill with a recursive DFS: one path deep, then back up.'},
         more=[{'id': 'bfs', 'title': 'Flood fill by BFS (queue)', 'description': 'The same fill with a queue: the region grows in rings.',
