@@ -1917,6 +1917,27 @@
       "path": "patterns/house_robber.py",
       "language": "python",
       "source": "def rob(houses):\n    dp = [0] * (len(houses) + 1)\n    dp[1] = houses[0]\n    for i in range(2, len(houses) + 1):\n        skip = dp[i - 1]\n        take = dp[i - 2] + houses[i - 1]\n        dp[i] = max(skip, take)\n    return dp[-1]",
+      "sections": [
+        {"id": "dp-base", "title": "Start from the answers you already know", "from": 1, "to": 3, "hint": "With no houses there is nothing to steal, and with one you take it. Every later answer is built from these two."},
+        {"id": "dp-options", "title": "Weigh the two options for this house", "from": 4, "to": 6, "hint": "Leave the house and keep the best so far, or rob it and fall back to the answer that stops before its neighbour.", "prompt": "Explain why taking a house reads dp[i - 2] and skipping reads dp[i - 1], and why those two options cover every choice."},
+        {"id": "dp-best", "title": "Keep the better one", "from": 7, "to": 7, "hint": "This cell now holds the best for the first i houses, ready for the next two houses to reuse."},
+        {"id": "dp-answer", "title": "The last cell is the answer", "from": 8, "to": 8, "hint": "The last cell covers every house, so nothing more needs combining."}
+      ],
+      "annotations": [
+        {"name": "rob", "text": "`rob(houses)` returns the most you can steal without robbing two adjacent houses. O(n) time and O(n) space."},
+        {"name": "houses", "text": "The value in each house, in street order. It has at least one house: `houses[0]` is read directly."},
+        {"name": "dp", "text": "`dp[i]` is the most you can steal from the first `i` houses. It has one cell more than there are houses, for `dp[0]`."},
+        {"name": "i", "text": "How many houses are in play. The house being decided is the last of them: `houses[i - 1]`."},
+        {"name": "skip", "text": "The best total if this house is left alone: the answer for the houses before it."},
+        {"name": "take", "text": "The best total if this house is robbed: its value plus the answer that stops before its neighbour."},
+        {"line": 2, "col": 16, "endCol": 31, "text": "One cell for each count of houses from 0 to n, so `dp[0]` can mean \"no houses\"."},
+        {"line": 3, "col": 12, "endCol": 21, "text": "The first house is at index 0 but fills `dp[1]`: `dp` counts houses, while `houses` indexes them."},
+        {"line": 5, "col": 15, "endCol": 24, "text": "The answer for one house fewer, already computed."},
+        {"line": 6, "col": 15, "endCol": 24, "text": "Two houses back: robbing this house rules out its neighbour, so the answer that includes the neighbour can't be used."},
+        {"line": 6, "col": 27, "endCol": 40, "text": "The house being decided: the `i`-th house sits at index `i - 1`."},
+        {"line": 7, "col": 16, "endCol": 31, "text": "Every plan either robs this house or doesn't, so the better of the two is the best there is."},
+        {"line": 4, "endLine": 7, "text": "One pass, each cell computed once from two cells already filled: O(n), not the 2ⁿ subsets a brute force would try."}
+      ],
       "locations": [
         {"line": 2, "scene": "dynamic-programming", "step": "run", "snapshot": 0, "label": "Reuse answers (dynamic programming) · dp[i] will hold the most you can steal from the first i houses. dp[0] = 0: no houses, no loot."},
         {"line": 3, "scene": "dynamic-programming", "step": "run", "snapshot": 1, "label": "Reuse answers (dynamic programming) · With one house, take it: dp[1] = 2."},

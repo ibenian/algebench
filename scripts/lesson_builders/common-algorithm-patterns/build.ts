@@ -1131,6 +1131,32 @@ ${MD_TAIL}
 pattern({
     id: 'dynamic-programming', title: 'Reuse answers (dynamic programming)', file: 'house_robber.py', source: HOUSE_ROBBER_SOURCE,
     input: { houses: IN.dp.houses }, trace: houseRobberTrace(IN.dp.houses),
+    sections: [
+        section(HOUSE_ROBBER_SOURCE, 'dp-base', 'Start from the answers you already know', 'def rob(', 'dp[1] = houses[0]', {
+            hint: 'With no houses there is nothing to steal, and with one you take it. Every later answer is built from these two.' }),
+        section(HOUSE_ROBBER_SOURCE, 'dp-options', 'Weigh the two options for this house', 'for i in range(2', 'take = dp[i - 2] + houses[i - 1]', {
+            hint: 'Leave the house and keep the best so far, or rob it and fall back to the answer that stops before its neighbour.',
+            prompt: 'Explain why taking a house reads dp[i - 2] and skipping reads dp[i - 1], and why those two options cover every choice.' }),
+        section(HOUSE_ROBBER_SOURCE, 'dp-best', 'Keep the better one', 'dp[i] = max(skip, take)', null, {
+            hint: 'This cell now holds the best for the first i houses, ready for the next two houses to reuse.' }),
+        section(HOUSE_ROBBER_SOURCE, 'dp-answer', 'The last cell is the answer', 'return dp[-1]', null, {
+            hint: 'The last cell covers every house, so nothing more needs combining.' }),
+    ],
+    annotations: [
+        doc('rob', '`rob(houses)` returns the most you can steal without robbing two adjacent houses. O(n) time and O(n) space.'),
+        doc('houses', 'The value in each house, in street order. It has at least one house: `houses[0]` is read directly.'),
+        doc('dp', '`dp[i]` is the most you can steal from the first `i` houses. It has one cell more than there are houses, for `dp[0]`.'),
+        doc('i', 'How many houses are in play. The house being decided is the last of them: `houses[i - 1]`.'),
+        doc('skip', 'The best total if this house is left alone: the answer for the houses before it.'),
+        doc('take', 'The best total if this house is robbed: its value plus the answer that stops before its neighbour.'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'dp = [0] * (len(houses) + 1)', 'len(houses) + 1', 'One cell for each count of houses from 0 to n, so `dp[0]` can mean "no houses".'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'dp[1] = houses[0]', 'houses[0]', 'The first house is at index 0 but fills `dp[1]`: `dp` counts houses, while `houses` indexes them.'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'skip = dp[i - 1]', 'dp[i - 1]', 'The answer for one house fewer, already computed.'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'take = dp[i - 2] + houses[i - 1]', 'dp[i - 2]', 'Two houses back: robbing this house rules out its neighbour, so the answer that includes the neighbour can\'t be used.'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'take = dp[i - 2] + houses[i - 1]', 'houses[i - 1]', 'The house being decided: the `i`-th house sits at index `i - 1`.'),
+        docExpr(HOUSE_ROBBER_SOURCE, 'dp[i] = max(skip, take)', 'max(skip, take)', 'Every plan either robs this house or doesn\'t, so the better of the two is the best there is.'),
+        docBlock(HOUSE_ROBBER_SOURCE, 'for i in range(2', 'dp[i] = max(skip, take)', 'One pass, each cell computed once from two cells already filled: O(n), not the 2ⁿ subsets a brute force would try.'),
+    ],
     markdown: `# Reuse answers (dynamic programming)
 
 **Signal:** "maximum / minimum / number of ways", where a choice now affects which choices remain, and the same subproblems recur.
