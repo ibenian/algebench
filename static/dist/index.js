@@ -35853,6 +35853,8 @@ var FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘⇧Enter" : "C
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
+/** What the Reason through complexity preset asks of the assistant. */
+var COMPLEXITY_REQUEST = "Reason through the runtime and space complexity, and explain it on the code.";
 var HINT_LEVELS = [
 	{
 		level: "direct",
@@ -37229,15 +37231,23 @@ function setupCodePractice() {
 		}
 		const focus = focusNow();
 		const choices = [
-			...input.value.trim() ? [[
-				"fix",
-				"Fix errors",
-				"I fix only what is wrong in what you typed, and write nothing new"
-			], [
-				"narrate",
-				"Walk me through it",
-				"I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some"
-			]] : [],
+			...input.value.trim() ? [
+				[
+					"fix",
+					"Fix errors",
+					"I fix only what is wrong in what you typed, and write nothing new"
+				],
+				[
+					"narrate",
+					"Walk me through it",
+					"I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some"
+				],
+				[
+					"complexity",
+					"Reason through complexity",
+					"I work out the runtime and space complexity on your code, pointing at what sets each cost, typing nothing: only what you selected, if you selected some"
+				]
+			] : [],
 			[
 				"next",
 				"Next step",
@@ -37608,6 +37618,8 @@ function setupCodePractice() {
 		if (!current || !score || assisting) return;
 		closeCompare();
 		if (scope === "grade" && !quiz) return;
+		const complexity = scope === "complexity";
+		if (complexity) scope = "narrate";
 		const pairStart = scope === "pairing", userCaret = input.selectionStart;
 		userCaretAt = userCaret;
 		resumeAt = -1;
@@ -37669,6 +37681,7 @@ function setupCodePractice() {
 		const a = input.selectionStart, b = input.selectionEnd, picked = scope === "narrate" && b > a && input.value.slice(a, b).trim();
 		let span = "";
 		const own = request;
+		if (complexity) request = [COMPLEXITY_REQUEST, request].filter(Boolean).join("\n");
 		if (picked) {
 			const first = input.value.slice(0, a).split("\n").length, last = input.value.slice(0, b).replace(/\n$/, "").split("\n").length;
 			span = first === last ? `line ${first}` : `lines ${first}–${last}`;
@@ -37680,12 +37693,13 @@ function setupCodePractice() {
 		}
 		const asked = {
 			fix: "Fix the errors in what I typed, without writing ahead.",
-			narrate: picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
+			narrate: complexity ? picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST : picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
 			next: "Help me with the next step.",
 			section: `Help me finish “${focus?.title ?? "this section"}”.`,
 			all: "Write it all for me, and talk me through it.",
 			ask: request,
 			quiz: starting ? own ? `Quiz me on this: ${own}` : "Quiz me." : own ? `Ask me a question about this: ${own}` : "Ask me a question.",
+			complexity: "",
 			series: "",
 			grade: pending?.kind === "answer" ? own : "Check my answer.",
 			pairing: "",

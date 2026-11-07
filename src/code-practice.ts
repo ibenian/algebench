@@ -42,6 +42,8 @@ const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practic
 interface Attempt { text: string; peeked: number[]; assisted?: number[]; paired?: Record<number, number>; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
 interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number; cursor_line?: number; draw?: CodeMark[]; erase_marks?: string[]}[]; closing: string; needs_fix?: boolean }
+/** What the Reason through complexity preset asks of the assistant. */
+const COMPLEXITY_REQUEST = 'Reason through the runtime and space complexity, and explain it on the code.';
 /** How much a pairing turn helps (Pair with me), most first: the choice stays until changed. */
 type HintLevel = 'direct' | 'point' | 'question' | 'vague';
 const HINT_LEVELS: {level: HintLevel; label: string; title: string; start: string; noun: string}[] = [
@@ -50,7 +52,7 @@ const HINT_LEVELS: {level: HintLevel; label: string; title: string; start: strin
     {level: 'question', label: 'Question', title: 'I only ask a question, for you to reason it out', start: 'OK, you type. After each line you finish, I\'ll only ask you a question to reason through.', noun: 'Question'},
     {level: 'vague', label: 'Vague', title: 'I only say what may break, not where or how to fix it', start: 'OK, you type. After each line you finish, I\'ll only say what may break, not where.', noun: 'Think about'},
 ];
-type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask' | 'quiz' | 'series' | 'grade' | 'pairing' | 'pair' | 'hint' | 'finish';
+type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'complexity' | 'ask' | 'quiz' | 'series' | 'grade' | 'pairing' | 'pair' | 'hint' | 'finish';
 /** One question of a quiz (Quiz me), and how it went: sent with the next ask, so the questions build on each other. */
 interface QuizTurn { question: string; kind: 'type' | 'answer'; outcome: 'correct' | 'partly' | 'incorrect' | 'shown' | 'skipped'; answer: string }
 type AssistStep = AssistPlan['steps'][number];
@@ -1037,7 +1039,8 @@ export function setupCodePractice(): void {
         const choices: [AssistScope, string, string][] = [
             // Only what is typed is fixed: nothing is written ahead.
             ...(input.value.trim() ? [['fix', 'Fix errors', 'I fix only what is wrong in what you typed, and write nothing new'],
-                ['narrate', 'Walk me through it', 'I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some']] as [AssistScope, string, string][] : []),
+                ['narrate', 'Walk me through it', 'I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some'],
+                ['complexity', 'Reason through complexity', 'I work out the runtime and space complexity on your code, pointing at what sets each cost, typing nothing: only what you selected, if you selected some']] as [AssistScope, string, string][] : []),
             ['next', 'Next step', 'I take the keyboard for the next logical piece, then hand it back'],
             ...(focus ? [['section', `Finish “${focus.title}”`, 'I write the rest of this section, step by step, talking it through'] as [AssistScope, string, string]] : []),
             ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
@@ -1303,6 +1306,9 @@ export function setupCodePractice(): void {
         if (!current || !score || assisting) return;
         closeCompare();
         if (scope === 'grade' && !quiz) return;
+        // Complexity is a walk through the code with one question in mind: nothing is typed.
+        const complexity = scope === 'complexity';
+        if (complexity) scope = 'narrate';
         // Quiz me starts a series; any other choice ends one (the series' own next question and its grading go on).
         // Pair with me starts pairing; a question, a hint, a fix or finishing a line keep it; anything else ends it.
         const pairStart = scope === 'pairing', userCaret = input.selectionStart;userCaretAt = userCaret;resumeAt = -1;
@@ -1344,15 +1350,16 @@ export function setupCodePractice(): void {
         const a = input.selectionStart, b = input.selectionEnd, picked = scope === 'narrate' && b > a && input.value.slice(a, b).trim();
         let span = '';
         const own = request;
+        if (complexity) request = [COMPLEXITY_REQUEST, request].filter(Boolean).join('\n');
         if (picked) {
             const first = input.value.slice(0, a).split('\n').length, last = input.value.slice(0, b).replace(/\n$/, '').split('\n').length;
             span = first === last ? `line ${first}` : `lines ${first}–${last}`;
             request = [`Only the part I selected, ${span} (nothing outside it):`, input.value.slice(a, b), request].filter(Boolean).join('\n');
         }
-        const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
+        const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: complexity ? (picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST) : picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
             section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.', ask: request,
             quiz: starting ? (own ? `Quiz me on this: ${own}` : 'Quiz me.') : own ? `Ask me a question about this: ${own}` : 'Ask me a question.',
-            series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.',
+            complexity: '', series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.',
             pairing: '', pair: 'Let\'s pair: you type, and I\'ll help when you need it.', hint: 'Give me a hint.', finish: 'Finish this line for me.'}[scope];
         // The next question of a quiz, and pairing's next line, come by themselves: no message from the learner for them.
         const finishing = scope === 'finish';
