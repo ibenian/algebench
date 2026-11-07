@@ -11,6 +11,20 @@
         {"id": "r-edges", "title": "Record each edge both ways", "from": 4, "to": 7, "hint": "An undirected edge joins u and v in both directions: add each to the other's list and set both grid cells.", "prompt": "Explain why each edge is recorded twice, in both the list and the matrix, and what each form costs in space and in lookup time."},
         {"id": "r-return", "title": "Hand back both forms", "from": 8, "to": 8, "hint": "Return the adjacency list and the matrix."}
       ],
+      "annotations": [
+        {"name": "build", "text": "Turns an edge list into an adjacency list and an adjacency matrix. Returns both: the list takes $O(V + E)$ time and space, the matrix $O(V^2)$."},
+        {"name": "n", "text": "How many nodes the graph has, numbered `0` to `n - 1`."},
+        {"name": "edges", "text": "The **edge list**: pairs `(u, v)`, one per connection. It is the form problems usually give."},
+        {"name": "adj", "text": "The **adjacency list**: `adj[u]` holds the neighbours of `u`. Listing them costs $O(\\deg u)$ steps."},
+        {"name": "matrix", "text": "The **adjacency matrix**: `matrix[u][v]` is `1` when the edge exists, so checking one edge is $O(1)$."},
+        {"name": "u", "text": "One end of the current edge."},
+        {"name": "v", "text": "The other end of the current edge."},
+        {"line": 2, "col": 10, "endCol": 32, "text": "One new empty list per node. `[[]] * n` would make every entry the same list, so one append would show up for all nodes."},
+        {"line": 3, "col": 13, "endCol": 40, "text": "A separate row per node, $V^2$ cells before any edge is added. `[[0] * n] * n` would repeat one row, so setting a cell would change its whole column."},
+        {"line": 5, "endLine": 6, "text": "The graph is **undirected**, so each edge goes into both lists and the lists hold $2E$ entries in all. For a directed graph, drop the second line."},
+        {"line": 7, "col": 8, "endCol": 39, "text": "Both cells, which keeps the matrix symmetric. A directed graph sets only `matrix[u][v]`."},
+        {"line": 8, "col": 11, "endCol": 22, "text": "Both are returned here to compare them. A real solution usually builds only one, and the adjacency list by default."}
+      ],
       "locations": [
         {"line": 2, "scene": "representations", "step": "run", "snapshot": 0, "label": "Store a graph (adjacency list, matrix, edge list) · 5 nodes: one empty neighbour list per node."},
         {"line": 3, "scene": "representations", "step": "run", "snapshot": 1, "label": "Store a graph (adjacency list, matrix, edge list) · An 5 × 5 matrix of zeros: one cell per possible edge, 25 cells whatever the graph."},
@@ -51,6 +65,22 @@
         {"id": "d-visit", "title": "Visit u: mark it, record it", "from": 5, "to": 7, "hint": "On arriving at u, mark it visited at once, so no other path enters it again, and record it."},
         {"id": "d-deeper", "title": "Go deeper into each new neighbour", "from": 8, "to": 11, "hint": "For each neighbour not seen yet, go all the way down from it before trying the next one.", "prompt": "Explain how this loop and the recursive call make the search go deep first, and what the call stack holds while it does."},
         {"id": "d-start", "title": "Start at 0, return the order", "from": 12, "to": 13, "hint": "Start the search at node 0; the order is the answer."}
+      ],
+      "annotations": [
+        {"name": "dfs_order", "text": "Returns the nodes in the order DFS reaches them from node `0`. $O(V + E)$ time, $O(V)$ space."},
+        {"name": "n", "text": "How many nodes the graph has, numbered `0` to `n - 1`."},
+        {"name": "adj", "text": "The adjacency list: `adj[u]` holds the neighbours of `u`."},
+        {"name": "visited", "text": "`visited[u]` is `True` once DFS has reached `u`. Without it, a cycle would keep the walk going forever."},
+        {"name": "order", "text": "The nodes in the order they were first reached."},
+        {"name": "dfs", "text": "Explores everything reachable from `u` that is still unvisited. It is nested, so it can use `adj`, `visited` and `order` without taking them as arguments."},
+        {"name": "u", "text": "The node this call is exploring."},
+        {"name": "v", "text": "A neighbour of `u`, tried in the order `adj[u]` lists them."},
+        {"line": 6, "col": 8, "endCol": 25, "text": "Marked on arrival, before any neighbour is tried, so a path that leads back here finds `u` already visited."},
+        {"line": 7, "col": 8, "endCol": 23, "text": "Recording on arrival gives **preorder**. Recording after the loop gives **postorder**, which topological sort uses."},
+        {"line": 9, "col": 15, "endCol": 29, "text": "Only unvisited neighbours get a call, so each node gets exactly one `dfs` call. A visited neighbour other than the parent means this edge closes a cycle."},
+        {"line": 10, "col": 16, "endCol": 22, "text": "Goes deep: this call waits on the stack until everything reachable from `v` is done. Its return is the backing up. A very deep graph can overflow the stack."},
+        {"line": 8, "endLine": 10, "text": "Each list is read once across the whole run, so this loop runs $2E$ times in total on an undirected graph. With $V$ calls, that gives $O(V + E)$."},
+        {"line": 12, "col": 4, "endCol": 10, "text": "One start reaches only the component of node `0`. To cover the whole graph, call `dfs` from every node still unvisited: each such call is a new component."}
       ],
       "locations": [
         {"line": 2, "scene": "dfs", "step": "run", "snapshot": 0, "label": "Go deep first (depth-first search) · No node visited yet. adj lists each node's neighbours: [[1, 2], [0, 3], [0, 3, 5], [1, 2, 4], [3], [2]]."},
@@ -115,6 +145,24 @@
         {"id": "b-take", "title": "Take the node that waited longest", "from": 7, "to": 8, "hint": "While anything waits, take from the front: the queue hands nodes out in order of distance."},
         {"id": "b-discover", "title": "Discover each new neighbour one step further", "from": 9, "to": 12, "hint": "A neighbour with no distance yet is one step further than u: set it, and queue it.", "prompt": "Explain why setting the distance when a node is queued (not when it is taken) keeps it from being queued twice, and why the first distance found is the shortest."},
         {"id": "b-return", "title": "Every distance from the start", "from": 13, "to": 13, "hint": "Return the distances; -1 marks a node that cannot be reached."}
+      ],
+      "annotations": [
+        {"name": "deque", "text": "A double-ended queue: adding and removing at either end are $O(1)$. `list.pop(0)` would be $O(n)$ each time."},
+        {"name": "bfs", "text": "Returns the distance in steps from `start` to every node, `-1` for a node it can't reach. $O(V + E)$ time, $O(V)$ space."},
+        {"name": "n", "text": "How many nodes the graph has, numbered `0` to `n - 1`."},
+        {"name": "adj", "text": "The adjacency list: `adj[u]` holds the neighbours of `u`."},
+        {"name": "start", "text": "The node the search begins from, at distance `0`."},
+        {"name": "dist", "text": "`dist[v]` is the fewest steps from `start` to `v`. It also serves as the visited mark."},
+        {"name": "queue", "text": "Nodes reached but not yet processed, nearest first. It only ever holds nodes from two neighbouring levels, $d$ and $d + 1$."},
+        {"name": "u", "text": "The node being processed, the nearest one still waiting."},
+        {"name": "v", "text": "A neighbour of `u`."},
+        {"line": 4, "col": 11, "endCol": 19, "text": "`-1` means unreached. A node still `-1` at the end is in another component."},
+        {"line": 6, "col": 12, "endCol": 26, "text": "Starts with one node. **Multi-source BFS** starts with several, all at distance `0`, for \"distance to the nearest gate\"."},
+        {"line": 8, "col": 12, "endCol": 27, "text": "Takes the oldest entry in $O(1)$. Nodes leave in the order they joined, so nearer nodes are always processed first."},
+        {"line": 10, "col": 15, "endCol": 28, "text": "True only the first time `v` is reached, and because of the order above, that first time is along a shortest path."},
+        {"line": 11, "col": 26, "endCol": 37, "text": "One step further than `u`. This value is final: no later path to `v` can be shorter."},
+        {"line": 12, "col": 16, "endCol": 31, "text": "`dist[v]` was set just before this, so `v` is marked as it joins. Marking it on leaving would let other nodes queue it again."},
+        {"line": 7, "endLine": 12, "text": "Each node joins the queue at most once and each adjacency list is read once, which gives $O(V + E)$ despite the nested loops."}
       ],
       "locations": [
         {"line": 4, "scene": "bfs", "step": "run", "snapshot": 0, "label": "Level by level (breadth-first search) · dist = -1 everywhere: no node reached yet. dist doubles as \"visited\"."},

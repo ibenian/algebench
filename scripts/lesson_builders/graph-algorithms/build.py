@@ -321,6 +321,31 @@ def representations_trace(n, edges):
     return trace
 
 
+def representations_annotations():
+    """The Code panel's hover docs for the Store a graph scene."""
+    S = REPR_SOURCE
+    return [
+        doc('build', 'Turns an edge list into an adjacency list and an adjacency matrix. Returns both: the list takes '
+            '$O(V + E)$ time and space, the matrix $O(V^2)$.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('edges', 'The **edge list**: pairs `(u, v)`, one per connection. It is the form problems usually give.'),
+        doc('adj', 'The **adjacency list**: `adj[u]` holds the neighbours of `u`. Listing them costs $O(\\deg u)$ steps.'),
+        doc('matrix', 'The **adjacency matrix**: `matrix[u][v]` is `1` when the edge exists, so checking one edge is $O(1)$.'),
+        doc('u', 'One end of the current edge.'),
+        doc('v', 'The other end of the current edge.'),
+        doc_expr(S, 'adj = [[]', '[[] for _ in range(n)]', 'One new empty list per node. `[[]] * n` would make every '
+                 'entry the same list, so one append would show up for all nodes.'),
+        doc_expr(S, 'matrix = [[0]', '[[0] * n for _ in range(n)]', 'A separate row per node, $V^2$ cells before any '
+                 'edge is added. `[[0] * n] * n` would repeat one row, so setting a cell would change its whole column.'),
+        doc_block(S, 'adj[u].append(v)', 'adj[v].append(u)', 'The graph is **undirected**, so each edge goes into both '
+                  'lists and the lists hold $2E$ entries in all. For a directed graph, drop the second line.'),
+        doc_expr(S, 'matrix[u][v] = matrix[v][u]', 'matrix[u][v] = matrix[v][u] = 1', 'Both cells, which keeps the '
+                 'matrix symmetric. A directed graph sets only `matrix[u][v]`.'),
+        doc_expr(S, 'return adj, matrix', 'adj, matrix', 'Both are returned here to compare them. A real solution '
+                 'usually builds only one, and the adjacency list by default.'),
+    ]
+
+
 def representations_scene(header):
     n, edges = REPR_N, REPR_EDGES
     trace = representations_trace(n, edges)
@@ -381,7 +406,7 @@ Use the execution player to step through, or open **Code** to follow the active 
 
 **Practice:** Find if Path Exists in Graph, Clone Graph, Find the Town Judge.""",
         'Explain why problems give an edge list but algorithms want an adjacency list, and when a matrix wins. Ask the learner to predict which lists and cells change before each edge is added.',
-        'build_graph.py', REPR_SOURCE, trace, elements,
+        'build_graph.py', REPR_SOURCE, trace, elements, annotations=representations_annotations(),
         data={'nodes': [{'x': round(x, 3), 'y': round(y, 3)} for x, y in pos]})
 
 
@@ -467,6 +492,34 @@ def dfs_trace(n, edges):
     return trace, adj
 
 
+def dfs_annotations():
+    """The Code panel's hover docs for the depth-first search scene."""
+    S = DFS_SOURCE
+    return [
+        doc('dfs_order', 'Returns the nodes in the order DFS reaches them from node `0`. $O(V + E)$ time, $O(V)$ space.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds the neighbours of `u`.'),
+        doc('visited', '`visited[u]` is `True` once DFS has reached `u`. Without it, a cycle would keep the walk going forever.'),
+        doc('order', 'The nodes in the order they were first reached.'),
+        doc('dfs', 'Explores everything reachable from `u` that is still unvisited. It is nested, so it can use `adj`, '
+            '`visited` and `order` without taking them as arguments.'),
+        doc('u', 'The node this call is exploring.'),
+        doc('v', 'A neighbour of `u`, tried in the order `adj[u]` lists them.'),
+        doc_expr(S, 'visited[u] = True', 'visited[u] = True', 'Marked on arrival, before any neighbour is tried, so a '
+                 'path that leads back here finds `u` already visited.'),
+        doc_expr(S, 'order.append(u)', 'order.append(u)', 'Recording on arrival gives **preorder**. Recording after the '
+                 'loop gives **postorder**, which topological sort uses.'),
+        doc_expr(S, 'if not visited[v]', 'not visited[v]', 'Only unvisited neighbours get a call, so each node gets '
+                 'exactly one `dfs` call. A visited neighbour other than the parent means this edge closes a cycle.'),
+        doc_expr(S, '                dfs(v)', 'dfs(v)', 'Goes deep: this call waits on the stack until everything '
+                 'reachable from `v` is done. Its return is the backing up. A very deep graph can overflow the stack.'),
+        doc_block(S, 'for v in adj[u]', '                dfs(v)', 'Each list is read once across the whole run, so '
+                  'this loop runs $2E$ times in total on an undirected graph. With $V$ calls, that gives $O(V + E)$.'),
+        doc_expr(S, '    dfs(0)', 'dfs(0)', 'One start reaches only the component of node `0`. To cover the whole graph, '
+                 'call `dfs` from every node still unvisited: each such call is a new component.'),
+    ]
+
+
 def dfs_scene(header):
     n, edges = DFS_N, DFS_EDGES
     trace, adj = dfs_trace(n, edges)
@@ -526,7 +579,7 @@ The arrows show the **DFS tree**: each node points to the nodes it discovered. G
 
 **Practice:** Number of Connected Components, Clone Graph, All Paths From Source to Target, Keys and Rooms.""",
         'Explain going deep, backing up, and why visited must be marked on arrival. Ask the learner to predict which node DFS visits next, and what happens when a neighbour is already visited.',
-        'dfs.py', DFS_SOURCE, trace, elements,
+        'dfs.py', DFS_SOURCE, trace, elements, annotations=dfs_annotations(),
         data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]}, call_entry=line_of(DFS_SOURCE, 'def dfs(u)'))
 
 
@@ -597,6 +650,37 @@ def bfs_trace(n, edges, start=0):
     return trace, adj
 
 
+def bfs_annotations():
+    """The Code panel's hover docs for the breadth-first search scene."""
+    S = BFS_SOURCE
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$. `list.pop(0)` would be $O(n)$ each time.'),
+        doc('bfs', 'Returns the distance in steps from `start` to every node, `-1` for a node it can\'t reach. '
+            '$O(V + E)$ time, $O(V)$ space.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds the neighbours of `u`.'),
+        doc('start', 'The node the search begins from, at distance `0`.'),
+        doc('dist', '`dist[v]` is the fewest steps from `start` to `v`. It also serves as the visited mark.'),
+        doc('queue', 'Nodes reached but not yet processed, nearest first. It only ever holds nodes from two neighbouring '
+            'levels, $d$ and $d + 1$.'),
+        doc('u', 'The node being processed, the nearest one still waiting.'),
+        doc('v', 'A neighbour of `u`.'),
+        doc_expr(S, 'dist = [-1]', '[-1] * n', '`-1` means unreached. A node still `-1` at the end is in another component.'),
+        doc_expr(S, 'queue = deque([start])', 'deque([start])', 'Starts with one node. **Multi-source BFS** starts with '
+                 'several, all at distance `0`, for "distance to the nearest gate".'),
+        doc_expr(S, 'u = queue.popleft()', 'queue.popleft()', 'Takes the oldest entry in $O(1)$. Nodes leave in the order '
+                 'they joined, so nearer nodes are always processed first.'),
+        doc_expr(S, 'if dist[v] == -1', 'dist[v] == -1', 'True only the first time `v` is reached, and because of the '
+                 'order above, that first time is along a shortest path.'),
+        doc_expr(S, 'dist[v] = dist[u] + 1', 'dist[u] + 1', 'One step further than `u`. This value is final: no later '
+                 'path to `v` can be shorter.'),
+        doc_expr(S, 'queue.append(v)', 'queue.append(v)', '`dist[v]` was set just before this, so `v` is marked as it '
+                 'joins. Marking it on leaving would let other nodes queue it again.'),
+        doc_block(S, 'while queue', 'queue.append(v)', 'Each node joins the queue at most once and each adjacency list '
+                  'is read once, which gives $O(V + E)$ despite the nested loops.'),
+    ]
+
+
 def bfs_scene(header):
     n, edges = DFS_N, DFS_EDGES
     trace, adj = bfs_trace(n, edges)
@@ -656,7 +740,7 @@ This is the DFS scene's graph, from the same start. DFS went 0, 1, 3, 2, 5, 4, d
 
 **Practice:** Word Ladder, Rotting Oranges, Shortest Path in Binary Matrix, Open the Lock.""",
         'Explain why a queue gives shortest paths in steps, and why a node is marked when queued. Ask the learner to predict the queue after each node is processed, and each new dist value.',
-        'bfs.py', BFS_SOURCE, trace, elements,
+        'bfs.py', BFS_SOURCE, trace, elements, annotations=bfs_annotations(),
         data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]})
 
 
