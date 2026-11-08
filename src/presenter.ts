@@ -295,8 +295,11 @@ function unhover() {
 }
 
 const trail: {x: number; y: number}[] = [];
+// While a mark is drawn and held on a target, what is hovered is the target, wherever the pen is: the end of a ring
+// around a row of the Labels box lies over the row above it, and would light that one instead.
+let hoverOn: {x: number; y: number} | null = null;
 function paintPointer() {
-    if (playing) hoverAt(pos.x, pos.y);
+    if (playing) hoverAt(hoverOn?.x ?? pos.x, hoverOn?.y ?? pos.y);
     const el = ensurePointer();
     el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
     trail.unshift({...pos});trail.length = Math.min(trail.length, 7);
@@ -553,10 +556,10 @@ let holding = false, drawingArrow = false;
 async function holdOn(ref: string, mark: Beat['mark'], r: number, until: Promise<void>, color = '', part = '') {
     let done = false;void until.then(() => { done = true; });
     holding = true;
-    try { await holdPointer(ref, mark, r, () => done, color, part); } finally { holding = false; }
+    try { await holdPointer(ref, mark, r, () => done, color, part); } finally { holding = false;hoverOn = null; }
 }
 async function holdPointer(ref: string, mark: Beat['mark'], r: number, done: () => boolean, color: string, part: string) {
-    showPointer();
+    showPointer();hoverOn = null;
     const at = resolveTarget(ref, part);
     if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
     let drawn = mark === 'point', since = 0;
@@ -567,6 +570,7 @@ async function holdPointer(ref: string, mark: Beat['mark'], r: number, done: () 
         if (drawingArrow) { since = 0;await new Promise(res => requestAnimationFrame(res));continue; }
         const now = resolveTarget(ref, part);
         if (now) {
+            if (mark !== 'point') hoverOn = {x: now.left + now.width / 2, y: now.top + now.height / 2};
             // A note written this beat appears while the pointer waits for it: its mark is drawn once it's there.
             if (!drawn) { drawRings(markRects(ref, part, mark), color, mark as MarkShape);await traceMark(r);drawn = true;since = 0;continue; }
             if (mark !== 'point' && ring?.classList.contains('on')) fitRings(markRects(ref, part, mark));

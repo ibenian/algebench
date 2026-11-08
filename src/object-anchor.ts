@@ -115,7 +115,12 @@ export function objectLabelRow(name:string):HTMLElement|null {
     const tracker=match[1].tracker as {labels?:{seq:number;annotation?:{kind:string}}[]};
     const label=tracker.labels?.find(l=>l.annotation?.kind==='label');
     if(!label)return null;
-    const row=document.querySelector<HTMLElement>(`.annotation-row[data-label-seq="${label.seq}"]`);
-    // Shown or not by its boxes, not offsetParent: that is null for every row of a box positioned fixed (the Labels box).
-    return row&&row.getClientRects().length?row:null;
+    return shownLabelRow(label.seq);
+}
+/**
+ * The row on screen for a label's seq. A label merged into another's box keeps the rows of its own, now hidden, box,
+ * with the same seq: the first in the document may be one of those, so the shown one is looked for.
+ */
+export function shownLabelRow(seq:number):HTMLElement|null {
+    return [...document.querySelectorAll<HTMLElement>(`.annotation-row[data-label-seq="${seq}"]`)].find(row=>row.getClientRects().length)??null;
 }

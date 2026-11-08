@@ -7,6 +7,7 @@
  * appears unprompted as a callout beside its row for a few seconds.
  */
 import type { Label3D } from '/labels.js';
+import { shownLabelRow } from '/object-anchor.js';
 
 let tip: HTMLElement | null = null;
 let owner: Label3D | null = null;
@@ -172,8 +173,8 @@ export function announceLabelChange(label: Label3D): void {
 function placeCallouts(): void {
     const now = performance.now();
     for (const [label, c] of callouts) {
-        const row = document.querySelector<HTMLElement>(`.annotation-row[data-label-seq="${label.seq}"]`);
-        const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+        const row = shownLabelRow(label.seq);
+        const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row;
         if (gone || now > c.until || owner === label) {
             c.el.classList.remove('visible');
             if (gone || now > c.until + 400) { c.el.remove(); callouts.delete(label); }

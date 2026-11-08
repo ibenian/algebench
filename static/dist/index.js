@@ -1397,8 +1397,14 @@ function objectLabelRow(name) {
 	if (!match) return null;
 	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
 	if (!label) return null;
-	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
-	return row && row.getClientRects().length ? row : null;
+	return shownLabelRow(label.seq);
+}
+/**
+* The row on screen for a label's seq. A label merged into another's box keeps the rows of its own, now hidden, box,
+* with the same seq: the first in the document may be one of those, so the shown one is looked for.
+*/
+function shownLabelRow(seq) {
+	return [...document.querySelectorAll(`.annotation-row[data-label-seq="${seq}"]`)].find((row) => row.getClientRects().length) ?? null;
 }
 //#endregion
 //#region src/label-wire-path.ts
@@ -2253,8 +2259,8 @@ function announceLabelChange(label) {
 function placeCallouts() {
 	const now = performance.now();
 	for (const [label, c] of callouts) {
-		const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
-		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+		const row = shownLabelRow(label.seq);
+		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row;
 		if (gone || now > c.until || owner === label) {
 			c.el.classList.remove("visible");
 			if (gone || now > c.until + 400) {
@@ -26485,8 +26491,9 @@ function unhover() {
 	hovered = [];
 }
 var trail = [];
+var hoverOn = null;
 function paintPointer() {
-	if (playing) hoverAt(pos.x, pos.y);
+	if (playing) hoverAt(hoverOn?.x ?? pos.x, hoverOn?.y ?? pos.y);
 	const el = ensurePointer();
 	el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
 	trail.unshift({ ...pos });
@@ -26840,10 +26847,12 @@ async function holdOn(ref, mark, r, until, color = "", part = "") {
 		await holdPointer(ref, mark, r, () => done, color, part);
 	} finally {
 		holding = false;
+		hoverOn = null;
 	}
 }
 async function holdPointer(ref, mark, r, done, color, part) {
 	showPointer();
+	hoverOn = null;
 	const at = resolveTarget$1(ref, part);
 	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
 	let drawn = mark === "point", since = 0;
@@ -26857,6 +26866,10 @@ async function holdPointer(ref, mark, r, done, color, part) {
 		}
 		const now = resolveTarget$1(ref, part);
 		if (now) {
+			if (mark !== "point") hoverOn = {
+				x: now.left + now.width / 2,
+				y: now.top + now.height / 2
+			};
 			if (!drawn) {
 				drawRings(markRects(ref, part, mark), color, mark);
 				await traceMark(r);
