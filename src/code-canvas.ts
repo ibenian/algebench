@@ -20,6 +20,8 @@ export interface CodeCanvas {
     erase(names: readonly string[]): void;
     /** What is on the board, as the agent is told it. */
     describe(): string[];
+    /** The marks on screen that touch this box (client pixels), told as `describe` tells them: what the learner boxed. */
+    within(box: {left: number; top: number; right: number; bottom: number}): string[];
     /** Show or hide the board, leaving what is on it. */
     setVisible(on: boolean): void;
     /** A new start (another block, Reset): the board goes with the code it was about. */
@@ -42,6 +44,7 @@ export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) =
         const ink = inkOf(mark.color);
         const g = document.createElementNS(SVG, 'g');
         if (ink) g.classList.add(ink);
+        g.dataset.source = String(mark.source);
         if (mark.fill) { const f = document.createElementNS(SVG, 'path');f.setAttribute('d', mark.fill);f.classList.add('cp-canvas-fill');g.append(f); }
         for (const d of mark.paths) {
             const p = document.createElementNS(SVG, 'path');p.setAttribute('d', d);p.setAttribute('pathLength', '1');
@@ -52,7 +55,7 @@ export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) =
         svg.append(g);
         if (!mark.text) return null;
         const t = document.createElement('div');t.className = `cp-canvas-text${mark.text.centred ? ' centred' : ''} ${ink}`.trim();
-        t.style.left = `${mark.text.x}px`;t.style.top = `${mark.text.y}px`;t.textContent = mark.text.words;
+        t.dataset.source = String(mark.source);t.style.left = `${mark.text.x}px`;t.style.top = `${mark.text.y}px`;t.textContent = mark.text.words;
         layer.append(t);
         return t;
     }
@@ -123,6 +126,15 @@ export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) =
             paint();
         },
         describe() { return marks.slice(0, shown).map(describeMark); },
+        within(box) {
+            if (layer.hidden || !shown) return [];
+            const hit = new Set<number>();
+            layer.querySelectorAll<Element>('[data-source]').forEach(e => {
+                const r = e.getBoundingClientRect();
+                if (r.width + r.height > 0 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top) hit.add(Number((e as HTMLElement | SVGElement).dataset.source));
+            });
+            return [...hit].filter(k => k < shown).sort((a, b) => a - b).map(k => describeMark(marks[k]!));
+        },
         setVisible(on) { layer.hidden = !on; },
         clear() { run++;marks = [];shown = 0;layer.replaceChildren();layer.style.width = layer.style.height = '0'; },
     };

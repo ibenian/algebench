@@ -164,6 +164,16 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             await rightInk.play(step.draw ?? []);
             await leftInk.play(step.draw_original ?? []);
         },
+        /** The grid the sides are laid out in, and each side's lines as drawn: what a question is asked over. */
+        grid,
+        rows() {
+            const of = (side: string, rs: HTMLElement[], text: string[]) => rs.map((el, k) => el && {side, line: k + 1, el, hit: el.parentElement ?? el, text: text[k] ?? ''}).filter(Boolean);
+            return [...of('original', leftRows, left), ...of('yours', rightRows, right)] as {side: string; line: number; el: HTMLElement; hit: HTMLElement; text: string}[];
+        },
+        /** What the agent drew inside this box (client pixels), on either side. */
+        within(box: {left: number; top: number; right: number; bottom: number}) {
+            return [...leftInk.within(box).map(m => `on the original: ${m}`), ...rightInk.within(box).map(m => `on your code: ${m}`)];
+        },
         /** The comparison as the model is told it, for a question about it. */
         describe() { return matches.map(m => `${describePart(m)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ''}`).join('\n'); },
         unpin() { pinned = null;hover(null); },

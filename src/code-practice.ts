@@ -25,6 +25,7 @@ import { editsBetween, keystrokes, backspaces, keyDelay, findSelection } from '/
 import { createCodeCanvas } from '/code-canvas.js';
 import { createCompareView, describePart } from '/code-compare.js';
 import type { CompareMatch, CompareResult } from '/code-compare.js';
+import { createQuestionLayer, questionRequest } from '/code-question.js';
 import type { CodeMark } from '/code-canvas-core.js';
 
 /** The coach looks again after this long without typing. */
@@ -277,6 +278,8 @@ export function setupCodePractice(): void {
 
     let current: CodeView | null = null, key = '', block = '', sections: CodeSection[] = [];
     let focused = false, setFocus: (on: boolean) => void = () => {};
+    // The Question tool put down (another block, Reset): set once it exists.
+    let clearQuestion = () => {}, questionAnswered = () => {};
     const focusReportDefault = () => Math.round(window.innerHeight * .34);
     let attempt: Attempt = {text: '', peeked: [], reviews: {}, celebrated: []};
     let score: PracticeScore | null = null, tokens: CodeToken[] = [], tokenText = '';
@@ -472,7 +475,7 @@ export function setupCodePractice(): void {
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
-        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();closeCompare(false);
+        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);canvas.clear();clearQuestion();closeCompare(false);
         const wanted = key;
         void loadAttempt(lessonId(), v.file.path, wanted).then(found => {
             if (key !== wanted) return;
@@ -861,7 +864,7 @@ export function setupCodePractice(): void {
     paintCompareTool();
     function closeCompare(goOn = true) {
         if (!comparing) { pairAfterCompare = false;return; }
-        comparing = false;askAbout = null;root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
+        comparing = false;askAbout = null;compareQuestion.stop();root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
         if (goOn && pairAfterCompare) { pairing = true;pairWait(); }
         pairAfterCompare = false;
         if (assisting) stopAssist();
@@ -873,6 +876,34 @@ export function setupCodePractice(): void {
         if (!root.hidden) input.focus();
     }
     compareTool.addEventListener('click', () => { if (comparing) closeCompare();else void compare(); });
+    // Question: point at code (a line, more lines, or a box round any part) and ask about it beside it.
+    const questionTool = tool('? Question', 'Ask about a piece of code: click a line (shift-click for more lines) or drag a box round any part, then type beside it: a question, an issue you see, or a change to make (Esc to cancel)');
+    tools.insertBefore(questionTool, compareTool);
+    const paintQuestion = (on: boolean) => questionTool.setAttribute('aria-pressed', String(on));
+    paintQuestion(false);
+    const QUESTION_HINT = 'Ask, point out an issue, or ask for a change…';
+    const editorQuestion = createQuestionLayer({host: editor, view: editor, slack: 80, charWidth: () => { measure();return charWidth; },
+        rows: () => { const text = input.value.split('\n');return text.map((t, k) => ({side: 'yours', line: k + 1, el: paint.children[k] as HTMLElement, hit: paint.children[k] as HTMLElement, text: t})).filter(r => r.el); },
+        marksWithin: box => canvas.within(box), placeholder: QUESTION_HINT, maxLength: 380, cancelled: () => paintQuestion(false),
+        send: async (pick, words) => { paintQuestion(false);await assist('ask', questionRequest(pick, words, 600, () => 'my code')); }});
+    const compareQuestion = createQuestionLayer({host: compareView.grid, view: compareHost, charWidth: () => { measure();return charWidth; },
+        rows: () => compareView.rows(), marksWithin: box => compareView.within(box), placeholder: QUESTION_HINT, maxLength: 380, cancelled: () => paintQuestion(false),
+        send: async (pick, words) => { paintQuestion(false);askAbout = null;await askCompare(questionRequest(pick, words, 600, side => side === 'original' ? 'the original' : 'my code')); }});
+    const questionLayer = () => comparing ? compareQuestion : editorQuestion;
+    function stopQuestion() { editorQuestion.stop();compareQuestion.stop();paintQuestion(false); }
+    clearQuestion = stopQuestion;
+    questionAnswered = () => { editorQuestion.answered();compareQuestion.answered(); };
+    questionTool.addEventListener('click', () => {
+        if (questionTool.getAttribute('aria-pressed') === 'true') { stopQuestion();return; }
+        if (assisting || !current) return;
+        stopQuestion();paintQuestion(true);
+        // Code already selected in the editor is what the question is about.
+        const a = input.selectionStart, b = input.selectionEnd;
+        if (!comparing && b > a && input.value.slice(a, b).trim()) {
+            const first = input.value.slice(0, a).split('\n').length, last = input.value.slice(0, b).replace(/\n$/, '').split('\n').length;
+            editorQuestion.pickLines('yours', first, last);
+        } else questionLayer().start();
+    });
     // The talk on this block so far, for words that refer back to it (code_assist's recent_turns).
     let turns: string[] = [], turnWords: string[] = [];
     const recentTurns = () => turns.slice(-4).join('\n').slice(-2800);
@@ -1604,7 +1635,7 @@ export function setupCodePractice(): void {
     }
     function handBack(run: number, blockKey: string, exactBefore: Set<number>, assistedBefore: Set<number>, ended: boolean) {
         if (assisting === run) assisting = 0;
-        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
+        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();questionAnswered();
         reportSummary.textContent = '';
         // The lesson moved on meanwhile (that block's report is gone), or Reset started the block afresh: nothing to hand back.
         if (key !== blockKey || dropped) { dropped = false;return; }
@@ -1644,7 +1675,7 @@ export function setupCodePractice(): void {
     function stopAssist(drop = false) {
         if (!assisting) return;
         assisting = 0;dropped = drop;series = null;pairing = false;clearTimeout(pairIdle);   // taking the keyboard back ends a quiz, and pairing
-        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
+        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();questionAnswered();
         if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     }
     // Another voice started (the chat, the presenter, the Doc): the coach stops going on, its word and any move at the
@@ -1766,7 +1797,7 @@ export function setupCodePractice(): void {
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
         stopAssist(true);quiz = null;series = null;pairing = false;clearTimeout(pairIdle);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
-        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();closeCompare(false);turns = [];input.focus();
+        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);canvas.clear();clearQuestion();closeCompare(false);turns = [];input.focus();
         if (hintsOn()) void review(false);
     });
     // The editor's font size, one for each mode: A− and A+ on its header, the size between them back to the default.
@@ -1838,6 +1869,12 @@ export function setupCodePractice(): void {
         e.preventDefault();e.stopPropagation();setFocus(!focused);
     }, true);
     // Registered after the assistant's Esc, which marks the key as used. Compare closes before focus mode does.
+    // Esc puts the Question tool down first, before anything else Esc does (focus mode, Compare, the assistant): caught
+    // on the way down, so nothing else sees it.
+    window.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || (questionTool.getAttribute('aria-pressed') !== 'true' && !editorQuestion.picking && !compareQuestion.picking)) return;
+        e.preventDefault();e.stopPropagation();stopQuestion();
+    }, true);
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && comparing && !e.defaultPrevented) { e.preventDefault();closeCompare(); } });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && focused && !e.defaultPrevented) setFocus(false); });
     paintFocus();paintFont();canvas.setVisible(canvasOn());

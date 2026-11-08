@@ -6575,3 +6575,22 @@ body:has(#viewport:not(.graph-docked) #graph-viewport:not(.hidden)) :is(#ai-scra
   text-shadow: 0 0 6px color-mix(in srgb, var(--ink) 70%, transparent), 0 0 12px rgba(6, 14, 13, .9); }
 .ai-draw-label.beside { transform: translate(0, -50%); }
 .ai-draw-text { font-size: 14px; }
+/* Question: the learner points at code (a line, lines, or a box round any part) and asks beside it. */
+.cp-editor { position: relative; }
+.cq-capture { position: absolute; left: 0; top: 0; z-index: 4; cursor: crosshair; }
+.cq-capture[hidden] { display: none; }
+.cq-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; }
+.cq-mark { position: absolute; box-sizing: border-box; border: 2px dashed var(--accent-color); border-radius: 5px;
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
+.cq-mark.cq-drawing { border-style: solid; background: color-mix(in srgb, var(--accent-color) 6%, transparent); }
+.cq-mark.cq-pending { animation: cq-wait 1.4s ease-in-out infinite; }
+@keyframes cq-wait { 50% { background: color-mix(in srgb, var(--accent-color) 22%, transparent); } }
+.cq-form { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 4px; padding: 6px; box-sizing: border-box;
+    background: var(--panel-bg); border: 1px solid var(--accent-color); border-radius: 8px; box-shadow: var(--shadow-sm, 0 4px 14px rgba(0,0,0,.25));
+    font: 13px/1.4 var(--ui-font, system-ui, sans-serif); white-space: normal; }
+.cq-words { resize: vertical; min-height: 2.8em; border: 1px solid var(--border-color); border-radius: 5px; padding: 4px 6px;
+    background: var(--page-bg); color: var(--text-color); font: inherit; outline: 0; }
+.cq-words:focus { border-color: var(--accent-color); }
+.cq-bar { display: flex; justify-content: flex-end; gap: 6px; }
+.cq-send, .cq-close { padding: 2px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--btn-bg, var(--panel-bg)); color: var(--text-color); font: 600 12px/1.6 var(--ui-font, system-ui, sans-serif); cursor: pointer; }
+.cq-send { background: var(--accent-color); border-color: var(--accent-color); color: var(--page-bg); }
