@@ -1605,6 +1605,76 @@ def cycle_sections():
     ]
 
 
+def cycle_annotations():
+    """The Code panel's hover docs for cycle.py. Its three functions reuse u, v and dfs, so those are documented per function."""
+    S = CYCLE_SOURCE
+    lines = S.split('\n')
+    D, U, K = 'def has_cycle(', 'def has_cycle_undirected(', 'def has_cycle_kahn('
+    span = {D: (line_of(S, D), line_of(S, U) - 1), U: (line_of(S, U), line_of(S, K) - 1), K: (line_of(S, K), len(lines))}
+
+    def name(fn, n, text):
+        a, b = span[fn]
+        return {'name': n, 'line': a, 'endLine': b, 'text': text}
+
+    def expr(fn, line_text, snippet, text):
+        line = line_of(S, line_text, fn)
+        col = lines[line - 1].index(snippet)
+        return {'line': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
+
+    def block(fn, start, end, text):
+        a = line_of(S, start, fn)
+        return {'line': a, 'endLine': next(i + 1 for i in range(a - 1, len(lines)) if end in lines[i]), 'text': text}
+
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        doc('has_cycle', 'Whether a directed graph has a cycle, by DFS with three states per node. '
+            '$O(V + E)$ time, $O(V)$ space for the states and the recursion.'),
+        doc('has_cycle_undirected', 'Whether an undirected graph has a cycle, by DFS that skips the edge back to the parent. $O(V + E)$ time.'),
+        doc('has_cycle_kahn', 'Whether a directed graph has a cycle, with no recursion: peel off nodes that wait for nothing (Kahn\'s algorithm) '
+            'and see whether any are left. $O(V + E)$ time.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` lists the nodes `u` has an edge to. In an undirected graph each edge is listed under both ends.'),
+        doc('state', 'One state per node: `0` new, `1` on the current path (pink), `2` done (teal). Three states, because a node '
+            'reached again counts as a cycle only if it is still on the path.'),
+        doc('visited', 'Whether each node has been reached. Undirected edges need no third state: the parent check does that job.'),
+        doc('parent', 'The node this call came from, so the edge back to it is not taken for a cycle. `-1` for a start node.'),
+        doc('indeg', 'Each node\'s indegree: how many edges point at it that are still in play, the things it still waits for.'),
+        doc('queue', 'Nodes whose indegree has reached `0`: free to be taken, oldest first.'),
+        doc('taken', 'How many nodes have been taken from the queue so far.'),
+        name(D, 'dfs', 'Explores everything reachable from `u`, and returns `True` as soon as an edge leads back onto the current path. '
+             'Nested, so it uses `state` and `adj` without taking them as arguments.'),
+        name(U, 'dfs', 'Explores everything reachable from `u`, and returns `True` as soon as it finds a second way into a visited node.'),
+        name(D, 'u', 'The node being explored, or in the loop at the bottom, a node to start a search from.'),
+        name(U, 'u', 'The node being explored, or in the loop at the bottom, a node to start a search from.'),
+        name(K, 'u', 'While counting, each node in turn; in the main loop, the free node just taken from the queue.'),
+        name(D, 'v', 'A node `u` has an edge to.'),
+        name(U, 'v', 'A neighbour of `u`. The edges run both ways, so one of them is the parent.'),
+        name(K, 'v', 'A node `u` points to: its indegree counts the edge `u → v`.'),
+        expr(D, 'state = [0] * n', '[0] * n', 'Every node starts new.'),
+        expr(D, 'state[u] = 1', 'state[u] = 1', '`u` joins the current path: the chain of calls still running.'),
+        expr(D, 'if state[v] == 1', 'state[v] == 1', '`v` is on the current path, an ancestor of `u` in this search. The edge `u → v` leads back '
+             'into the path, so the path loops: a cycle.'),
+        expr(D, 'if state[v] == 0 and dfs(v)', 'state[v] == 0 and dfs(v)', 'Goes deeper only into a new node, and `and` stops `dfs` from running '
+             'otherwise. A done node (`2`) is skipped: everything past it was searched and holds no cycle, so `3 → 2` is no cycle.'),
+        expr(D, 'state[u] = 2', 'state[u] = 2', 'Every edge out of `u` is explored and none closed a loop: `u` leaves the path, done. '
+             'Marking it `1` forever, or back to `0`, would get later searches wrong.'),
+        expr(D, 'if state[u] == 0 and dfs(u)', 'state[u] == 0 and dfs(u)', 'A new search only from a node no earlier search reached. The graph '
+             'may be in pieces, and a cycle may sit in a piece the first search never reaches.'),
+        expr(U, 'if v == parent', 'v == parent', 'The edge just walked, seen from its other end. Without this skip, every edge would look like a '
+             'two-node cycle. (If two edges join the same pair, this skips both and misses that cycle.)'),
+        expr(U, 'if visited[v] or dfs(v, u)', 'visited[v]', 'Visited, and not the parent: `v` was already reached another way, so this edge '
+             'makes a second way in, which closes a loop.'),
+        expr(U, 'if visited[v] or dfs(v, u)', 'dfs(v, u)', 'Goes deeper with `u` as the parent, so the edge back to `u` is skipped there.'),
+        expr(U, 'if not visited[u] and dfs(u, -1)', 'dfs(u, -1)', '`-1` is no node, so a start node has no edge to skip.'),
+        block(K, 'for u in range(n)', 'indeg[v] += 1', 'Each edge `u → v` adds one to `indeg[v]`. Every edge is looked at once: $O(V + E)$.'),
+        expr(K, 'queue = deque(', 'u for u in range(n) if indeg[u] == 0', 'The nodes with no incoming edge: they wait for nothing, so they can go first.'),
+        expr(K, 'indeg[v] -= 1', 'indeg[v] -= 1', '`u` is taken, so its edge to `v` no longer counts: `v` waits for one fewer.'),
+        expr(K, 'if indeg[v] == 0', 'indeg[v] == 0', 'The last thing `v` waited for is gone: queue it. A count reaches `0` only once, so no node is queued twice. '
+             'On a cycle each node waits on the one before it, so its count never gets there.'),
+        expr(K, 'return taken < n', 'taken < n', 'Fewer taken than there are nodes: the rest lie on a cycle, or wait on a node that does.'),
+    ]
+
+
 def cycle_scene(header):
     dtrace, dadj = cycle_trace(CYC_N, CYC_EDGES, True)
     utrace, uadj = cycle_trace(UND_N, UND_EDGES, False)
@@ -1713,7 +1783,7 @@ A graph is a **tree** exactly when it is connected and has no cycle: equivalentl
 **Practice:** Course Schedule, Find Eventual Safe States, Graph Valid Tree, Redundant Connection.""",
         'Explain why a directed cycle needs three states while an undirected one needs only the parent. Ask the learner to predict, for each edge, whether it closes a cycle.',
         'cycle.py', CYCLE_SOURCE, dtrace, elements(tr, True, LD),
-        sections=cycle_sections(),
+        sections=cycle_sections(), annotations=cycle_annotations(),
         data={'cycNodes': pos(dadj), 'undNodes': pos(uadj)}, call_entry=LD('def dfs(u)'),
         first={'title': 'Directed: three states', 'description': 'A node on the current path, reached again, closes a cycle.'},
         more=[{'id': 'undirected', 'title': 'Undirected: skip the parent', 'description': 'Any visited neighbour other than the parent closes a cycle.',
