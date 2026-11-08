@@ -116,5 +116,6 @@ export function objectLabelRow(name:string):HTMLElement|null {
     const label=tracker.labels?.find(l=>l.annotation?.kind==='label');
     if(!label)return null;
     const row=document.querySelector<HTMLElement>(`.annotation-row[data-label-seq="${label.seq}"]`);
-    return row&&row.offsetParent?row:null;
+    // Shown or not by its boxes, not offsetParent: that is null for every row of a box positioned fixed (the Labels box).
+    return row&&row.getClientRects().length?row:null;
 }

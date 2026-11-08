@@ -1398,7 +1398,7 @@ function objectLabelRow(name) {
 	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
 	if (!label) return null;
 	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
-	return row && row.offsetParent ? row : null;
+	return row && row.getClientRects().length ? row : null;
 }
 //#endregion
 //#region src/label-wire-path.ts
@@ -26375,17 +26375,17 @@ function resolveTarget$1(ref, part = "") {
 	}
 	if (ref.startsWith("row:")) {
 		const row = objectLabelRow(ref.slice(4));
-		return row ? inkRect(row) : null;
+		return row ? part && textRect(row, part) || inkRect(row) : null;
 	}
 	const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
 	if (indexed) return indexedRect(indexed[1], indexed[2]);
+	const row = objectLabelRow(ref);
+	if (row) return part && textRect(row, part) || inkRect(row);
 	const corners = objectWorldCorners(ref);
 	const box = corners.length ? rectOf(corners.map((c) => project(c))) : null;
 	if (box && box.width * box.height > 4) return box;
 	const label = objectLabelElement(ref);
 	if (label?.offsetParent) return label.getBoundingClientRect();
-	const row = objectLabelRow(ref);
-	if (row) return inkRect(row);
 	const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
 	return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
 }
@@ -26714,13 +26714,15 @@ function fitSpotlight(rects) {
 /**
 * What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
 * things side by side share one ring, things apart get one each (a ring round both would take in all between).
+* A check or a cross judges each thing on its own: one each, never one between two of them.
 */
-function markRects(ref, part) {
+function markRects(ref, part, shape = "") {
 	if (!ref.includes("\n")) {
 		const r = resolveTarget$1(ref, part);
 		return r ? [r] : [];
 	}
 	const clusters = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
+	if (shape === "check" || shape === "cross") return clusters;
 	const near = (a, b) => {
 		return Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom)) <= Math.max(24, Math.min(a.height, b.height) * .8);
 	};
@@ -26856,13 +26858,13 @@ async function holdPointer(ref, mark, r, done, color, part) {
 		const now = resolveTarget$1(ref, part);
 		if (now) {
 			if (!drawn) {
-				drawRings(markRects(ref, part), color, mark);
+				drawRings(markRects(ref, part, mark), color, mark);
 				await traceMark(r);
 				drawn = true;
 				since = 0;
 				continue;
 			}
-			if (mark !== "point" && ring?.classList.contains("on")) fitRings(markRects(ref, part));
+			if (mark !== "point" && ring?.classList.contains("on")) fitRings(markRects(ref, part, mark));
 			since ||= performance.now();
 			if (pointer?.classList.contains("on")) {
 				if (mark === "point") {
@@ -37716,7 +37718,7 @@ function setupCodePractice() {
 	});
 	const compareTool = tool("⇄ Compare", "");
 	compareTool.classList.add("cp-coach-only");
-	tools.insertBefore(compareTool, helpTool);
+	tools.insertBefore(compareTool, reset);
 	let comparing = false, comparedText = "", askAbout = null, pairAfterCompare = false;
 	function paintCompareTool() {
 		compareTool.textContent = comparing ? "✕ Close compare" : "⇄ Compare";
@@ -37791,7 +37793,7 @@ function setupCodePractice() {
 	altTool.classList.add("cp-alt-keep");
 	takeBack.classList.add("cp-alt-keep");
 	speak.classList.add("cp-alt-keep");
-	tools.insertBefore(altTool, helpTool);
+	tools.insertBefore(altTool, reset);
 	let altTurns = [];
 	let altFrom = {
 		focused: false,
@@ -37846,7 +37848,7 @@ function setupCodePractice() {
 		else openAlternatives();
 	});
 	const questionTool = tool("? Question", "Ask about a piece of code: click a line (shift-click for more lines) or drag a box round any part, then type beside it: a question, an issue you see, or a change to make (Esc to cancel)");
-	tools.insertBefore(questionTool, compareTool);
+	tools.insertBefore(questionTool, helpTool);
 	questionTool.classList.add("cp-alt-keep");
 	const paintQuestion = (on) => questionTool.setAttribute("aria-pressed", String(on));
 	paintQuestion(false);

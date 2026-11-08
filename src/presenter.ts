@@ -229,17 +229,18 @@ export function resolveTarget(ref: string, part = ''): DOMRect | null {
     if (ref === 'caption') { const c = document.getElementById('step-caption');return c?.offsetParent ? c.getBoundingClientRect() : null; }
     if (ref === 'slider') { const i = sliderInput();return i ? i.getBoundingClientRect() : null; }
     if (ref.startsWith('slider:')) { const i = paramInput(ref.slice(7));return i ? (i.parentElement ?? i).getBoundingClientRect() : null; }
-    if (ref.startsWith('row:')) { const row = objectLabelRow(ref.slice(4));return row ? inkRect(row) : null; }
+    if (ref.startsWith('row:')) { const row = objectLabelRow(ref.slice(4));return row ? (part && textRect(row, part)) || inkRect(row) : null; }
     const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
     if (indexed) return indexedRect(indexed[1]!, indexed[2]!);
+    // A value shown as a row of a labels box: the row is where it is. Its 3D anchor is only where the box hangs, the
+    // same for every row in it (and its bounds take in its wire), so it is asked first; `part` is the words in the row.
+    const row = objectLabelRow(ref);
+    if (row) return (part && textRect(row, part)) || inkRect(row);
     const corners = objectWorldCorners(ref);
     const box = corners.length ? rectOf(corners.map(c => project(c))) : null;
     if (box && box.width * box.height > 4) return box;
     const label = objectLabelElement(ref);
     if (label?.offsetParent) return label.getBoundingClientRect();
-    // A value shown as a row of the variables box (no shape of its own in the view): the row is where it is.
-    const row = objectLabelRow(ref);
-    if (row) return inkRect(row);
     const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
     return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
 }
@@ -459,10 +460,12 @@ function fitSpotlight(rects: DOMRect[]) {
 /**
  * What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
  * things side by side share one ring, things apart get one each (a ring round both would take in all between).
+ * A check or a cross judges each thing on its own: one each, never one between two of them.
  */
-function markRects(ref: string, part: string): DOMRect[] {
+function markRects(ref: string, part: string, shape = ''): DOMRect[] {
     if (!ref.includes('\n')) { const r = resolveTarget(ref, part);return r ? [r] : []; }
     const clusters = ref.split('\n').map(x => resolveTarget(x, '')).filter((x): x is DOMRect => !!x);
+    if (shape === 'check' || shape === 'cross') return clusters;
     const near = (a: DOMRect, b: DOMRect) => {
         const gap = Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom));
         return gap <= Math.max(24, Math.min(a.height, b.height) * .8);
@@ -565,8 +568,8 @@ async function holdPointer(ref: string, mark: Beat['mark'], r: number, done: () 
         const now = resolveTarget(ref, part);
         if (now) {
             // A note written this beat appears while the pointer waits for it: its mark is drawn once it's there.
-            if (!drawn) { drawRings(markRects(ref, part), color, mark as MarkShape);await traceMark(r);drawn = true;since = 0;continue; }
-            if (mark !== 'point' && ring?.classList.contains('on')) fitRings(markRects(ref, part));
+            if (!drawn) { drawRings(markRects(ref, part, mark), color, mark as MarkShape);await traceMark(r);drawn = true;since = 0;continue; }
+            if (mark !== 'point' && ring?.classList.contains('on')) fitRings(markRects(ref, part, mark));
             since ||= performance.now();
             if (pointer?.classList.contains('on')) {
                 // Held where it finished: the centre, or the end of the mark it drew.
