@@ -3991,6 +3991,67 @@ for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumera
         'elements': [grid, {'id': 'placeholder', 'type': 'text', 'text': 'Visualization coming soon', 'position': [1.5, 0, 0], 'color': BLUE}],
     })
 
+# ── Alternatives: functions in the lesson that solve the same problem another way, for Type along's Alternatives view.
+# Each group is declared on the file of its first member; a member names its file when it lives elsewhere. ──
+def member(function, label, approach, when, file=None):
+    return {**({'file': file} if file else {}), 'function': function, 'label': label, 'approach': approach, 'when': when}
+
+
+ALTERNATIVES = {
+    'dfs': [{'id': 'traverse', 'title': 'Visit every reachable node',
+             'prompt': 'Compare depth first against breadth first: the order nodes are reached in, the stack against the queue, what each one\'s order is good for (paths and nesting against distances), and the memory each holds on a deep or a wide graph.',
+             'members': [member('dfs_order', 'DFS (recursion)', 'Goes as deep as it can along one path, then backs up; the call stack holds the path. O(V + E).',
+                                'For anything about paths, nesting or finishing order: cycles, topological order, components.'),
+                         member('bfs', 'BFS (queue)', 'Reaches nodes in rings by distance from the start; a queue holds the frontier. O(V + E).',
+                                'For fewest-edges distances, and on deep graphs where recursion would overflow.', 'bfs')]}],
+    'grid-graphs': [{'id': 'flood-fill', 'title': 'Flood fill a region',
+                     'prompt': 'Compare the recursive fill with the queue fill: where each checks a cell (on arrival against before queueing), the order the region fills in, and the recursion depth limit on a large region.',
+                     'members': [member('flood_fill', 'DFS (recursion)', 'Paints a cell, then calls itself on the four neighbours; each call checks its cell on arrival. Recursion can go R·C deep.',
+                                        'Short to write; fine for small regions.'),
+                                 member('flood_fill_bfs', 'BFS (queue)', 'Paints cells as they are queued and checks neighbours before queueing; the region grows in rings. No recursion.',
+                                        'Large regions, where recursion depth would overflow.')]}],
+    'cycle-detection': [{'id': 'detect-cycle', 'title': 'Detect a cycle',
+                         'prompt': 'Compare how each one recognises a cycle: what counts as an edge leading back, why a directed graph needs three states while an undirected one needs only the parent, and why a node on a cycle never frees up in the indegree count. Say which works on which kind of graph, and which can name the cycle.',
+                         'members': [member('has_cycle', 'Directed: DFS, three states', 'Marks nodes new, on the current path, or done; an edge to a node on the path closes a cycle. O(V + E).',
+                                            'A directed graph when you also want the cycle itself, or are already running DFS.'),
+                                     member('has_cycle_undirected', 'Undirected: DFS, skip the parent', 'Visited or not, plus where each visit came from; any visited neighbour other than the parent closes a cycle. O(V + E).',
+                                            'An undirected graph, e.g. "is this a tree?".'),
+                                     member('has_cycle_kahn', 'Directed: count indegrees (Kahn)', 'Peels off nodes that wait for nothing; nodes on a cycle never reach indegree 0, so fewer than n get taken. No recursion. O(V + E).',
+                                            'A directed graph when you need a topological order anyway, or recursion is too deep.')]}],
+    'bipartite': [{'id': 'two-colour', 'title': 'Split into two teams',
+                   'prompt': 'Compare colouring by BFS with colouring by DFS: where each detects a clash, the order nodes get coloured, and why both must start from every uncoloured node.',
+                   'members': [member('is_bipartite', 'BFS colouring', 'Colours each piece of the graph ring by ring from a start, giving every neighbour the other team; a neighbour on the same team is a clash. O(V + E).',
+                                      'The usual choice: no recursion depth to worry about.'),
+                               member('is_bipartite_dfs', 'DFS colouring', 'Colours along a path, the other team at each step, and reports a clash back up the calls. O(V + E).',
+                                      'When the code is already a DFS, or the graph is small.')]}],
+    'topological-sort': [{'id': 'topo-order', 'title': 'Order tasks before what depends on them',
+                          'prompt': 'Compare the DFS finishing order with Kahn\'s peeling: why reversing finish times gives an order, how each notices a cycle, and which order each produces.',
+                          'members': [member('topo_dfs', 'DFS finishing order', 'Adds a node once everything after it is done, then reverses the list. O(V + E).',
+                                             'Short to write when you already have DFS; needs a separate cycle check.'),
+                                      member('topo_kahn', 'Kahn: count indegrees', 'Repeatedly takes a node with nothing left to wait for; if some never free up, there is a cycle. O(V + E).',
+                                             'When you need cycle detection built in, or a level-by-level order.')]}],
+    'mst': [{'id': 'mst', 'title': 'Connect every node as cheaply as possible',
+             'prompt': 'Compare Kruskal with Prim: global edge order against growing one tree, union-find against a heap, and which suits sparse or dense graphs.',
+             'members': [member('kruskal', 'Kruskal: cheapest edges first', 'Sorts every edge and keeps each one that joins two separate groups, tracked by union-find. O(E log E).',
+                                'Edges given as a list, or a sparse graph.'),
+                         member('prim', 'Prim: grow one tree', 'Grows a tree from one node, always adding the cheapest edge leaving it, from a heap. O(E log V).',
+                                'An adjacency list, or a dense graph.')]}],
+    'dijkstra': [{'id': 'shortest-path', 'title': 'Shortest paths from a source',
+                  'prompt': 'Compare these shortest-path methods: the weights each allows (none, 0 or 1, non-negative, any), the structure that picks the next node (queue, deque, heap, none), whether a node is final when first taken, and what each costs.',
+                  'members': [member('dijkstra', 'Dijkstra (heap)', 'Takes the closest unfinished node from a heap; with no negative weights its distance is then final. O(E log V).',
+                                     'Non-negative weights: the default.'),
+                              member('bfs', 'BFS (unweighted)', 'Every edge costs 1, so the queue reaches nodes in order of distance. O(V + E).', 'Unweighted graphs.', 'bfs'),
+                              member('zero_one_bfs', '0-1 BFS (deque)', 'Weights 0 or 1 only: a 0-edge goes to the front of a deque, a 1-edge to the back, keeping it in distance order. O(V + E).',
+                                     'Weights that are only 0 and 1.', 'zero-one-bfs'),
+                              member('a_star', 'A* (heap + heuristic)', 'Dijkstra steered toward one goal: the heap orders by distance so far plus an estimate that never overshoots. Explores fewer nodes.',
+                                     'One goal and a good estimate of the remaining distance, as on a grid.', 'a-star'),
+                              member('bellman_ford', 'Bellman-Ford (relax all edges)', 'Relaxes every edge V − 1 times, then once more to catch a negative cycle. O(V · E).',
+                                     'Negative weights, or to detect a negative cycle.', 'bellman-ford')]}],
+}
+for f in codeFiles:
+    if f['id'] in ALTERNATIVES:
+        f['alternatives'] = ALTERNATIVES[f['id']]
+
 lesson = {'title': 'Graph algorithms', 'codeFiles': codeFiles, 'scenes': scenes}
 out = ROOT / 'scenes/draft/graph-algorithms.json'
 out.write_text(dumps_compact_leaves(lesson) + '\n')

@@ -133,6 +133,17 @@
         {"line": 8, "scene": "dfs", "step": "run", "snapshot": 47, "label": "Go deep first (depth-first search) · Neighbour 2 of 2 of 0: 2."},
         {"line": 9, "scene": "dfs", "step": "run", "snapshot": 48, "label": "Go deep first (depth-first search) · 2 is already visited: an edge back into explored territory, a cycle. Skip it."},
         {"line": 13, "scene": "dfs", "step": "run", "snapshot": 49, "label": "Go deep first (depth-first search) · Done: order = [0, 1, 3, 2, 5, 4]. Every node and every edge was looked at once: O(V + E)."}
+      ],
+      "alternatives": [
+        {
+          "id": "traverse",
+          "title": "Visit every reachable node",
+          "prompt": "Compare depth first against breadth first: the order nodes are reached in, the stack against the queue, what each one's order is good for (paths and nesting against distances), and the memory each holds on a deep or a wide graph.",
+          "members": [
+            {"function": "dfs_order", "label": "DFS (recursion)", "approach": "Goes as deep as it can along one path, then backs up; the call stack holds the path. O(V + E).", "when": "For anything about paths, nesting or finishing order: cycles, topological order, components."},
+            {"file": "bfs", "function": "bfs", "label": "BFS (queue)", "approach": "Reaches nodes in rings by distance from the start; a queue holds the frontier. O(V + E).", "when": "For fewest-edges distances, and on deep graphs where recursion would overflow."}
+          ]
+        }
       ]
     },
     {
@@ -811,6 +822,17 @@
         {"line": 30, "scene": "grid-graphs", "step": "bfs", "snapshot": 182, "label": "Flood fill by BFS (queue) · (5, 2) is colour 0, not 1: skip it."},
         {"line": 26, "scene": "grid-graphs", "step": "bfs", "snapshot": 183, "label": "Flood fill by BFS (queue) · The queue is empty."},
         {"line": 23, "scene": "grid-graphs", "step": "bfs", "snapshot": 184, "label": "Flood fill by BFS (queue) · Done: the same 15 cells as the DFS run, reached in rings around the start instead of down one path at a time. O(rows × cols), with a queue in place of the call stack."}
+      ],
+      "alternatives": [
+        {
+          "id": "flood-fill",
+          "title": "Flood fill a region",
+          "prompt": "Compare the recursive fill with the queue fill: where each checks a cell (on arrival against before queueing), the order the region fills in, and the recursion depth limit on a large region.",
+          "members": [
+            {"function": "flood_fill", "label": "DFS (recursion)", "approach": "Paints a cell, then calls itself on the four neighbours; each call checks its cell on arrival. Recursion can go R·C deep.", "when": "Short to write; fine for small regions."},
+            {"function": "flood_fill_bfs", "label": "BFS (queue)", "approach": "Paints cells as they are queued and checks neighbours before queueing; the region grows in rings. No recursion.", "when": "Large regions, where recursion depth would overflow."}
+          ]
+        }
       ]
     },
     {
@@ -973,6 +995,18 @@
         {"line": 50, "scene": "cycle-detection", "step": "indegree", "snapshot": 25, "label": "Directed: count indegrees · 2 still waits for 1 more."},
         {"line": 45, "scene": "cycle-detection", "step": "indegree", "snapshot": 26, "label": "Directed: count indegrees · The queue is empty. 2, 3, 4, 5 never got free: each still waits on another node that waits too."},
         {"line": 52, "scene": "cycle-detection", "step": "indegree", "snapshot": 27, "label": "Directed: count indegrees · taken = 2 < 6: there is a cycle. Every node never taken lies on a cycle or behind one (2 only waits on 3)."}
+      ],
+      "alternatives": [
+        {
+          "id": "detect-cycle",
+          "title": "Detect a cycle",
+          "prompt": "Compare how each one recognises a cycle: what counts as an edge leading back, why a directed graph needs three states while an undirected one needs only the parent, and why a node on a cycle never frees up in the indegree count. Say which works on which kind of graph, and which can name the cycle.",
+          "members": [
+            {"function": "has_cycle", "label": "Directed: DFS, three states", "approach": "Marks nodes new, on the current path, or done; an edge to a node on the path closes a cycle. O(V + E).", "when": "A directed graph when you also want the cycle itself, or are already running DFS."},
+            {"function": "has_cycle_undirected", "label": "Undirected: DFS, skip the parent", "approach": "Visited or not, plus where each visit came from; any visited neighbour other than the parent closes a cycle. O(V + E).", "when": "An undirected graph, e.g. \"is this a tree?\"."},
+            {"function": "has_cycle_kahn", "label": "Directed: count indegrees (Kahn)", "approach": "Peels off nodes that wait for nothing; nodes on a cycle never reach indegree 0, so fewer than n get taken. No recursion. O(V + E).", "when": "A directed graph when you need a topological order anyway, or recursion is too deep."}
+          ]
+        }
       ]
     },
     {
@@ -1153,6 +1187,17 @@
         {"line": 29, "scene": "bipartite", "step": "dfs", "snapshot": 37, "label": "Colour by DFS · dfs(1) passes the clash back up: False."},
         {"line": 29, "scene": "bipartite", "step": "dfs", "snapshot": 38, "label": "Colour by DFS · dfs(0) passes the clash back up: False."},
         {"line": 36, "scene": "bipartite", "step": "dfs", "snapshot": 39, "label": "Colour by DFS · Not bipartite. The DFS found the same clash as BFS, in a different order."}
+      ],
+      "alternatives": [
+        {
+          "id": "two-colour",
+          "title": "Split into two teams",
+          "prompt": "Compare colouring by BFS with colouring by DFS: where each detects a clash, the order nodes get coloured, and why both must start from every uncoloured node.",
+          "members": [
+            {"function": "is_bipartite", "label": "BFS colouring", "approach": "Colours each piece of the graph ring by ring from a start, giving every neighbour the other team; a neighbour on the same team is a clash. O(V + E).", "when": "The usual choice: no recursion depth to worry about."},
+            {"function": "is_bipartite_dfs", "label": "DFS colouring", "approach": "Colours along a path, the other team at each step, and reports a clash back up the calls. O(V + E).", "when": "When the code is already a DFS, or the graph is small."}
+          ]
+        }
       ]
     },
     {
@@ -1269,6 +1314,17 @@
         {"line": 32, "scene": "topological-sort", "step": "kahn", "snapshot": 48, "label": "Kahn: take what waits for nothing · 3 is next in the order."},
         {"line": 30, "scene": "topological-sort", "step": "kahn", "snapshot": 49, "label": "Kahn: take what waits for nothing · Nothing is left waiting."},
         {"line": 37, "scene": "topological-sort", "step": "kahn", "snapshot": 50, "label": "Kahn: take what waits for nothing · All 6 placed: 4, 5, 1, 2, 0, 3. A different order from the DFS one, and just as valid: every arrow points forward."}
+      ],
+      "alternatives": [
+        {
+          "id": "topo-order",
+          "title": "Order tasks before what depends on them",
+          "prompt": "Compare the DFS finishing order with Kahn's peeling: why reversing finish times gives an order, how each notices a cycle, and which order each produces.",
+          "members": [
+            {"function": "topo_dfs", "label": "DFS finishing order", "approach": "Adds a node once everything after it is done, then reverses the list. O(V + E).", "when": "Short to write when you already have DFS; needs a separate cycle check."},
+            {"function": "topo_kahn", "label": "Kahn: count indegrees", "approach": "Repeatedly takes a node with nothing left to wait for; if some never free up, there is a cycle. O(V + E).", "when": "When you need cycle detection built in, or a level-by-level order."}
+          ]
+        }
       ]
     },
     {
@@ -1497,6 +1553,17 @@
         {"line": 29, "scene": "mst", "step": "prim", "snapshot": 61, "label": "Prim: grow one tree · Pop the cheapest: reach 6 from 5 for 11."},
         {"line": 31, "scene": "mst", "step": "prim", "snapshot": 62, "label": "Prim: grow one tree · 6 is in the tree already, through a cheaper edge: skip this stale entry."},
         {"line": 39, "scene": "mst", "step": "prim", "snapshot": 63, "label": "Prim: grow one tree · The heap is empty. Same total as Kruskal: 22."}
+      ],
+      "alternatives": [
+        {
+          "id": "mst",
+          "title": "Connect every node as cheaply as possible",
+          "prompt": "Compare Kruskal with Prim: global edge order against growing one tree, union-find against a heap, and which suits sparse or dense graphs.",
+          "members": [
+            {"function": "kruskal", "label": "Kruskal: cheapest edges first", "approach": "Sorts every edge and keeps each one that joins two separate groups, tracked by union-find. O(E log E).", "when": "Edges given as a list, or a sparse graph."},
+            {"function": "prim", "label": "Prim: grow one tree", "approach": "Grows a tree from one node, always adding the cheapest edge leaving it, from a heap. O(E log V).", "when": "An adjacency list, or a dense graph."}
+          ]
+        }
       ]
     },
     {
@@ -1570,6 +1637,20 @@
         {"line": 9, "scene": "dijkstra", "step": "run", "snapshot": 56, "label": "Cheapest route (Dijkstra) · Pop the closest: 5 at distance 10."},
         {"line": 10, "scene": "dijkstra", "step": "run", "snapshot": 57, "label": "Cheapest route (Dijkstra) · dist[5] = 10 is final: nothing left in the heap is closer, and no edge is negative."},
         {"line": 17, "scene": "dijkstra", "step": "run", "snapshot": 58, "label": "Cheapest route (Dijkstra) · Shortest distances from 0: 0, 5, 2, 6, 7, 10. Following prev back gives each path."}
+      ],
+      "alternatives": [
+        {
+          "id": "shortest-path",
+          "title": "Shortest paths from a source",
+          "prompt": "Compare these shortest-path methods: the weights each allows (none, 0 or 1, non-negative, any), the structure that picks the next node (queue, deque, heap, none), whether a node is final when first taken, and what each costs.",
+          "members": [
+            {"function": "dijkstra", "label": "Dijkstra (heap)", "approach": "Takes the closest unfinished node from a heap; with no negative weights its distance is then final. O(E log V).", "when": "Non-negative weights: the default."},
+            {"file": "bfs", "function": "bfs", "label": "BFS (unweighted)", "approach": "Every edge costs 1, so the queue reaches nodes in order of distance. O(V + E).", "when": "Unweighted graphs."},
+            {"file": "zero-one-bfs", "function": "zero_one_bfs", "label": "0-1 BFS (deque)", "approach": "Weights 0 or 1 only: a 0-edge goes to the front of a deque, a 1-edge to the back, keeping it in distance order. O(V + E).", "when": "Weights that are only 0 and 1."},
+            {"file": "a-star", "function": "a_star", "label": "A* (heap + heuristic)", "approach": "Dijkstra steered toward one goal: the heap orders by distance so far plus an estimate that never overshoots. Explores fewer nodes.", "when": "One goal and a good estimate of the remaining distance, as on a grid."},
+            {"file": "bellman-ford", "function": "bellman_ford", "label": "Bellman-Ford (relax all edges)", "approach": "Relaxes every edge V − 1 times, then once more to catch a negative cycle. O(V · E).", "when": "Negative weights, or to detect a negative cycle."}
+          ]
+        }
       ]
     },
     {

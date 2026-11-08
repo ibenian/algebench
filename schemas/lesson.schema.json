@@ -3405,6 +3405,71 @@
             "additionalProperties": false
           }
         },
+        "alternatives": {
+          "type": "array",
+          "description": "Groups of functions that solve the same problem in different ways, for Type along's Alternatives view: a learner on any member's code can set it beside another member, or beside their own code, and have the tutor compare the approaches. A group is declared once, in any file; its members may be in other files. The view is offered, with its count, only on code that is a member of a group.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The problem every member solves, in a few words (\"Detect a cycle\")."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "What the tutor should bring out when comparing two members: the trade-offs that matter, what each handles that another doesn't."
+              },
+              "members": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The code file's id; omitted for the file declaring the group."
+                    },
+                    "function": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The top-level function's name, as its def writes it."
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The approach in a few words, shown in the pickers (\"DFS with three states\")."
+                    },
+                    "approach": {
+                      "type": "string",
+                      "description": "One or two sentences on how it works and what it costs, for the tutor."
+                    },
+                    "when": {
+                      "type": "string",
+                      "description": "When to choose it over the others."
+                    }
+                  },
+                  "required": [
+                    "function",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
         "annotations": {
           "type": "array",
           "description": "Hyper-comments the Code tab shows on hover, under a symbol's value as documentation. An entry with a name documents that variable, function, class or expression key (as the code writes it, without spaces) wherever it appears; with line/endLine too it documents it only on those lines, overriding the file-wide entry (a local name hiding an outer one). An entry without a name documents a region: lines line–endLine (a block), or columns col–endCol of that line (an expression); pointing at it shows a faint dotted underline and the text. The reader can turn them off in the Code tab's view settings.",

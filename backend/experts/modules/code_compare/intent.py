@@ -90,26 +90,26 @@ def _run(start, end, taken: set[int], size: int) -> tuple[int, int]:
     return a, b
 
 
-def clean_matches(raw, original: list[str], typed: list[str]) -> list[CompareMatch]:
-    """The model's matches made a diff that can be drawn: each line of both sides in one match, each match a run of lines
-    on each side. What it judged is kept. A verdict that can't fit is put right, and a line it never placed goes in a
-    match of its own ("missing" or "extra", or none to judge when blank)."""
-    out: list[CompareMatch] = []
-    left: set[int] = set()
-    right: set[int] = set()
-    for m in raw or []:
-        if not isinstance(m, CompareMatch):
-            continue
-        a, b = _run(m.original_from, m.original_to, left, len(original))
-        c, d = _run(m.yours_from, m.yours_to, right, len(typed))
+def place_parts(raw, left: list[str], right: list[str], *, verdicts: set[str], mismatch: str, only_left: str, only_right: str, same: str):
+    """Parts of a two-sided diff made drawable, for any comparison of two pieces of code: each line of both sides in one
+    part, each part a run of lines on each side. ``raw`` holds ``(left_from, left_to, right_from, right_to, verdict,
+    comment)``. A verdict outside ``verdicts`` becomes ``mismatch``; a part with one side only takes that side's verdict
+    (``only_left`` or ``only_right``), and one with both can't. A line never placed goes in a part of its own: one-sided,
+    or ``same`` when blank. Returns the same tuples, cleaned."""
+    out: list[tuple[int, int, int, int, str, str]] = []
+    taken_left: set[int] = set()
+    taken_right: set[int] = set()
+    for a0, b0, c0, d0, verdict, comment in raw:
+        a, b = _run(a0, b0, taken_left, len(left))
+        c, d = _run(c0, d0, taken_right, len(right))
         if not a and not c:
             continue
-        verdict = m.verdict.strip().lower()
-        verdict = verdict if verdict in VERDICTS else "incorrect"
-        if a and c and verdict in ("missing", "extra"):
-            verdict = "incorrect"
-        out.append(CompareMatch(original_from=a, original_to=b, yours_from=c, yours_to=d, comment=_clean(m.comment),
-                                verdict=verdict if a and c else "missing" if a else "extra"))
+        verdict = str(verdict or "").strip().lower()
+        verdict = verdict if verdict in verdicts else mismatch
+        if a and c and verdict in (only_left, only_right):
+            verdict = mismatch
+        out.append((a, b, c, d, verdict if a and c else only_left if a else only_right, _clean(comment)))
+
     def rest(lines: list[str], taken: set[int], make) -> None:
         k = 1
         while k <= len(lines):
@@ -119,11 +119,20 @@ def clean_matches(raw, original: list[str], typed: list[str]) -> list[CompareMat
             end, blank = k, not lines[k - 1].strip()
             while end < len(lines) and end + 1 not in taken and (not lines[end].strip()) == blank:
                 end += 1
-            out.append(make(k, end, "exact" if blank else None))
+            out.append(make(k, end, same if blank else None))
             k = end + 1
-    rest(original, left, lambda a, b, v: CompareMatch(original_from=a, original_to=b, verdict=v or "missing"))
-    rest(typed, right, lambda a, b, v: CompareMatch(yours_from=a, yours_to=b, verdict=v or "extra"))
+    rest(left, taken_left, lambda a, b, v: (a, b, 0, 0, v or only_left, ""))
+    rest(right, taken_right, lambda a, b, v: (0, 0, a, b, v or only_right, ""))
     return out
+
+
+def clean_matches(raw, original: list[str], typed: list[str]) -> list[CompareMatch]:
+    """The model's matches made a diff that can be drawn (see ``place_parts``): what it judged is kept, a verdict that
+    can't fit is put right, and a line it never placed goes in a match of its own ("missing" or "extra", or none to
+    judge when blank)."""
+    parts = place_parts([(m.original_from, m.original_to, m.yours_from, m.yours_to, m.verdict, m.comment) for m in raw or [] if isinstance(m, CompareMatch)],
+                        original, typed, verdicts=VERDICTS, mismatch="incorrect", only_left="missing", only_right="extra", same="exact")
+    return [CompareMatch(original_from=a, original_to=b, yours_from=c, yours_to=d, verdict=v, comment=t) for a, b, c, d, v, t in parts]
 
 
 def clean_steps(raw) -> list[CompareCanvasStep]:

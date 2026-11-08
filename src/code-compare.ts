@@ -1,7 +1,11 @@
 /**
- * Compare: the learner's code beside the original, each side in its own order, the logical parts the code_compare expert
- * matched joined across the middle. A connector that crosses another is a part out of order. The agent points with
- * the laser and draws on either side (two code canvases) as it talks. Read only.
+ * Compare: two pieces of code side by side, each in its own order, the logical parts an expert matched joined across the
+ * middle. A connector that crosses another is a part out of order. The agent points with the laser and draws on either
+ * side (two code canvases) as it talks. Read only.
+ *
+ * The view only draws. What the two sides are, and what a part's verdict says, is its `CompareKind`: by default the
+ * learner's code against the original (code_compare); code-alternatives.ts sets two alternative solutions side by side.
+ * Internally the left side is "original" and the right "yours", whatever the kind calls them.
  */
 import { createCodeCanvas } from '/code-canvas.js';
 import type { CanvasHand } from '/code-canvas.js';
@@ -18,17 +22,43 @@ export interface CompareResult { summary: string; same_behaviour: boolean; match
 const SVG = 'http://www.w3.org/2000/svg';
 const LABELS: Record<string, string> = {exact: 'exact', equivalent: 'logically equivalent', alternate: 'alternate solution', incorrect: 'incorrect', missing: 'missing', extra: 'extra'};
 
+/** What a comparison is: its sides' names, and how a verdict reads (chip), looks (`cmp-<tone>`) and is asked about. */
+export interface CompareKind {
+    /** The column heads, left then right. */
+    titles(): [string, string];
+    /** Each side as a part is described: "original" and "your code" for the default kind. */
+    sides(): [string, string];
+    label(verdict: string): string;
+    /** One of exact, equivalent, alternate, incorrect, missing, extra: the colour. */
+    tone(verdict: string): string;
+    /** A part the left has and the right doesn't: the placeholder's words on the right, or null for no placeholder. */
+    gap(m: CompareMatch): string | null;
+    askTitle(m: CompareMatch): string;
+}
+
+/** The learner's code against the original it was typed from. */
+export const ORIGINAL_KIND: CompareKind = {
+    titles: () => ['Original', 'Your code'],
+    sides: () => ['original', 'your code'],
+    label: verdict => LABELS[verdict] ?? verdict,
+    tone: verdict => verdict,
+    gap: m => m.verdict === 'missing' ? 'not in your code yet' : null,
+    askTitle: m => m.yours_from ? 'Explain this difference' : 'Help with this part',
+};
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string): HTMLElementTagNameMap[K] {
     const e = document.createElement(tag);e.className = cls;return e;
 }
 
 /** A part as the learner and the model read it: which lines on each side. */
-export function describePart(m: CompareMatch): string {
+export function describePart(m: CompareMatch, kind: CompareKind = ORIGINAL_KIND): string {
     const run = (name: string, a: number, b: number) => a ? `${name} ${a === b ? `line ${a}` : `lines ${a}-${b}`}` : '';
-    return [run('original', m.original_from, m.original_to), run('your code', m.yours_from, m.yours_to)].filter(Boolean).join(', ');
+    const [left, right] = kind.sides();
+    return [run(left, m.original_from, m.original_to), run(right, m.yours_from, m.yours_to)].filter(Boolean).join(', ');
 }
 
-export function createCompareView(o: {host: HTMLElement; charWidth: () => number; hand: CanvasHand; ask: (m: CompareMatch, ownWords: boolean) => void}) {
+export function createCompareView(o: {host: HTMLElement; charWidth: () => number; hand: CanvasHand; ask: (m: CompareMatch, ownWords: boolean) => void; kind?: CompareKind}) {
+    const kind = o.kind ?? ORIGINAL_KIND;
     const grid = el('div', 'cmp-grid');
     const leftCol = el('div', 'cmp-side'), mid = el('div', 'cmp-mid'), rightCol = el('div', 'cmp-side');
     const links = document.createElementNS(SVG, 'svg');links.classList.add('cmp-links');
@@ -45,13 +75,13 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
 
     function askButton(m: CompareMatch) {
         const ai = el('button', 'cmp-ask');ai.type = 'button';ai.textContent = '✦';
-        ai.title = `${m.yours_from ? 'Explain this difference' : 'Help with this part'} (${describePart(m)}). ⌘-click to ask your own question`;ai.setAttribute('aria-label', ai.title);
+        ai.title = `${kind.askTitle(m)} (${describePart(m, kind)}). ⌘-click to ask your own question`;ai.setAttribute('aria-label', ai.title);
         ai.addEventListener('click', e => { pinned = String(matches.indexOf(m));hover(pinned);o.ask(m, e.metaKey || e.ctrlKey); });
         return ai;
     }
     function noteOf(m: CompareMatch) {
         const note = el('div', 'cmp-note'), chip = el('span', 'cmp-chip');
-        chip.textContent = LABELS[m.verdict] ?? m.verdict;
+        chip.textContent = kind.label(m.verdict);
         note.append(chip, document.createTextNode(m.comment ? ` ${m.comment}` : ''));
         return note;
     }
@@ -60,7 +90,7 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         const head = el('div', 'cmp-head');head.textContent = title;
         const parts = matches.filter(m => part(m)[0]).sort((a, b) => part(a)[0] - part(b)[0]);
         col.replaceChildren(head, ...parts.map(m => {
-            const group = el('div', `cmp-part cmp-${m.verdict}`);
+            const group = el('div', `cmp-part cmp-${kind.tone(m.verdict)}`);
             group.dataset.match = String(matches.indexOf(m));
             const [from, to] = part(m);
             for (let k = from; k <= to; k++) {
@@ -73,7 +103,7 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
                 if (k === from && noted && lines.slice(from - 1, to).some(text => text.trim())) line.append(askButton(m));
             }
             // Said once: under their code, or under the original's when theirs has nothing for it.
-            if (m.verdict !== 'exact' || m.comment) { if (noted || !m.yours_from) group.append(noteOf(m)); }
+            if (kind.tone(m.verdict) !== 'exact' || m.comment) { if (noted || !m.yours_from) group.append(noteOf(m)); }
             return group;
         }));
     }
@@ -84,9 +114,10 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         let anchor: Element = rightCol.firstElementChild!;
         for (const m of parts) {
             if (m.yours_from) { anchor = rightRows[m.yours_to - 1]?.closest('.cmp-part') ?? anchor;continue; }
-            if (m.verdict !== 'missing') continue;
-            const gap = el('div', 'cmp-part cmp-missing cmp-gap');
-            gap.textContent = 'not in your code yet';gap.dataset.match = String(matches.indexOf(m));
+            const words = kind.gap(m);
+            if (words == null) continue;
+            const gap = el('div', `cmp-part cmp-${kind.tone(m.verdict)} cmp-gap`);
+            gap.textContent = words;gap.dataset.match = String(matches.indexOf(m));
             gap.append(askButton(m));
             anchor.after(gap);anchor = gap;gaps.set(m, gap);
         }
@@ -141,7 +172,7 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             const y0 = a.offsetTop, y1 = b.offsetTop + b.offsetHeight, y2 = c.offsetTop, y3 = d.offsetTop + d.offsetHeight, h = width / 2;
             const path = document.createElementNS(SVG, 'path');
             path.setAttribute('d', `M0 ${y0} C${h} ${y0} ${h} ${y2} ${width} ${y2} L${width} ${y3} C${h} ${y3} ${h} ${y1} 0 ${y1} Z`);
-            path.classList.add(`cmp-${m.verdict}`);
+            path.classList.add(`cmp-${kind.tone(m.verdict)}`);
             path.dataset.match = String(matches.indexOf(m));
             links.append(path);
         }
@@ -171,8 +202,9 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             grid.classList.toggle('cmp-blurred', blurred);
             left = original;right = typed;matches = result.matches;leftRows = [];rightRows = [];pointing = null;pinned = null;
             leftInk.clear();rightInk.clear();laser.replaceChildren();
-            paintSide(leftCol, 'Original', left, m => [m.original_from, m.original_to], leftRows, false);
-            paintSide(rightCol, 'Your code', right, m => [m.yours_from, m.yours_to], rightRows, true);
+            const [leftTitle, rightTitle] = kind.titles();
+            paintSide(leftCol, leftTitle, left, m => [m.original_from, m.original_to], leftRows, false);
+            paintSide(rightCol, rightTitle, right, m => [m.yours_from, m.yours_to], rightRows, true);
             paintGaps();
             align();
             o.host.scrollTop = 0;
@@ -203,10 +235,11 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         },
         /** What the agent drew inside this box (client pixels), on either side. */
         within(box: {left: number; top: number; right: number; bottom: number}) {
-            return [...leftInk.within(box).map(m => `on the original: ${m}`), ...rightInk.within(box).map(m => `on your code: ${m}`)];
+            const [leftName, rightName] = kind.sides();
+            return [...leftInk.within(box).map(m => `on ${leftName === 'original' ? 'the original' : leftName}: ${m}`), ...rightInk.within(box).map(m => `on ${rightName}: ${m}`)];
         },
         /** The comparison as the model is told it, for a question about it. */
-        describe() { return matches.map(m => `${describePart(m)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ''}`).join('\n'); },
+        describe() { return matches.map(m => `${describePart(m, kind)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ''}`).join('\n'); },
         unpin() { pinned = null;hover(null); },
         /** The walk is over: the laser goes, the last marks stay. */
         endPointing() { pointing = null;laser.replaceChildren(); },

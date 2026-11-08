@@ -2648,6 +2648,91 @@ export interface CodeFile {
     prompt?: string;
   }[];
   /**
+   * Groups of functions that solve the same problem in different ways, for Type along's Alternatives view: a learner on any member's code can set it beside another member, or beside their own code, and have the tutor compare the approaches. A group is declared once, in any file; its members may be in other files. The view is offered, with its count, only on code that is a member of a group.
+   */
+  alternatives?: {
+    id: string;
+    /**
+     * The problem every member solves, in a few words ("Detect a cycle").
+     */
+    title: string;
+    /**
+     * What the tutor should bring out when comparing two members: the trade-offs that matter, what each handles that another doesn't.
+     */
+    prompt?: string;
+    /**
+     * @minItems 2
+     */
+    members: [
+      {
+        /**
+         * The code file's id; omitted for the file declaring the group.
+         */
+        file?: string;
+        /**
+         * The top-level function's name, as its def writes it.
+         */
+        function: string;
+        /**
+         * The approach in a few words, shown in the pickers ("DFS with three states").
+         */
+        label: string;
+        /**
+         * One or two sentences on how it works and what it costs, for the tutor.
+         */
+        approach?: string;
+        /**
+         * When to choose it over the others.
+         */
+        when?: string;
+      },
+      {
+        /**
+         * The code file's id; omitted for the file declaring the group.
+         */
+        file?: string;
+        /**
+         * The top-level function's name, as its def writes it.
+         */
+        function: string;
+        /**
+         * The approach in a few words, shown in the pickers ("DFS with three states").
+         */
+        label: string;
+        /**
+         * One or two sentences on how it works and what it costs, for the tutor.
+         */
+        approach?: string;
+        /**
+         * When to choose it over the others.
+         */
+        when?: string;
+      },
+      ...{
+        /**
+         * The code file's id; omitted for the file declaring the group.
+         */
+        file?: string;
+        /**
+         * The top-level function's name, as its def writes it.
+         */
+        function: string;
+        /**
+         * The approach in a few words, shown in the pickers ("DFS with three states").
+         */
+        label: string;
+        /**
+         * One or two sentences on how it works and what it costs, for the tutor.
+         */
+        approach?: string;
+        /**
+         * When to choose it over the others.
+         */
+        when?: string;
+      }[]
+    ];
+  }[];
+  /**
    * Hyper-comments the Code tab shows on hover, under a symbol's value as documentation. An entry with a name documents that variable, function, class or expression key (as the code writes it, without spaces) wherever it appears; with line/endLine too it documents it only on those lines, overriding the file-wide entry (a local name hiding an outer one). An entry without a name documents a region: lines line–endLine (a block), or columns col–endCol of that line (an expression); pointing at it shows a faint dotted underline and the text. The reader can turn them off in the Code tab's view settings.
    */
   annotations?: CodeAnnotation[];

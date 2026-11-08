@@ -6214,7 +6214,8 @@ body:has(.push-array) #legend { display: none; }
     background: color-mix(in srgb, var(--text-color) 22%, transparent); }
 .cp-report-grip { position: relative; }
 .cp-report-grip:not(.folded):hover::before, .cp-report-grip.dragging::before { background: var(--accent-color); }
-.code-practice.coach-off .cp-report-grip, .code-practice.coach-off .cp-report, .code-practice.coach-off .cp-coach-only { display: none !important; }
+/* Compare alternatives is not the coach's: its discussion and the speaker stay whether the coach is on or off. */
+.code-practice.coach-off:not(.cp-alt-comparing) :is(.cp-report-grip, .cp-report, .cp-speak), .code-practice.coach-off .cp-coach-only:not(.cp-speak) { display: none !important; }
 /* The editor's font size (code-practice.ts). */
 .cp-font { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: 8px; }
 .cp-font .cp-tool { min-height: 20px; padding: 0 6px; border-radius: 6px; font: 600 11px/18px system-ui, sans-serif; text-transform: none; letter-spacing: 0; }
@@ -6241,6 +6242,50 @@ body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context ho
     background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: var(--cp-font, 12px)/1.9 ui-monospace, monospace; }
 .code-practice.cp-comparing .cp-compare { display: block; }
 .code-practice.cp-comparing .cp-editor, .code-practice.cp-comparing .cp-sections { display: none; }
+/* Alternatives (src/code-alternatives.ts): two solutions side by side in the same split, under a bar picking each side. */
+.cp-alt { display: none; flex: 1 1 80px; min-height: 80px; flex-direction: column; gap: 4px; }
+.code-practice.cp-alt-comparing .cp-alt { display: flex; }
+.code-practice.cp-alt-comparing .cp-editor, .code-practice.cp-alt-comparing .cp-sections { display: none; }
+.cp-alt .cp-compare { display: block; flex: 1 1 60px; }
+.cp-alt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 12px/1.6 var(--ui-font, system-ui, sans-serif); }
+.cp-alt-pick { flex: 1 1 160px; min-width: 0; max-width: calc(50% - 22px); padding: 2px 4px; border: 1px solid var(--border-color); border-radius: 6px;
+    background: var(--panel-bg); color: var(--text-color); font: inherit; text-overflow: ellipsis; }
+.cp-alt-swap { flex: none; padding: 0 6px; border: 1px solid var(--border-color); border-radius: 6px; background: none; color: var(--text-color); cursor: pointer; font: inherit; }
+.cp-alt-swap:hover:not(:disabled) { border-color: var(--ai-tone, #a78bfa); }
+.cp-alt-pick:disabled, .cp-alt-swap:disabled { opacity: .55; cursor: default; }
+.cp-alt-status { flex: 1 1 100%; color: var(--muted-color); font-style: italic; }
+.cp-alt-status:empty { display: none; }
+.cp-focus .cp-alt-bar { font-size: 16px; }
+/* Alternatives has its own buttons: Question, Present, Take back and close (and the font size). Nothing of typing along. */
+.code-practice.cp-alt-comparing .cp-tools > .cp-tool:not(.cp-alt-keep), .code-practice.cp-alt-comparing :is(.cp-target, .cp-total, .cp-code-summary) { display: none; }
+.cp-alt-info { display: none; margin: 0 0 6px; }
+.code-practice.cp-alt-comparing .cp-alt-info:not([hidden]) { display: block; }
+/* The problem both solve, beside the panel's title; the title bar folds the approaches. */
+.cp-alt-heading { display: none; margin-left: 8px; font: 600 12px/1.6 var(--ui-font, system-ui, sans-serif); color: var(--muted-color); }
+.code-practice.cp-alt-comparing .cp-alt-heading:not(:empty) { display: inline; }
+.cp-head.cp-alt-foldable { cursor: pointer; user-select: none; }
+.cp-head.cp-alt-foldable:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
+.cp-focus .cp-alt-heading { font-size: 16px; }
+/* Its buttons sit together at the right of the title bar, the fold chevron last. */
+.code-practice.cp-alt-comparing .cp-head .cp-tools { margin-left: auto; }
+/* Each side's approach and when to choose it, from the lesson: two cards over the split, left and right. */
+.cp-alt-about { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font: 12px/1.45 var(--ui-font, system-ui, sans-serif); }
+.cp-alt-about:empty { display: none; }
+.cp-alt-card { min-width: 0; padding: 4px 8px; border: 1px solid var(--border-color); border-left: 3px solid var(--ai-tone, #a78bfa); border-radius: 6px;
+    background: color-mix(in srgb, var(--panel-bg) 70%, transparent); color: var(--text-color); }
+.cp-alt-card:empty { visibility: hidden; }
+.cp-alt-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+.cp-alt-card-name { font: 600 1em ui-monospace, monospace; }
+.cp-alt-card-label { font-weight: 600; color: var(--ai-tone, #c4b5fd); }
+.cp-alt-card-tag { padding: 0 6px; border-radius: 8px; font-size: .85em; color: var(--muted-color); background: color-mix(in srgb, var(--muted-color) 15%, transparent); }
+.cp-alt-card-approach { color: var(--text-color); }
+.cp-alt-card-when { margin-top: 2px; color: var(--muted-color); }
+.cp-alt-card-key { font-weight: 600; }
+.cp-alt-card-ask { margin-left: auto; padding: 0 .45em; line-height: 1.4; font-size: .9em; border: 1px solid color-mix(in srgb, #a78bfa 60%, transparent); border-radius: 6px;
+    background: color-mix(in srgb, #a78bfa 16%, transparent); color: #c4b5fd; cursor: pointer; }
+.cp-alt-card-ask:hover { background: color-mix(in srgb, #a78bfa 34%, transparent); }
+.code-practice.cp-assisting .cp-alt-card-ask { opacity: .45; pointer-events: none; }
+.cp-focus .cp-alt-about { font-size: 16px; }
 .cmp-grid { position: relative; display: grid; grid-template-columns: minmax(max-content, 1fr) 72px minmax(max-content, 1fr); min-width: 100%; width: max-content; padding-bottom: 12px; }
 .cmp-mid { position: relative; }
 .cmp-links { position: absolute; left: 0; top: 0; overflow: visible; }
