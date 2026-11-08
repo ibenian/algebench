@@ -17,6 +17,7 @@ import { state } from '/state.js';
 import { invokeExpert } from '/expert-client.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { setSliderValue } from '/sliders.js';
+import { navigateTo } from '/scene-loader.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
@@ -1818,8 +1819,8 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
 type Start = {scene: number; step: number; frame: number};
 /**
  * A replay button under a walk-through, for a learner who missed it: the same beats again, from the state they
- * started at, without asking again. Only while the view is still on the step it was about. The message's speaker
- * button replays it too (chat.ts reads `_replay`).
+ * started at, without asking again. From another scene or step, it goes back to the one it was about first. The
+ * message's speaker button replays it too (chat.ts reads `_replay`).
  */
 function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
     if (body.querySelector('.ai-present-replay')) return;
@@ -1828,8 +1829,12 @@ function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Replay</span>';
     const msg = body.closest('.chat-msg') as (HTMLElement & {_replay?: () => void}) | null;
     const replay = async () => {
-        if (state.currentSceneIndex !== start.scene || state.currentStepIndex !== start.step) {
-            btn.disabled = true;btn.title = 'The view has moved on from the step this was about';return;
+        const away = () => state.currentSceneIndex !== start.scene || state.currentStepIndex !== start.step;
+        if (away()) {
+            // The view moved on since: back to the step it was about, and let that render before the pointer moves.
+            navigateTo(start.scene, start.step);
+            if (away()) { btn.title = 'The step this was about is gone from the lesson';return; }
+            await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
         }
         stopPresenting();
         eraseNotes(true);

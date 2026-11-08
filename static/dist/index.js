@@ -9575,3517 +9575,6 @@ function createNarrator(stateKey, describe, opening) {
 	};
 }
 //#endregion
-//#region src/code-assist-play.ts
-/** The lines of a and b that stay, as pairs of indices (a longest common subsequence). */
-function commonLines(a, b) {
-	const n = a.length, m = b.length;
-	const len = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-	for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) len[i][j] = a[i] === b[j] ? len[i + 1][j + 1] + 1 : Math.max(len[i + 1][j], len[i][j + 1]);
-	const out = [];
-	for (let i = 0, j = 0; i < n && j < m;) if (a[i] === b[j]) {
-		out.push([i, j]);
-		i++;
-		j++;
-	} else if (len[i + 1][j] >= len[i][j + 1]) i++;
-	else j++;
-	return out;
-}
-/**
-* The edits taking `from` to `to`, top to bottom: one per run of changed lines, trimmed to the characters that
-* really change (a renamed variable is retyped, not its line), each `at` already counting the edits before it.
-*/
-function editsBetween(from, to) {
-	const a = from.split("\n"), b = to.split("\n");
-	const kept = [...commonLines(a, b), [a.length, b.length]];
-	const lineStart = (lines, k) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
-	const edits = [];
-	let i = 0, j = 0;
-	for (const [ki, kj] of kept) {
-		if (ki > i || kj > j) {
-			const lead = j > 0 ? 1 : 0;
-			let old = (lead ? "\n" : "") + a.slice(i, ki).map((l) => l + "\n").join("");
-			let neu = (lead ? "\n" : "") + b.slice(j, kj).map((l) => l + "\n").join("");
-			let at = lineStart(b, j) - lead;
-			let tail = 0;
-			while (tail < old.length && tail < neu.length && old[old.length - 1 - tail] === neu[neu.length - 1 - tail]) tail++;
-			old = old.slice(0, old.length - tail);
-			neu = neu.slice(0, neu.length - tail);
-			let head = 0;
-			while (head < old.length && head < neu.length && old[head] === neu[head]) head++;
-			at += head;
-			old = old.slice(head);
-			neu = neu.slice(head);
-			if (old || neu) edits.push({
-				at,
-				remove: old.length,
-				insert: neu
-			});
-		}
-		i = ki + 1;
-		j = kj + 1;
-	}
-	return edits;
-}
-/**
-* The keystrokes typing `insert`: one character each, except that a new line's indentation comes with its Enter
-* (as an editor indents), and a run of spaces inside a line is typed as one.
-*/
-function keystrokes(insert) {
-	const out = [];
-	for (let k = 0; k < insert.length;) if (insert[k] === "\n") {
-		const indent = /^[ \t]*/.exec(insert.slice(k + 1))[0];
-		out.push("\n" + indent);
-		k += 1 + indent.length;
-	} else {
-		out.push(insert[k]);
-		k++;
-	}
-	return out;
-}
-/** Backspaces removing `count` characters ending at the caret: one at a time for a few, a word at a time for more. */
-function backspaces(text, count) {
-	if (count <= 10) return Array(count).fill(1);
-	const out = [];
-	let left = count, end = text.length;
-	while (left > 0) {
-		let k = end - 1;
-		while (k > end - left && /\s/.test(text[k])) k--;
-		while (k > end - left && /\w/.test(text[k]) && /\w/.test(text[k - 1])) k--;
-		const n = Math.max(1, end - k);
-		out.push(Math.min(n, left));
-		left -= n;
-		end -= n;
-	}
-	return out;
-}
-/** How long to wait before typing `key` after `prev`, in ms: a steady pace, slower after a line, a stop or a word. */
-function keyDelay(prev, key, random = Math.random) {
-	const r = random();
-	if (key.startsWith("\n")) return 140 + r * 160;
-	if (prev.endsWith("\n") || /^[ \t]*$/.test(prev)) return 90 + r * 120;
-	if (/[:,)\]]/.test(prev)) return 70 + r * 140;
-	if (prev === " " && r < .12) return 220 + r * 260;
-	return 28 + r * 52;
-}
-/**
-* Where `snippet` (a step's `select`) is in `text`, as [start, end). With `line` (1-based, the line the model says it
-* starts on), an occurrence starting on that line wins, so a name used on many lines is taken where it was meant.
-* Otherwise the first occurrence from `from` on (after the last selection), else from the top; failing that, the
-* lines it spans compared without their indentation (the model may re-indent what it quotes). Null when it isn't there.
-*/
-function findSelection(text, snippet, from = 0, line = 0) {
-	const want = snippet.trim();
-	if (!want) return null;
-	const lines = text.split("\n"), parts = want.split("\n").map((l) => l.trim());
-	const offset = (k) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
-	const byLines = (k) => {
-		if (k < 0 || k + parts.length > lines.length || !parts.every((p, j) => lines[k + j].trim() === p)) return null;
-		const last = k + parts.length - 1;
-		return [offset(k) + lines[k].length - lines[k].trimStart().length, offset(last) + lines[last].trimEnd().length];
-	};
-	if (line >= 1 && line <= lines.length) {
-		const at = text.indexOf(want, offset(line - 1));
-		if (at >= 0 && at <= offset(line - 1) + lines[line - 1].length) return [at, at + want.length];
-		const there = byLines(line - 1);
-		if (there) return there;
-	}
-	for (const start of [text.indexOf(want, from), text.indexOf(want)]) if (start >= 0) return [start, start + want.length];
-	for (let k = 0; k + parts.length <= lines.length; k++) {
-		const found = byLines(k);
-		if (found) return found;
-	}
-	return null;
-}
-//#endregion
-//#region src/drawing-layout.ts
-var SHAPES = /* @__PURE__ */ new Set([
-	"rectangle",
-	"ellipse",
-	"diamond"
-]);
-var LINKS = /* @__PURE__ */ new Set(["arrow", "line"]);
-var LAYOUTS = /* @__PURE__ */ new Set([
-	"row",
-	"column",
-	"grid",
-	"cells",
-	"tree",
-	"flow",
-	"graph",
-	"free"
-]);
-var placed$1 = (e) => typeof e.x === "number" && typeof e.y === "number";
-var GAP = 28;
-var guess = {
-	box: {
-		w: 600,
-		h: 400
-	},
-	sizeOf: () => ({
-		w: 40,
-		h: 30
-	})
-};
-/**
-* What a layout places: shapes, groups, and text on its own. Text `near` something goes beside that instead, and a
-* an "outline" is drawn round what it picks out.
-*/
-var isNode = (e) => SHAPES.has(e.type) || e.type === "group" || e.type === "text" && !e.near;
-/**
-* Lay a drawing out. Every element sits in a group (`group`, a group's id) or in the drawing itself, the outermost
-* group, whose layout is `layout`. A group arranges what is in it: "row", "column", "grid", "tree" (top down, from
-* the links), "flow" (left to right, from the links), "graph" (any graph, cycles too: linked things pulled
-* together, all of them pushed apart) or "free" (each at its own x and y, 0 to 100 across and down
-* the group's box). Its size comes from what is in it (a free group's from its w and h), and its place from the
-* group it is in: so places are always relative, and nothing is measured by the model. With no layout, a group
-* whose things are linked is a flow, one with things given places is free, any other a row.
-*/
-function layoutDrawing(elements, layout = "", m = guess) {
-	const nodes = elements.filter(isNode);
-	const groups = new Map(nodes.filter((e) => e.type === "group" && e.id).map((e) => [e.id, e]));
-	const byId = new Map(nodes.filter((e) => e.id).map((e) => [e.id, e]));
-	const parent = /* @__PURE__ */ new Map();
-	for (const e of nodes) {
-		let g = e.group ? groups.get(e.group) ?? null : null;
-		for (let up = g, i = 0; up && i < 50; up = up.group ? groups.get(up.group) ?? null : null, i++) if (up === e) {
-			g = null;
-			break;
-		}
-		parent.set(e, g);
-	}
-	const kids = (g) => nodes.filter((e) => parent.get(e) === g);
-	const holder = (id, among) => {
-		for (let e = id ? byId.get(id) ?? null : null, i = 0; e && i < 50; e = parent.get(e) ?? null, i++) if (among.has(e)) return e;
-		return null;
-	};
-	const linksAmong = (among) => {
-		const set = new Set(among), seen = /* @__PURE__ */ new Set(), out = [];
-		for (const l of elements) {
-			if (!LINKS.has(l.type)) continue;
-			const a = holder(l.start, set), z = holder(l.end, set);
-			if (!a || !z || a === z) continue;
-			const k = `${among.indexOf(a)}>${among.indexOf(z)}`;
-			if (!seen.has(k)) {
-				seen.add(k);
-				out.push([a, z]);
-			}
-		}
-		return out;
-	};
-	const local = /* @__PURE__ */ new Map();
-	const sizes = /* @__PURE__ */ new Map();
-	const freeBox = (g) => g ? {
-		w: (g.w ?? 50) / 100 * m.box.w,
-		h: (g.h ?? 50) / 100 * m.box.h
-	} : m.box;
-	const kindOf = (g, inside) => {
-		const asked = g ? g.layout ?? "" : layout;
-		if (asked === "free" && linksAmong(inside).length) return "flow";
-		if (LAYOUTS.has(asked)) return asked;
-		if (linksAmong(inside).length) return "flow";
-		return inside.some(placed$1) ? "free" : "row";
-	};
-	const measure = (g) => {
-		const inside = kids(g), kind = kindOf(g, inside);
-		const within = kind === "free" ? freeBox(g) : m.box;
-		for (const e of inside) sizes.set(e, e.type === "group" ? measure(e) : m.sizeOf(e, within));
-		const size = (e) => sizes.get(e);
-		let at, span, resized;
-		if (kind === "free") {
-			at = new Map(inside.map((e) => [e, {
-				x: (e.x ?? 50) / 100 * within.w,
-				y: (e.y ?? 50) / 100 * within.h
-			}]));
-			span = within;
-		} else if (kind === "tree") ({at, span} = treePx(inside, linksAmong(inside), size));
-		else if (kind === "flow") ({at, span} = flowPx(inside, linksAmong(inside), size));
-		else if (kind === "graph") ({at, span} = graphPx(inside, linksAmong(inside), size));
-		else if (kind === "cells") ({at, span, resized} = cellsPx(inside, size));
-		else ({at, span} = linePx(inside, kind, size, g?.align ?? "center"));
-		for (const e of inside) {
-			const c = at.get(e), s = resized?.get(e) ?? size(e);
-			local.set(e, {
-				x: c.x - s.w / 2,
-				y: c.y - s.h / 2,
-				w: s.w,
-				h: s.h
-			});
-		}
-		return span;
-	};
-	const whole = measure(null);
-	const boxes = /* @__PURE__ */ new Map();
-	const place = (g, ox, oy) => {
-		for (const e of kids(g)) {
-			const l = local.get(e), r = {
-				x: ox + l.x,
-				y: oy + l.y,
-				w: l.w,
-				h: l.h
-			};
-			boxes.set(e, r);
-			if (e.type === "group") place(e, r.x, r.y);
-		}
-	};
-	place(null, 0, 0);
-	return {
-		boxes,
-		w: whole.w,
-		h: whole.h
-	};
-}
-/**
-* An array's cells: side by side with no gap, all as wide and tall as the widest and tallest, so they read as one
-* row of boxes; words (its name) stand before them with a gap.
-*/
-function cellsPx(items, size) {
-	const at = /* @__PURE__ */ new Map(), resized = /* @__PURE__ */ new Map();
-	const cells = items.filter((e) => SHAPES.has(e.type));
-	const cw = Math.max(34, ...cells.map((e) => size(e).w)), ch = Math.max(30, ...cells.map((e) => size(e).h));
-	let x = 0;
-	for (const e of items) {
-		if (SHAPES.has(e.type)) {
-			at.set(e, {
-				x: x + cw / 2,
-				y: ch / 2
-			});
-			resized.set(e, {
-				w: cw,
-				h: ch
-			});
-			x += cw;
-			continue;
-		}
-		const s = size(e);
-		at.set(e, {
-			x: x + s.w / 2,
-			y: ch / 2
-		});
-		x += s.w + GAP * .5;
-	}
-	return {
-		at,
-		span: {
-			w: x,
-			h: ch
-		},
-		resized
-	};
-}
-/** Side by side ("row"), one under another ("column"), or in a square-ish grid; lined up by `align` across. */
-function linePx(items, kind, size, align) {
-	const at = /* @__PURE__ */ new Map();
-	if (!items.length) return {
-		at,
-		span: {
-			w: 0,
-			h: 0
-		}
-	};
-	if (kind === "grid") {
-		const cols = Math.ceil(Math.sqrt(items.length)), cw = Math.max(...items.map((e) => size(e).w)), ch = Math.max(...items.map((e) => size(e).h));
-		items.forEach((e, i) => at.set(e, {
-			x: i % cols * (cw + GAP) + cw / 2,
-			y: Math.floor(i / cols) * (ch + GAP) + ch / 2
-		}));
-		const rows = Math.ceil(items.length / cols);
-		return {
-			at,
-			span: {
-				w: cols * cw + (cols - 1) * GAP,
-				h: rows * ch + (rows - 1) * GAP
-			}
-		};
-	}
-	const across = kind === "column";
-	const along = (s) => across ? s.h : s.w, cross = (s) => across ? s.w : s.h;
-	const thick = Math.max(...items.map((e) => cross(size(e))));
-	let run = 0;
-	for (const e of items) {
-		const s = size(e), c = align === "start" ? cross(s) / 2 : align === "end" ? thick - cross(s) / 2 : thick / 2;
-		const p = run + along(s) / 2;
-		at.set(e, across ? {
-			x: c,
-			y: p
-		} : {
-			x: p,
-			y: c
-		});
-		run += along(s) + GAP;
-	}
-	run -= GAP;
-	return {
-		at,
-		span: across ? {
-			w: thick,
-			h: run
-		} : {
-			w: run,
-			h: thick
-		}
-	};
-}
-/**
-* A tidy tree from the links (parent -> child); the roots are what no link ends at, in drawing order. Leaves go
-* across side by side, each as wide as it is; a parent sits over the middle of its children; a level per row.
-*/
-function treePx(items, links, size) {
-	const children = /* @__PURE__ */ new Map(), parent = /* @__PURE__ */ new Map();
-	for (const [a, z] of links) {
-		if (parent.has(z)) continue;
-		parent.set(z, a);
-		children.set(a, [...children.get(a) ?? [], z]);
-	}
-	const cx = /* @__PURE__ */ new Map(), depth = /* @__PURE__ */ new Map(), rowH = [];
-	let cursor = 0;
-	const visit = (e, d, seen) => {
-		if (seen.has(e)) return cx.get(e) ?? 0;
-		seen.add(e);
-		depth.set(e, d);
-		rowH[d] = Math.max(rowH[d] ?? 0, size(e).h);
-		const ks = (children.get(e) ?? []).filter((k) => !seen.has(k));
-		let at;
-		if (ks.length) {
-			const xs = ks.map((k) => visit(k, d + 1, seen));
-			at = (Math.min(...xs) + Math.max(...xs)) / 2;
-			cursor = Math.max(cursor, at + size(e).w / 2 + GAP);
-		} else {
-			at = cursor + size(e).w / 2;
-			cursor += size(e).w + GAP;
-		}
-		cx.set(e, at);
-		return at;
-	};
-	const seen = /* @__PURE__ */ new Set();
-	for (const e of items) if (!parent.has(e)) visit(e, 0, seen);
-	for (const e of items) if (!seen.has(e)) visit(e, 0, seen);
-	const rowY = [], vgap = GAP * 1.6;
-	let y = 0;
-	for (const h of rowH) {
-		rowY.push(y + h / 2);
-		y += h + vgap;
-	}
-	const at = /* @__PURE__ */ new Map();
-	for (const e of items) at.set(e, {
-		x: cx.get(e),
-		y: rowY[depth.get(e)]
-	});
-	return {
-		at,
-		span: {
-			w: Math.max(0, cursor - GAP),
-			h: Math.max(0, y - vgap)
-		}
-	};
-}
-/**
-* Any graph, cycles and all: a force layout. Things start round a circle (in drawing order, so the same graph is
-* always drawn the same way); every pair pushes apart, every link pulls its two ends to a rest length; then the
-* boxes still touching are pushed clear of each other, measured as they are.
-*/
-function graphPx(items, links, size) {
-	const n = items.length, at = /* @__PURE__ */ new Map();
-	if (!n) return {
-		at,
-		span: {
-			w: 0,
-			h: 0
-		}
-	};
-	const sz = items.map(size), idx = new Map(items.map((e, i) => [e, i]));
-	const rest = sz.reduce((a, s) => a + Math.max(s.w, s.h), 0) / n + GAP * 2.2;
-	const r0 = Math.max(rest, rest * n / (2 * Math.PI));
-	const p = items.map((_, i) => ({
-		x: r0 * Math.cos(2 * Math.PI * i / n - Math.PI / 2),
-		y: r0 * Math.sin(2 * Math.PI * i / n - Math.PI / 2)
-	}));
-	const edges = links.map(([a, z]) => [idx.get(a), idx.get(z)]);
-	for (let it = 0, heat = rest; it < 300; it++, heat *= .985) {
-		const f = p.map(() => ({
-			x: 0,
-			y: 0
-		}));
-		for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-			let dx = p[i].x - p[j].x, dy = p[i].y - p[j].y;
-			if (!dx && !dy) {
-				dx = .1 * (i - j);
-				dy = .1;
-			}
-			const d = Math.hypot(dx, dy), push = rest * rest / d;
-			f[i].x += dx / d * push;
-			f[i].y += dy / d * push;
-			f[j].x -= dx / d * push;
-			f[j].y -= dy / d * push;
-		}
-		for (const [i, j] of edges) {
-			const dx = p[j].x - p[i].x, dy = p[j].y - p[i].y, d = Math.hypot(dx, dy) || 1, pull = d * d / rest;
-			f[i].x += dx / d * pull;
-			f[i].y += dy / d * pull;
-			f[j].x -= dx / d * pull;
-			f[j].y -= dy / d * pull;
-		}
-		for (let i = 0; i < n; i++) {
-			const m = Math.hypot(f[i].x, f[i].y) || 1, step = Math.min(m, heat);
-			p[i].x += f[i].x / m * step;
-			p[i].y += f[i].y / m * step;
-		}
-	}
-	for (let pass = 0; pass < 60; pass++) {
-		let moved = false;
-		for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-			const ox = (sz[i].w + sz[j].w) / 2 + GAP * .8 - Math.abs(p[i].x - p[j].x);
-			const oy = (sz[i].h + sz[j].h) / 2 + GAP * .8 - Math.abs(p[i].y - p[j].y);
-			if (ox <= 0 || oy <= 0) continue;
-			moved = true;
-			if (ox < oy) {
-				const s = (p[i].x < p[j].x ? -1 : 1) * ox / 2;
-				p[i].x += s;
-				p[j].x -= s;
-			} else {
-				const s = (p[i].y < p[j].y ? -1 : 1) * oy / 2;
-				p[i].y += s;
-				p[j].y -= s;
-			}
-		}
-		if (!moved) break;
-	}
-	const x0 = Math.min(...p.map((q, i) => q.x - sz[i].w / 2)), y0 = Math.min(...p.map((q, i) => q.y - sz[i].h / 2));
-	const x1 = Math.max(...p.map((q, i) => q.x + sz[i].w / 2)), y1 = Math.max(...p.map((q, i) => q.y + sz[i].h / 2));
-	items.forEach((e, i) => at.set(e, {
-		x: p[i].x - x0,
-		y: p[i].y - y0
-	}));
-	return {
-		at,
-		span: {
-			w: x1 - x0,
-			h: y1 - y0
-		}
-	};
-}
-/** A flow left to right: each a column after what leads to it (the longest way in), a column stacked in the order of what leads to it. */
-function flowPx(items, links, size) {
-	const ins = new Map(items.map((e) => [e, []]));
-	for (const [a, z] of links) ins.get(z).push(a);
-	const rank = /* @__PURE__ */ new Map();
-	const rankOf = (e, path) => {
-		if (rank.has(e)) return rank.get(e);
-		if (path.has(e)) return 0;
-		path.add(e);
-		const r = Math.max(-1, ...ins.get(e).map((p) => rankOf(p, path))) + 1;
-		path.delete(e);
-		rank.set(e, r);
-		return r;
-	};
-	for (const e of items) rankOf(e, /* @__PURE__ */ new Set());
-	const cols = [];
-	for (const e of items) (cols[rank.get(e)] ??= []).push(e);
-	const order = /* @__PURE__ */ new Map();
-	for (const col of cols) {
-		if (!col) continue;
-		const key = (e) => {
-			const ps = ins.get(e).filter((p) => order.has(p));
-			return ps.length ? ps.reduce((a, p) => a + order.get(p), 0) / ps.length : Infinity;
-		};
-		col.sort((a, b) => key(a) - key(b) || items.indexOf(a) - items.indexOf(b));
-		col.forEach((e, i) => order.set(e, i));
-	}
-	const full = cols.filter(Boolean);
-	const heights = full.map((col) => col.reduce((a, e) => a + size(e).h, 0) + GAP * (col.length - 1));
-	const tall = Math.max(0, ...heights), hgap = GAP * 1.4;
-	const at = /* @__PURE__ */ new Map();
-	let x = 0;
-	full.forEach((col, c) => {
-		const w = Math.max(...col.map((e) => size(e).w));
-		let y = (tall - heights[c]) / 2;
-		for (const e of col) {
-			const s = size(e);
-			at.set(e, {
-				x: x + w / 2,
-				y: y + s.h / 2
-			});
-			y += s.h + GAP;
-		}
-		x += w + hgap;
-	});
-	return {
-		at,
-		span: {
-			w: Math.max(0, x - hgap),
-			h: tall
-		}
-	};
-}
-/**
-* The stroke of a shape centred at (cx, cy), w by h, as a hand draws it: a box from its top left round and a little
-* past the corner, a circle from the top left once round and on, a diamond from its top point. `j` (-.5..5 each)
-* is the hand's wobble, kept so a redraw is the same stroke.
-*/
-function shapeStroke(type, cx, cy, w, h, j = [
-	0,
-	0,
-	0,
-	0
-]) {
-	const x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - h / 2, y1 = cy + h / 2, k = (i) => (j[i] ?? 0) * 3;
-	if (type === "ellipse") {
-		const rx = w / 2, ry = h / 2, at = (deg) => {
-			const a = deg * Math.PI / 180;
-			return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
-		};
-		return `M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`;
-	}
-	if (type === "diamond") return `M${cx + k(0)} ${y0} L${x1} ${cy + k(1)} L${cx + k(2)} ${y1} L${x0} ${cy + k(3)} L${cx + 4} ${y0 + 2}`;
-	return `M${x0 + k(0)} ${y0} L${x1} ${y0 + k(1)} L${x1 + k(2)} ${y1} L${x0} ${y1 + k(3)} L${x0} ${y0 - 3}`;
-}
-/**
-* A free stroke through `pts` as one smooth curve (Catmull-Rom, as cubic Béziers): it passes through every point,
-* bending between them as a hand does. `closed` carries on from the last point round to the first.
-*/
-function smoothPath(pts, closed = false) {
-	if (pts.length < 2) return "";
-	const n = pts.length, at = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
-	const f = (v) => +v.toFixed(2);
-	let d = `M${f(at(0).x)} ${f(at(0).y)}`;
-	for (let i = 0; i < (closed ? n : n - 1); i++) {
-		const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
-		d += ` C${f(p1.x + (p2.x - p0.x) / 6)} ${f(p1.y + (p2.y - p0.y) / 6)} ${f(p2.x - (p3.x - p1.x) / 6)} ${f(p2.y - (p3.y - p1.y) / 6)} ${f(p2.x)} ${f(p2.y)}`;
-	}
-	return d;
-}
-/** The point where the line from a box's centre towards `p` leaves the box (an ellipse's or diamond's own edge). */
-function edgePoint(type, cx, cy, w, h, p, pad = 3) {
-	const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
-	const rx = w / 2 + pad, ry = h / 2 + pad;
-	let t;
-	if (type === "ellipse") t = 1 / Math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2);
-	else if (type === "diamond") t = 1 / (Math.abs(ux) / rx + Math.abs(uy) / ry);
-	else t = Math.min(Math.abs(ux) > 1e-9 ? rx / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-9 ? ry / Math.abs(uy) : Infinity);
-	return {
-		x: cx + ux * t,
-		y: cy + uy * t
-	};
-}
-/**
-* A contour round `boxes`: the convex hull of their corners, each rounded off `pad` out, as the points of a closed
-* stroke (smoothPath draws it). It holds just them, never what lies beside them.
-*/
-function hullAround(boxes, pad = 12) {
-	const pts = [];
-	for (const b of boxes) for (const [cx, cy] of [
-		[b.x, b.y],
-		[b.x + b.w, b.y],
-		[b.x + b.w, b.y + b.h],
-		[b.x, b.y + b.h]
-	]) for (let k = 0; k < 8; k++) pts.push({
-		x: cx + pad * Math.cos(k * Math.PI / 4),
-		y: cy + pad * Math.sin(k * Math.PI / 4)
-	});
-	if (pts.length < 3) return pts;
-	pts.sort((a, b) => a.x - b.x || a.y - b.y);
-	const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-	const half = (list) => {
-		const h = [];
-		for (const p of list) {
-			while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop();
-			h.push(p);
-		}
-		h.pop();
-		return h;
-	};
-	const hull = [...half(pts), ...half([...pts].reverse())];
-	const out = [];
-	for (const p of hull) if (!out.length || Math.hypot(p.x - out[out.length - 1].x, p.y - out[out.length - 1].y) > 6) out.push(p);
-	return out;
-}
-//#endregion
-//#region src/ink-marks.ts
-/**
-* Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
-* it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
-*/
-function markGeometry(rect, shape) {
-	if (shape === "underline") {
-		const w = rect.width + 8;
-		return {
-			left: rect.left - 4,
-			top: rect.bottom,
-			w: w + 4,
-			h: 12,
-			strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]
-		};
-	}
-	if (shape === "check") {
-		const s = Math.max(22, Math.min(44, rect.height * 1.3));
-		return {
-			left: rect.left + rect.width / 2 - s / 2,
-			top: rect.top + rect.height / 2 - s / 2,
-			w: s,
-			h: s,
-			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
-		};
-	}
-	if (shape === "cross") {
-		const w = Math.min(rect.width, 160) + 8, h = Math.min(rect.height, 80) + 8;
-		return {
-			left: rect.left + rect.width / 2 - w / 2,
-			top: rect.top + rect.height / 2 - h / 2,
-			w,
-			h,
-			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
-		};
-	}
-	const { rx, ry } = ringRadii(rect), cx = rx + 2, cy = ry + 2;
-	const at = (deg) => {
-		const a = deg * Math.PI / 180;
-		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
-	};
-	return {
-		left: rect.left + rect.width / 2 - rx - 2,
-		top: rect.top + rect.height / 2 - ry - 2,
-		w: rx * 2 + 4,
-		h: ry * 2 + 4,
-		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]
-	};
-}
-/**
-* A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
-* what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
-* to sit inside, with a margin.
-*/
-function ringRadii(rect) {
-	const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
-	return {
-		rx,
-		ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4
-	};
-}
-//#endregion
-//#region src/presenter.ts
-/**
-* AI presenter: with the presenter switch on (chat toolbar), a question typed in the chat is answered as a
-* walk-through of the view, the way a person at the front of the room would answer it with a laser pointer. The
-* scene_present expert gets the view (the lesson, what is on screen, the run's execution states) and every target
-* the pointer can reach, and answers with beats: move the run to a state (the pointer drags the slider there), point
-* at or circle a target, and say a sentence or two. The beats play here: a red pointer glides over the view, follows
-* its target as the camera moves, and the words appear in the chat as they are spoken.
-*
-* Refs the expert may use, all resolved here to a place on screen:
-*   <id>          an element of the scene (its bounds, or its label);
-*   <id>[<i>]     cell i of an array, entry i of a dict, node i of a graph; <id>[i:j] a run of them, <id>[i,j,k]
-*                 a few; for a tensor, numpy style: <id>[r, c], <id>[r, :], <id>[:, c], <id>[r0:r1, c0:c1];
-*   row:<id>      an expression label's row in the variables panel;
-*   caption       the step caption;  slider  the execution slider.
-*/
-var PREF_KEY = "algebench-presenter";
-var MAX_CELLS = 60;
-var sceneNow = () => state.lessonSpec?.scenes?.[state.currentSceneIndex];
-/** The lesson JSON of a live element: the scene's own, else added by a step up to the one on screen. */
-function elementSpec(id) {
-	const scene = sceneNow();
-	const own = scene?.elements ?? [];
-	const added = (scene?.steps ?? []).slice(0, state.currentStepIndex + 1).flatMap((s) => s.add ?? []);
-	return [...own, ...added].reverse().find((e) => e.id === id);
-}
-var short$1 = (v) => {
-	return ((typeof v === "string" ? v : JSON.stringify(v)) ?? "").slice(0, 60);
-};
-/** Everything the pointer can reach now, each with what it is (an array's cells with their values). */
-function presentTargets() {
-	const out = [];
-	for (const [id, reg] of Object.entries(state.elementRegistry)) {
-		if (!reg || reg.hidden || state.legendToggledOff.has(id)) continue;
-		const spec = elementSpec(id);
-		const name = reg.label ?? spec?.label ?? spec?.title ?? "";
-		const type = reg.type ?? spec?.type ?? "object";
-		if (objectCellAnchor(id, 0)) {
-			const valueFn = spec?.valueExpr ? compileExpr(spec.valueExpr) : null, keyFn = spec?.keyExpr ? compileExpr(spec.keyExpr) : null;
-			const cells = [], graph = !!objectCellAnchor(id, 0)?.graph;
-			for (let i = 0; i < MAX_CELLS && objectCellAnchor(id, i); i++) {
-				let about = `${spec?.keyExpr ? "entry" : graph ? "node" : "cell"} ${i} of ${name || id}`;
-				try {
-					const value = valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : void 0;
-					const key = keyFn ? evalExpr(keyFn, 0, { overrideScope: { idx: i } }) : void 0;
-					if (keyFn) about += `: key ${short$1(key)} -> ${short$1(value)}`;
-					else if (valueFn) about += `: ${short$1(value)}`;
-				} catch {}
-				cells.push({
-					ref: `${id}[${i}]`,
-					about
-				});
-			}
-			out.push({
-				ref: id,
-				about: `${type} ${name ? `"${name}"` : ""} with ${cells.length} ${spec?.keyExpr ? "entries" : graph ? "nodes" : "cells"}`.replace(/\s+/g, " ")
-			}, ...cells);
-			continue;
-		}
-		const marks = objectChartMarks(id);
-		if (marks?.length) {
-			out.push({
-				ref: id,
-				about: `chart${name ? ` "${name}"` : ""} with ${marks.length} bars/points`
-			}, ...marks.slice(0, MAX_CELLS).map((m, i) => ({
-				ref: `${id}[${i}]`,
-				about: m.about
-			})));
-			continue;
-		}
-		const tensor = objectTensorRegion(id);
-		if (tensor) {
-			out.push({
-				ref: id,
-				about: `tensor${name ? ` "${name}"` : ""}, ${tensor.rows} rows x ${tensor.cols} columns: point at a cell ${id}[r, c], a row ${id}[r, :], a column ${id}[:, c] or a block ${id}[r0:r1, c0:c1] (0-based, ends excluded)`
-			});
-			continue;
-		}
-		const row = objectLabelRow(id);
-		if (row) {
-			out.push({
-				ref: `row:${id}`,
-				about: `variables panel row: ${row.textContent?.trim().slice(0, 120) ?? ""}`
-			});
-			continue;
-		}
-		if (objectWorldAnchor(id) || objectLabelElement(id)) out.push({
-			ref: id,
-			about: `${type}${name ? ` "${name}"` : ""}${objectLabelElement(id)?.textContent ? `: ${objectLabelElement(id).textContent.trim().slice(0, 80)}` : ""}`
-		});
-	}
-	const caption = document.getElementById("step-caption");
-	if (caption && !caption.classList.contains("hidden") && caption.offsetParent) out.push({
-		ref: "caption",
-		about: `the step caption: ${caption.textContent?.trim().slice(0, 160) ?? ""}`
-	});
-	if (sliderInput()) out.push({
-		ref: "slider",
-		about: "the execution slider, which steps through the run"
-	});
-	const run = playbackSlider()?.id;
-	for (const [id, sl] of Object.entries(state.sceneSliders)) {
-		const s = sl;
-		if (id === run || s.kind === "tensor" || !paramInput(id)) continue;
-		out.push({
-			ref: `slider:${id}`,
-			about: `slider "${(s.label ?? id).replace(/\$/g, "")}" = ${s.value} (from ${s.min} to ${s.max}${s.step ? `, step ${s.step}` : ""})`
-		});
-	}
-	return out.slice(0, 400);
-}
-/** The run's slider: the scene's step playback, else the step's own slider. */
-function playbackSlider() {
-	const id = sceneNow()?.stepPlayback?.slider;
-	const s = id ? state.sceneSliders[id] : void 0;
-	if (!id || !s) return null;
-	const sl = s;
-	return {
-		id,
-		min: sl.min ?? 0,
-		max: sl.max ?? 0,
-		value: Number(sl.value)
-	};
-}
-/** A parameter slider's control, when it is on screen. */
-function paramInput(id) {
-	const el = document.querySelector(`input[data-slider-id="${CSS.escape(id)}"]`);
-	return el && el.offsetParent ? el : null;
-}
-function sliderInput() {
-	const el = document.querySelector("#state-player input[type=range]");
-	return el && el.offsetParent ? el : null;
-}
-/** Where the slider's thumb sits for frame `f`. */
-function sliderPoint(f) {
-	const input = sliderInput(), s = playbackSlider();
-	if (!input || !s) return null;
-	const r = input.getBoundingClientRect(), t = s.max > s.min ? (f - s.min) / (s.max - s.min) : 0;
-	const thumb = 14;
-	return {
-		x: r.left + thumb / 2 + t * (r.width - thumb),
-		y: r.top + r.height / 2
-	};
-}
-function project(world) {
-	if (!state.camera || !state.renderer) return null;
-	const p = world.clone().project(state.camera);
-	if (p.z < -1 || p.z >= 1) return null;
-	const v = state.renderer.domElement.getBoundingClientRect();
-	return {
-		x: v.left + (p.x * .5 + .5) * v.width,
-		y: v.top + (-p.y * .5 + .5) * v.height
-	};
-}
-function rectOf(points) {
-	const ok = points.filter((p) => !!p);
-	if (!ok.length) return null;
-	const xs = ok.map((p) => p.x), ys = ok.map((p) => p.y);
-	return new DOMRect(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-}
-var V3 = (p) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0);
-/** A ref's place on screen, re-read each frame (the camera, the panels and the values move). */
-/** The cells an index names, for an array, dict or graph: one (`3`), a slice (`1:4`, end excluded) or a list
-*  (`1,3,4`). Null when it is none of these. */
-function cellIndices(index) {
-	const t = index.replace(/\s+/g, "");
-	if (/^\d+$/.test(t)) return [Number(t)];
-	const slice = /^(\d+):(\d+)$/.exec(t);
-	if (slice) {
-		const from = Number(slice[1]), to = Number(slice[2]);
-		return to > from ? Array.from({ length: Math.min(to - from, MAX_CELLS) }, (_, k) => from + k) : null;
-	}
-	return /^\d+(,\d+)+$/.test(t) ? t.split(",").map(Number) : null;
-}
-/** The rows and columns (first and last, inclusive) a tensor index names, numpy style: `r, c`, `r, :`, `:, c`,
-*  `r0:r1, c0:c1` (ends excluded, either end may be left out). A 1D index is a column of a single row. */
-function tensorBlock(index, rows, cols) {
-	const parts = index.replace(/\s+/g, "").split(",");
-	if (parts.length > 2) return null;
-	if (parts.length === 1) parts.unshift(":");
-	const span = (p, n) => {
-		const m = /^(\d*)(:?)(\d*)$/.exec(p);
-		if (!m) return null;
-		const from = m[1] ? Number(m[1]) : 0;
-		const to = m[2] ? (m[3] ? Number(m[3]) : n) - 1 : m[1] ? from : n - 1;
-		return from <= to && to < n ? [from, to] : null;
-	};
-	const r = span(parts[0], rows), c = span(parts[1], cols);
-	return r && c ? [
-		r[0],
-		r[1],
-		c[0],
-		c[1]
-	] : null;
-}
-/** On screen: a tensor's cell, row, column or block; or an array's, dict's or graph's cells, boxed together. */
-function indexedRect(id, index) {
-	const tensor = objectTensorRegion(id);
-	if (tensor) {
-		const block = tensorBlock(index, tensor.rows, tensor.cols);
-		return block ? rectOf(tensor.corners(...block).map((c) => project(V3(c)))) : null;
-	}
-	const cells = cellIndices(index);
-	if (!cells) return null;
-	const marks = objectChartMarks(id);
-	if (marks) return cells.every((i) => marks[i]) ? rectOf(cells.flatMap((i) => marks[i].corners.map((c) => project(V3(c))))) : null;
-	const points = [];
-	for (const i of cells) {
-		const at = objectCellAnchor(id, i);
-		if (!at) return null;
-		points.push(...at.corners.length ? at.corners.map((c) => project(V3(dataToWorld(c)))) : [project(V3(dataToWorld(at.position)))]);
-	}
-	return rectOf(points);
-}
-/**
-* The box of what an element reads, without its buttons: a label row ends in small Ask-AI, code and wire buttons
-* that show on hover, and a mark round the whole row would sit off to their side.
-*/
-function inkRect(el) {
-	const rs = [];
-	for (const n of el.childNodes) if (n.nodeType === Node.TEXT_NODE) {
-		if (!n.textContent?.trim()) continue;
-		const range = document.createRange();
-		range.selectNodeContents(n);
-		rs.push(range.getBoundingClientRect());
-	} else if (n instanceof HTMLElement && !n.matches("button, .ai-ask-btn, .expression-wire-toggle") && n.offsetWidth) rs.push(n.getBoundingClientRect());
-	const shown = rs.filter((r) => r.width && r.height);
-	if (!shown.length) return el.getBoundingClientRect();
-	const x0 = Math.min(...shown.map((r) => r.left)), y0 = Math.min(...shown.map((r) => r.top)), x1 = Math.max(...shown.map((r) => r.right)), y1 = Math.max(...shown.map((r) => r.bottom));
-	return new DOMRect(x0, y0, x1 - x0, y1 - y0);
-}
-function resolveTarget$1(ref, part = "") {
-	if (ref.includes("\n")) {
-		const rs = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
-		if (!rs.length) return null;
-		const x0 = Math.min(...rs.map((r) => r.left)), y0 = Math.min(...rs.map((r) => r.top)), x1 = Math.max(...rs.map((r) => r.right)), y1 = Math.max(...rs.map((r) => r.bottom));
-		return new DOMRect(x0, y0, x1 - x0, y1 - y0);
-	}
-	if (ref.startsWith("note:")) return noteRect(ref.slice(5), part);
-	if (ref.startsWith("draw:")) return drawnRect(ref.slice(5), part);
-	if (ref === "caption") {
-		const c = document.getElementById("step-caption");
-		return c?.offsetParent ? c.getBoundingClientRect() : null;
-	}
-	if (ref === "slider") {
-		const i = sliderInput();
-		return i ? i.getBoundingClientRect() : null;
-	}
-	if (ref.startsWith("slider:")) {
-		const i = paramInput(ref.slice(7));
-		return i ? (i.parentElement ?? i).getBoundingClientRect() : null;
-	}
-	if (ref.startsWith("row:")) {
-		const row = objectLabelRow(ref.slice(4));
-		return row ? inkRect(row) : null;
-	}
-	const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
-	if (indexed) return indexedRect(indexed[1], indexed[2]);
-	const corners = objectWorldCorners(ref);
-	const box = corners.length ? rectOf(corners.map((c) => project(c))) : null;
-	if (box && box.width * box.height > 4) return box;
-	const label = objectLabelElement(ref);
-	if (label?.offsetParent) return label.getBoundingClientRect();
-	const row = objectLabelRow(ref);
-	if (row) return inkRect(row);
-	const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
-	return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
-}
-var pointer = null;
-var ring = null;
-var pos = {
-	x: -100,
-	y: -100
-};
-function ensurePointer() {
-	if (pointer?.isConnected) return pointer;
-	pointer = document.createElement("div");
-	pointer.className = "ai-pointer";
-	pointer.setAttribute("aria-hidden", "true");
-	for (let k = 0; k < 6; k++) {
-		const t = document.createElement("span");
-		t.className = "ai-pointer-trail";
-		pointer.append(t);
-	}
-	const dot = document.createElement("span");
-	dot.className = "ai-pointer-dot";
-	pointer.append(dot);
-	ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-	ring.classList.add("ai-pointer-ring");
-	ring.setAttribute("aria-hidden", "true");
-	document.body.append(pointer, ring);
-	return pointer;
-}
-var hovered = [];
-var learnerPressing = false;
-for (const [type, down] of [
-	["pointerdown", true],
-	["pointerup", false],
-	["pointercancel", false]
-]) window.addEventListener(type, (e) => {
-	if (e.isTrusted) learnerPressing = down;
-}, true);
-var chain = (el) => {
-	const out = [];
-	for (let e = el; e; e = e.parentElement) out.push(e);
-	return out;
-};
-function fire(el, type, x, y, bubbles) {
-	const init = {
-		bubbles,
-		cancelable: true,
-		clientX: x,
-		clientY: y,
-		view: window
-	};
-	el.dispatchEvent(type.startsWith("pointer") ? new PointerEvent(type, {
-		...init,
-		pointerId: 9001,
-		pointerType: "mouse",
-		isPrimary: false
-	}) : new MouseEvent(type, init));
-}
-function hoverAt(x, y) {
-	if (learnerPressing) return;
-	const under = document.elementFromPoint(x, y);
-	const now = chain(under), was = hovered;
-	if (under !== was[0]) {
-		if (was[0]) {
-			fire(was[0], "pointerout", x, y, true);
-			fire(was[0], "mouseout", x, y, true);
-		}
-		for (const el of was) if (!now.includes(el)) {
-			fire(el, "pointerleave", x, y, false);
-			fire(el, "mouseleave", x, y, false);
-		}
-		for (const el of [...now].reverse()) if (!was.includes(el)) {
-			fire(el, "pointerenter", x, y, false);
-			fire(el, "mouseenter", x, y, false);
-		}
-		if (under) {
-			fire(under, "pointerover", x, y, true);
-			fire(under, "mouseover", x, y, true);
-		}
-		hovered = now;
-	}
-	if (under) {
-		fire(under, "pointermove", x, y, true);
-		fire(under, "mousemove", x, y, true);
-	}
-}
-/** The pointer has gone: whatever it hovered is left, as when a mouse moves away. */
-function unhover() {
-	const x = pos.x, y = pos.y;
-	if (hovered[0]) {
-		fire(hovered[0], "pointerout", x, y, true);
-		fire(hovered[0], "mouseout", x, y, true);
-	}
-	for (const el of hovered) {
-		fire(el, "pointerleave", x, y, false);
-		fire(el, "mouseleave", x, y, false);
-	}
-	hovered = [];
-}
-var trail = [];
-function paintPointer() {
-	if (playing) hoverAt(pos.x, pos.y);
-	const el = ensurePointer();
-	el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
-	trail.unshift({ ...pos });
-	trail.length = Math.min(trail.length, 7);
-	[...el.querySelectorAll(".ai-pointer-trail")].forEach((t, k) => {
-		const p = trail[k + 1] ?? pos;
-		t.style.transform = `translate(${p.x - pos.x}px, ${p.y - pos.y}px)`;
-	});
-}
-var sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
-var Stopped = class extends Error {};
-var run = 0;
-var alive = (r) => {
-	if (r !== run) throw new Stopped();
-};
-/** Glide to (x, y): eased, quicker for short hops, as a hand moves. */
-async function glide(x, y, r, ms) {
-	showPointer();
-	const from = { ...pos }, d = Math.hypot(x - from.x, y - from.y), dur = ms ?? Math.min(900, 250 + d * .9);
-	const t0 = performance.now();
-	for (;;) {
-		alive(r);
-		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-		pos.x = from.x + (x - from.x) * e;
-		pos.y = from.y + (y - from.y) * e;
-		paintPointer();
-		if (t >= 1) return;
-		await new Promise((res) => requestAnimationFrame(res));
-	}
-}
-var ringShape = "circle";
-/** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
-function drawRing(rect, color = "", shape = "circle") {
-	ensurePointer();
-	if (!ring) return;
-	for (const extra of [...moreRings, ...markLinks]) extra.remove();
-	moreRings = [];
-	markLinks = [];
-	if (!rect) {
-		ring.classList.remove("on", "drawn");
-		if (!spotlightBeat) hideSpotlight();
-		return;
-	}
-	ringShape = shape;
-	ring.setAttribute("class", `ai-pointer-ring ai-mark-${shape} ${inkClass(color)}`.trim());
-	ring.innerHTML = markGeometry(rect, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
-	fitRing(rect);
-	ring.classList.add("on");
-}
-/** Fit the mark to `rect`: as the view zooms or pans, it keeps to its target (the stroke isn't redrawn). */
-function fitRing(rect, el = ring) {
-	if (!el) return;
-	const g = markGeometry(rect, ringShape);
-	el.style.left = `${g.left}px`;
-	el.style.top = `${g.top}px`;
-	el.setAttribute("width", String(g.w));
-	el.setAttribute("height", String(g.h));
-	el.querySelectorAll("path").forEach((p, k) => p.setAttribute("d", g.strokes[k] ?? ""));
-}
-/** Marks on several things at once (a beat's `together`), one per cluster of them: the rings after the first. */
-var moreRings = [];
-/** And for rings apart, the lines that join them, one from each ring to the next: what is marked belongs together. */
-var markLinks = [];
-/** A slightly bowed line from ring `a`'s edge to ring `b`'s (each ring is its target's box, padded as markGeometry does). */
-function linkGeometry(a, b) {
-	const ca = {
-		x: a.left + a.width / 2,
-		y: a.top + a.height / 2
-	}, cb = {
-		x: b.left + b.width / 2,
-		y: b.top + b.height / 2
-	};
-	const ra = ringRadii(a), rb = ringRadii(b);
-	const p = edgePoint("ellipse", ca.x, ca.y, ra.rx * 2, ra.ry * 2, cb, 3), q = edgePoint("ellipse", cb.x, cb.y, rb.rx * 2, rb.ry * 2, ca, 3);
-	const dx = q.x - p.x, dy = q.y - p.y, m = {
-		x: (p.x + q.x) / 2 - dy * .12,
-		y: (p.y + q.y) / 2 + dx * .12
-	};
-	const left = Math.min(p.x, q.x, m.x) - 6, top = Math.min(p.y, q.y, m.y) - 6;
-	return {
-		left,
-		top,
-		w: Math.max(p.x, q.x, m.x) - left + 6,
-		h: Math.max(p.y, q.y, m.y) - top + 6,
-		d: `M${p.x - left} ${p.y - top} Q${m.x - left} ${m.y - top} ${q.x - left} ${q.y - top}`
-	};
-}
-function fitLink(el, a, b) {
-	const g = linkGeometry(a, b);
-	el.style.left = `${g.left}px`;
-	el.style.top = `${g.top}px`;
-	el.setAttribute("width", String(g.w));
-	el.setAttribute("height", String(g.h));
-	el.querySelector("path")?.setAttribute("d", g.d);
-}
-/** Put marks on `rects`, one each, in the beat's ink: the first is the ring, the rest go alongside it. */
-function drawRings(rects, color, shape) {
-	drawRing(rects[0] ?? null, color, shape);
-	if (!ring) return;
-	if (spotlightBeat && rects.length) showSpotlight(rects, shape);
-	for (const r of rects.slice(1)) {
-		const el = ring.cloneNode(false);
-		el.innerHTML = markGeometry(r, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
-		ring.parentElement?.append(el);
-		moreRings.push(el);
-		fitRing(r, el);
-	}
-	if (shape !== "circle") return;
-	for (let k = 1; k < rects.length; k++) {
-		const el = ring.cloneNode(false);
-		el.innerHTML = "<path pathLength=\"1\"/>";
-		ring.parentElement?.append(el);
-		markLinks.push(el);
-		fitLink(el, rects[k - 1], rects[k]);
-	}
-}
-function fitRings(rects) {
-	if (rects[0]) fitRing(rects[0]);
-	if (spot?.classList.contains("on")) fitSpotlight(rects);
-	moreRings.forEach((el, k) => {
-		if (rects[k + 1]) fitRing(rects[k + 1], el);
-	});
-	markLinks.forEach((el, k) => {
-		if (rects[k] && rects[k + 1]) fitLink(el, rects[k], rects[k + 1]);
-	});
-}
-/**
-* Whether this beat dims the view round its marks (the presenter's `spotlight`, for a crowded view). Set as the beat
-* starts, so the dimming of one beat carries on into the next that has it too: its hole moves on, not off and on.
-*/
-var spotlightBeat = false;
-var spot = null;
-var spotShape = "circle";
-/** What the holes show now, and where they are going: a move from `from` that began at `t0` (none when still). */
-var spotHoles = [];
-var spotRects = [];
-var spotMove = null;
-var SPOT_MOVE_MS = 650;
-function showSpotlight(rects, shape) {
-	if (!spot?.isConnected) {
-		spot = document.createElementNS(SVG_NS, "svg");
-		spot.classList.add("ai-spotlight");
-		spot.setAttribute("aria-hidden", "true");
-		spot.innerHTML = "<defs><mask id=\"ai-spotlight-mask\" maskUnits=\"userSpaceOnUse\"><rect class=\"ai-spotlight-all\" fill=\"white\"/><g class=\"ai-spotlight-holes\"/></mask></defs><rect class=\"ai-spotlight-dim\" mask=\"url(#ai-spotlight-mask)\"/>";
-		document.body.append(spot);
-	}
-	spotMove = spot.classList.contains("on") && spotHoles.length > 0 ? {
-		from: spotHoles,
-		t0: performance.now()
-	} : null;
-	spotShape = shape;
-	spotRects = rects;
-	fitSpotlight(rects);
-	if (spotMove) requestAnimationFrame(moveSpotlight);
-	spot.getBoundingClientRect();
-	spot.classList.add("on");
-}
-/** Step the hole's glide each frame until it arrives (the marks' own refits keep it on target after). */
-function moveSpotlight() {
-	if (!spotMove || !spot?.classList.contains("on")) return;
-	fitSpotlight(spotRects);
-	if (spotMove) requestAnimationFrame(moveSpotlight);
-}
-function hideSpotlight() {
-	spot?.classList.remove("on");
-	spotMove = null;
-}
-/** The hole for a mark on `rect`: the ring's own ellipse for a circle, else the box it is drawn on (an underline's takes in its line). */
-function holeFor(rect, view) {
-	const x = rect.left - view.left, y = rect.top - view.top;
-	if (spotShape === "circle") {
-		const { rx, ry } = ringRadii(rect);
-		return {
-			x: x + rect.width / 2 - rx,
-			y: y + rect.height / 2 - ry,
-			w: rx * 2,
-			h: ry * 2,
-			rx,
-			ry
-		};
-	}
-	const pad = 6, below = spotShape === "underline" ? 12 : 0;
-	return {
-		x: x - pad,
-		y: y - pad,
-		w: rect.width + 12,
-		h: rect.height + 12 + below,
-		rx: 6,
-		ry: 6
-	};
-}
-/** Lay the dimming over the 3D view, and nowhere else, with a hole for each mark, partway there while it glides. */
-function fitSpotlight(rects) {
-	const view = state.renderer?.domElement.getBoundingClientRect();
-	if (!spot || !view) return;
-	spotRects = rects;
-	spot.style.left = `${view.left}px`;
-	spot.style.top = `${view.top}px`;
-	spot.setAttribute("width", String(view.width));
-	spot.setAttribute("height", String(view.height));
-	for (const r of spot.querySelectorAll(".ai-spotlight-all, .ai-spotlight-dim")) {
-		r.setAttribute("width", String(view.width));
-		r.setAttribute("height", String(view.height));
-	}
-	let holes = rects.map((rect) => holeFor(rect, view));
-	if (spotMove) {
-		const t = Math.min(1, (performance.now() - spotMove.t0) / SPOT_MOVE_MS), k = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-		const from = spotMove.from, lerp = (a, b) => a + (b - a) * k;
-		holes = holes.map((h, i) => {
-			const f = from[Math.min(i, from.length - 1)];
-			return {
-				x: lerp(f.x, h.x),
-				y: lerp(f.y, h.y),
-				w: lerp(f.w, h.w),
-				h: lerp(f.h, h.h),
-				rx: lerp(f.rx, h.rx),
-				ry: lerp(f.ry, h.ry)
-			};
-		});
-		if (t >= 1) spotMove = null;
-	}
-	spotHoles = holes;
-	spot.querySelector(".ai-spotlight-holes").innerHTML = holes.map((h) => `<rect fill="black" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="${Math.min(h.rx, h.w / 2)}" ry="${Math.min(h.ry, h.h / 2)}"/>`).join("");
-}
-/**
-* What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
-* things side by side share one ring, things apart get one each (a ring round both would take in all between).
-*/
-function markRects(ref, part) {
-	if (!ref.includes("\n")) {
-		const r = resolveTarget$1(ref, part);
-		return r ? [r] : [];
-	}
-	const clusters = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
-	const near = (a, b) => {
-		return Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom)) <= Math.max(24, Math.min(a.height, b.height) * .8);
-	};
-	for (let merged = true; merged;) {
-		merged = false;
-		for (let i = 0; i < clusters.length && !merged; i++) for (let j = i + 1; j < clusters.length && !merged; j++) {
-			const a = clusters[i], b = clusters[j];
-			if (!near(a, b)) continue;
-			const x0 = Math.min(a.left, b.left), y0 = Math.min(a.top, b.top);
-			clusters[i] = new DOMRect(x0, y0, Math.max(a.right, b.right) - x0, Math.max(a.bottom, b.bottom) - y0);
-			clusters.splice(j, 1);
-			merged = true;
-		}
-	}
-	return clusters;
-}
-/** Draw the mark as a hand would, the pointer making each stroke: a loop, a line, a tick, the two lines of a cross. */
-async function traceMark(r) {
-	if (!ring) return;
-	for (const el of [
-		ring,
-		...moreRings,
-		...markLinks
-	]) for (const path of [...el.querySelectorAll("path")]) {
-		const box = el.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
-		await glide(box.left + start.x, box.top + start.y, r, 200);
-		path.classList.add("tracing");
-		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
-		for (;;) {
-			alive(r);
-			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-			path.style.setProperty("stroke-dashoffset", String(1 - k));
-			const b = el.getBoundingClientRect(), p = path.getPointAtLength(total * k);
-			pos.x = b.left + p.x;
-			pos.y = b.top + p.y;
-			paintPointer();
-			if (t >= 1) break;
-			await new Promise((res) => requestAnimationFrame(res));
-		}
-	}
-	for (const el of [
-		ring,
-		...moreRings,
-		...markLinks
-	]) el.classList.add("drawn");
-}
-/**
-* The pointer, for another surface's strokes (the code canvas): it glides to `path`'s start and draws it as it does a
-* mark here. Ends early when `live` says the drawing is over. The surface owns the path; this only moves the hand.
-*/
-async function pointerTrace(path, live) {
-	const svg = path.ownerSVGElement;
-	if (!svg) return;
-	const frame = () => new Promise((res) => {
-		requestAnimationFrame(res);
-		window.setTimeout(res, 60);
-	});
-	try {
-		const box = svg.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
-		await glide(box.left + start.x, box.top + start.y, run, 200);
-		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
-		for (;;) {
-			if (!live() || !path.isConnected) break;
-			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-			path.style.strokeDashoffset = String(1 - k);
-			const b = svg.getBoundingClientRect(), p = path.getPointAtLength(total * k);
-			pos.x = b.left + p.x;
-			pos.y = b.top + p.y;
-			paintPointer();
-			if (t >= 1) break;
-			await frame();
-		}
-	} catch (e) {
-		if (!(e instanceof Stopped)) throw e;
-	}
-	path.style.strokeDashoffset = "0";
-}
-/** The pointer to (x, y) on the page, as the hand moves to where it will write. */
-async function pointerTo(x, y) {
-	try {
-		await glide(x, y, run, 200);
-	} catch (e) {
-		if (!(e instanceof Stopped)) throw e;
-	}
-}
-/** The hand has finished: it goes after a moment, as after a mark. */
-function pointerDone() {
-	restPointer();
-}
-/** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
-function showPointer() {
-	ensurePointer().classList.add("on");
-}
-function restPointer() {
-	if (!pointer?.classList.contains("on")) return;
-	pointer.classList.remove("on");
-	unhover();
-}
-/** How long the pointer stays on what it showed before it goes (the mark stays). */
-var REST_MS = 1e3;
-var holding = false;
-var drawingArrow = false;
-/**
-* Show a target (or the `part` of a note) while `until` runs: the pointer goes to it and, if asked, draws a mark on
-* it (a circle round it, a line under it, a tick by it, a cross over it), rests there a second and goes; the mark
-* stays, following the target as the view moves, until the next beat.
-*/
-async function holdOn(ref, mark, r, until, color = "", part = "") {
-	let done = false;
-	until.then(() => {
-		done = true;
-	});
-	holding = true;
-	try {
-		await holdPointer(ref, mark, r, () => done, color, part);
-	} finally {
-		holding = false;
-	}
-}
-async function holdPointer(ref, mark, r, done, color, part) {
-	showPointer();
-	const at = resolveTarget$1(ref, part);
-	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
-	let drawn = mark === "point", since = 0;
-	const t0 = performance.now();
-	while (!done()) {
-		alive(r);
-		if (drawingArrow) {
-			since = 0;
-			await new Promise((res) => requestAnimationFrame(res));
-			continue;
-		}
-		const now = resolveTarget$1(ref, part);
-		if (now) {
-			if (!drawn) {
-				drawRings(markRects(ref, part), color, mark);
-				await traceMark(r);
-				drawn = true;
-				since = 0;
-				continue;
-			}
-			if (mark !== "point" && ring?.classList.contains("on")) fitRings(markRects(ref, part));
-			since ||= performance.now();
-			if (pointer?.classList.contains("on")) {
-				if (mark === "point") {
-					const cx = now.left + now.width / 2, cy = now.top + now.height / 2;
-					pos.x += (cx - pos.x) * .35;
-					pos.y += (cy - pos.y) * .35;
-					paintPointer();
-				}
-				if (performance.now() - since > REST_MS) restPointer();
-			}
-		} else if (performance.now() - t0 > 4e3) restPointer();
-		await new Promise((res) => requestAnimationFrame(res));
-	}
-}
-/** Move the run to frame `f` as a person would: onto the slider's thumb, press, drag along the track, release. */
-async function dragSliderTo(f, r) {
-	const s = playbackSlider(), from = s ? sliderPoint(s.value) : null, to = sliderPoint(f);
-	if (!s || !from || !to) {
-		if (s) setSliderValue(s.id, f);
-		return;
-	}
-	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
-	await glide(from.x, from.y, r);
-	ensurePointer().classList.add("pressed");
-	await sleep(180);
-	const steps = Math.abs(f - s.value), dir = Math.sign(f - s.value);
-	for (let k = 1; k <= steps; k++) {
-		alive(r);
-		const v = s.value + dir * k, p = sliderPoint(v);
-		await glide(p.x, p.y, r, Math.max(40, Math.min(160, 900 / steps)));
-		setSliderValue(s.id, v);
-	}
-	await sleep(160);
-	ensurePointer().classList.remove("pressed");
-	await sleep(350);
-}
-var notes = [];
-var board = [];
-var noteByText = /* @__PURE__ */ new Map();
-var noteKey = (t) => t.replace(/\s+/g, " ").trim();
-/** A note on the view, by what was written, or the `part` of it named (the box round those words); null when gone. */
-function noteRect(text, part = "") {
-	const note = noteByText.get(noteKey(text));
-	if (!note?.isConnected || note.classList.contains("fading")) return null;
-	const ink = note.querySelector(".ai-note-ink") ?? note;
-	return part && textRect(ink, part) || ink.getBoundingClientRect();
-}
-/**
-* Where `part` is in `text`: the first place it stands as a whole word (the `p` of `build_lps(p)` is the parameter,
-* not the last letter of `lps`), else the first place at all; -1 if absent.
-*/
-function partAt(text, part) {
-	const word = /\w/;
-	for (let at = text.indexOf(part); at >= 0; at = text.indexOf(part, at + 1)) {
-		const before = text[at - 1] ?? "", after = text[at + part.length] ?? "";
-		if (!(word.test(part[0]) && word.test(before)) && !(word.test(part.at(-1)) && word.test(after))) return at;
-	}
-	return text.indexOf(part);
-}
-/** The box round `part` (see partAt) in the text shown under `root` (KaTeX's hidden MathML left out); null if absent. */
-function textRect(root, part) {
-	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement?.closest(".katex-mathml") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
-	const nodes = [];
-	let all = "";
-	for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-		nodes.push(n);
-		all += n.nodeValue ?? "";
-	}
-	const at = partAt(all, part);
-	if (at < 0) return null;
-	const range = document.createRange();
-	let seen = 0;
-	for (const n of nodes) {
-		const len = n.nodeValue?.length ?? 0;
-		if (seen <= at && at < seen + len) range.setStart(n, at - seen);
-		if (at + part.length <= seen + len) {
-			range.setEnd(n, at + part.length - seen);
-			break;
-		}
-		seen += len;
-	}
-	const box = range.getBoundingClientRect();
-	return box.width ? box : null;
-}
-function notesLayer() {
-	let layer = document.getElementById("ai-scratchpad");
-	if (!layer) {
-		layer = document.createElement("div");
-		layer.id = "ai-scratchpad";
-		layer.setAttribute("aria-live", "polite");
-		document.body.append(layer);
-	}
-	return layer;
-}
-var overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-/** Where a w×h note on `side` of `near` sits, before any shift to keep it clear: level with it, `gap` off its edge. */
-function besideAt(near, side, w, h, gap = 16) {
-	const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
-	return side === "right" ? {
-		x: near.right + gap,
-		y: cy
-	} : side === "left" ? {
-		x: near.left - gap - w,
-		y: cy
-	} : side === "above" ? {
-		x: cx,
-		y: near.top - gap - h
-	} : {
-		x: cx,
-		y: near.bottom + gap
-	};
-}
-/**
-* Where a note of size w×h goes: beside `near` on `side` when it fits there, else on the side that does (right,
-* left, above, below), within the view and clear of the notes already written; with nothing to sit beside, down
-* the view's top-left corner. Says which side it took, for a note that follows what it is beside.
-*/
-function placeNote(w, h, near, side = "") {
-	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
-	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
-	const gap = 16, taken = [
-		...notes.filter((n) => n.classList.contains("ai-note") || n.classList.contains("ai-drawing")).map((n) => n.getBoundingClientRect()),
-		...board.map((n) => n.getBoundingClientRect()),
-		...panels,
-		...near ? [near] : []
-	].filter((r) => r.width);
-	const fits = (x, y) => {
-		const r = new DOMRect(x, y, w, h);
-		return x >= view.left + 6 && y >= view.top + 6 && x + w <= view.right - 6 && y + h <= view.bottom - 6 && !taken.some((t) => overlaps(r, t));
-	};
-	const sides = [
-		"right",
-		"left",
-		"above",
-		"below"
-	];
-	const order = side ? [side, ...sides.filter((s) => s !== side)] : sides;
-	const host = near ? panels.find((p) => near.left >= p.left - 1 && near.right <= p.right + 1 && near.top >= p.top - 1 && near.bottom <= p.bottom + 1) : void 0;
-	if (near && host) {
-		const cy = near.top + near.height / 2 - h / 2;
-		const at = {
-			right: [host.right + gap, cy],
-			left: [host.left - gap - w, cy],
-			above: [host.left, host.top - gap - h],
-			below: [host.left, host.bottom + gap]
-		};
-		for (const s of order) if (fits(...at[s])) return {
-			x: at[s][0],
-			y: at[s][1],
-			side: s
-		};
-	}
-	if (near) {
-		for (const s of order) {
-			const p = besideAt(near, s, w, h, gap);
-			if (fits(p.x, p.y)) return {
-				...p,
-				side: s
-			};
-		}
-		const p = besideAt(near, "right", w, h, gap);
-		for (const y of [p.y + h + 8, p.y - h - 8]) if (fits(p.x, y)) return {
-			x: p.x,
-			y,
-			side: "right"
-		};
-	}
-	for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56; y + h < view.bottom - 6; y += h + 10) if (fits(x, y)) return {
-		x,
-		y,
-		side: ""
-	};
-	return {
-		x: view.left + 24,
-		y: view.top + 56,
-		side: ""
-	};
-}
-var esc = (t) => t.replace(/[&<>"]/g, (c) => ({
-	"&": "&amp;",
-	"<": "&lt;",
-	">": "&gt;",
-	"\"": "&quot;"
-})[c]);
-/**
-* A note's text as shown: plain text in the typing face, `code` in code colours, and $math$, when a note needs real
-* notation, set by KaTeX as the info overlays are (an unclosed one too, as it is being typed).
-*/
-function inkHtml(src) {
-	const katex = window.katex;
-	let out = "", i = 0;
-	while (i < src.length) {
-		const mark = src[i];
-		if (mark === "$" || mark === "`") {
-			const end = src.indexOf(mark, i + 1), body = src.slice(i + 1, end < 0 ? src.length : end);
-			if (mark === "`") out += `<code>${esc(body)}</code>`;
-			else if (body) out += mathHtml(body, end < 0, katex);
-			i = end < 0 ? src.length : end + 1;
-			continue;
-		}
-		const next = src.slice(i).search(/[$`]/), plain = next < 0 ? src.slice(i) : src.slice(i, i + next);
-		out += /\\[A-Za-z]/.test(plain) ? strayMath(plain, katex) : esc(plain);
-		i += plain.length;
-	}
-	return out;
-}
-/**
-* Plain text holding LaTeX commands the model wrote without $...$ ("temps[2]=75 \\ge temps[3]=71"): its formula runs
-* (words with a command, a digit, a bracket or an operator, and single letters) set as math, the words between as text.
-*/
-function strayMath(plain, katex) {
-	const mathy = (w) => /\\[A-Za-z]|[\d=<>^_[\](){}+*|]/.test(w) || /^[A-Za-z]$/.test(w);
-	let out = "", run = [];
-	const flush = () => {
-		if (run.length) out += mathHtml(run.join(" "), true, katex);
-		run = [];
-	};
-	for (const part of plain.split(/(\s+)/)) {
-		if (!part) continue;
-		if (!part.trim()) {
-			if (!run.length) out += esc(part);
-			continue;
-		}
-		if (mathy(part)) {
-			run.push(part);
-			continue;
-		}
-		const after = run.length > 0;
-		flush();
-		out += (after ? " " : "") + esc(part);
-	}
-	flush();
-	return out;
-}
-/**
-* Math set by KaTeX. Being typed (`open`), it is set as far as it goes: a command still being spelled is left out
-* and the braces still open are closed, so `\frac{1}{2` already reads as a fraction.
-*/
-function mathHtml(body, open, katex) {
-	if (!katex) return esc(body);
-	const tries = [body];
-	if (open) {
-		let cut = body;
-		for (let k = 0; k < 3; k++) cut = cut.replace(/\\(begin|end)\{[A-Za-z*]*$/, "").replace(/\\[A-Za-z]*$/, "").replace(/[\\^_]$/, "");
-		if (!cut.trim()) return "";
-		const depth = [...cut].reduce((d, c, i) => c === "{" && cut[i - 1] !== "\\" ? d + 1 : c === "}" && cut[i - 1] !== "\\" ? Math.max(0, d - 1) : d, 0);
-		const open = [...cut.matchAll(/\\(begin|end)\{([A-Za-z*]+)\}/g)].reduce((stack, m) => {
-			if (m[1] === "begin") stack.push(m[2]);
-			else stack.pop();
-			return stack;
-		}, []);
-		tries.push(cut + "}".repeat(depth) + open.reverse().map((env) => `\\end{${env}}`).join(""));
-	}
-	for (const t of tries) if (t) try {
-		return katex.renderToString(t, {
-			throwOnError: true,
-			displayMode: false
-		});
-	} catch {}
-	return `<span class="ai-note-raw">${esc(body)}</span>`;
-}
-/** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
-/** The presenter's colours (style.css `.ai-ink-*`); green when none is named. */
-var INKS$1 = /* @__PURE__ */ new Set([
-	"yellow",
-	"red",
-	"blue",
-	"purple",
-	"orange",
-	"pink"
-]);
-var inkClass = (color) => color && INKS$1.has(color) ? `ai-ink-${color}` : "";
-async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
-	if (side === "free") near = "";
-	const note = document.createElement("div");
-	note.className = `ai-note ${inkClass(color)}`.trim();
-	note.title = "Drag to move";
-	makeMovable(note);
-	const ink = document.createElement("span");
-	ink.className = "ai-note-ink";
-	const caret = document.createElement("span");
-	caret.className = "ai-note-caret";
-	const ask = makeAiAskButton("ai-ask-btn ai-note-ask", "Ask AI about this", () => labelAskMessage({ text }));
-	ask.addEventListener("pointerdown", (e) => e.stopPropagation());
-	note.append(ink, caret, ask);
-	notesLayer().append(note);
-	ink.innerHTML = inkHtml(text);
-	const size = note.getBoundingClientRect(), anchor = near ? resolveTarget$1(near) : null;
-	const at = onBoard ? {
-		...boardSlot(),
-		side: ""
-	} : placeNote(size.width + 12, size.height, anchor, side === "free" ? "" : side);
-	note.style.left = `${at.x}px`;
-	note.style.top = `${at.y}px`;
-	ink.textContent = "";
-	if (!onBoard && anchor && at.side) followAnchor(note, near, at.side, size.width + 12, size.height, at);
-	if (onBoard) {
-		board.push(note);
-		note.classList.add("boarded");
-	} else notes.push(note);
-	noteByText.set(noteKey(text), note);
-	note.classList.add("on");
-	let prev = "\n";
-	try {
-		for (let k = 1; k <= text.length; k++) {
-			const ch = text[k - 1];
-			if (ch === "$" || ch === "`") continue;
-			alive(r);
-			await sleep(keyDelay(prev, ch));
-			ink.innerHTML = inkHtml(text.slice(0, k));
-			prev = ch;
-		}
-	} catch (stop) {
-		note.classList.add("set");
-		if (!ink.textContent) {
-			notes = notes.filter((n) => n !== note);
-			board = board.filter((n) => n !== note);
-			if (noteByText.get(noteKey(text)) === note) noteByText.delete(noteKey(text));
-			note.remove();
-		}
-		throw stop;
-	}
-	await sleep(250);
-	note.classList.add("set");
-	return note;
-}
-/**
-* A note written beside something stays beside it as the view turns, zooms or plays: on the side it took, as far
-* along it as it was put, every frame while it's up. Once the learner moves it, it stays where they put it.
-*/
-function followAnchor(note, ref, side, w, h, at) {
-	const first = resolveTarget$1(ref);
-	if (!first) return;
-	const base = besideAt(first, side, w, h), dx = at.x - base.x, dy = at.y - base.y;
-	let was = "";
-	const tick = () => {
-		if (!note.isConnected || note.classList.contains("fading") || note.classList.contains("boarded") || note.dataset.moved) return;
-		const now = resolveTarget$1(ref);
-		if (now) {
-			const p = besideAt(now, side, w, h), key = `${Math.round(p.x + dx)},${Math.round(p.y + dy)}`;
-			if (key !== was) {
-				was = key;
-				note.style.left = `${p.x + dx}px`;
-				note.style.top = `${p.y + dy}px`;
-			}
-		}
-		requestAnimationFrame(tick);
-	};
-	requestAnimationFrame(tick);
-}
-/** The point where the line from a rect's centre towards (x, y) leaves the rect, `pad` outside it. */
-function edgeToward(r, x, y, pad) {
-	const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy;
-	const hw = r.width / 2 + pad, hh = r.height / 2 + pad;
-	const t = Math.min(Math.abs(dx) > 1e-6 ? hw / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? hh / Math.abs(dy) : Infinity, 1);
-	return {
-		x: cx + dx * t,
-		y: cy + dy * t
-	};
-}
-/**
-* A hand-drawn arrow from one rect to another: a gently bowed, slightly wobbly stroke drawn out from its tail,
-* then its head, two quick strokes. It stays with the notes and goes when they are wiped.
-*/
-var arrowsFrom = /* @__PURE__ */ new WeakMap();
-var arrowEls = /* @__PURE__ */ new WeakMap();
-async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow", name = "") {
-	const side = Math.random() < .5 ? -1 : 1, jitter = [
-		Math.random() - .5,
-		Math.random() - .5,
-		Math.random() - .5,
-		Math.random() - .5
-	];
-	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-	svg.classList.add("ai-arrow");
-	if (inkClass(color)) svg.classList.add(inkClass(color));
-	let drawnSoFar = 0;
-	const shaft = () => svg.querySelector(".ai-arrow-shaft");
-	const shape = () => {
-		const f = from(), t = to();
-		if (!f || !t) return 0;
-		const fc = {
-			x: f.left + f.width / 2,
-			y: f.top + f.height / 2
-		}, tc = {
-			x: t.left + t.width / 2,
-			y: t.top + t.height / 2
-		};
-		const a = edgeToward(f, tc.x, tc.y, kind === "both" ? 7 : 4), b = edgeToward(t, fc.x, fc.y, kind === "line" ? 4 : 7);
-		const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
-		if (len < 12) {
-			svg.innerHTML = "";
-			return 0;
-		}
-		const nx = -dy / len, ny = dx / len, bow = side * Math.min(60, len * .18), wob = (k) => jitter[k] * Math.min(10, len * .04);
-		const c1 = {
-			x: a.x + dx * .3 + nx * bow + wob(0),
-			y: a.y + dy * .3 + ny * bow + wob(1)
-		};
-		const c2 = {
-			x: a.x + dx * .7 + nx * bow * .8 + wob(2),
-			y: a.y + dy * .7 + ny * bow * .8 + wob(3)
-		};
-		const headAt = (tip, from) => {
-			const ex = tip.x - from.x, ey = tip.y - from.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
-			const wing = (k) => {
-				const c = Math.cos(k), s = Math.sin(k);
-				return {
-					x: tip.x - head * (ux * c - uy * s),
-					y: tip.y - head * (uy * c + ux * s)
-				};
-			};
-			const w1 = wing(.48), w2 = wing(-.42);
-			return `M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}`;
-		};
-		const heads = [...kind !== "line" ? [headAt(b, c2)] : [], ...kind === "both" ? [headAt(a, c1)] : []];
-		const d = `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, drawnHeads = svg.querySelectorAll(".ai-arrow-head");
-		if (shaft() && drawnHeads.length === heads.length) {
-			shaft().setAttribute("d", d);
-			drawnHeads.forEach((h, k) => h.setAttribute("d", heads[k]));
-		} else svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="${d}"/>` + heads.map((h) => `<path class="ai-arrow-head" pathLength="1" d="${h}"/>`).join("");
-		if (!svg.classList.contains("drawn")) shaft()?.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
-		return len;
-	};
-	const len = shape();
-	if (!len) return;
-	notesLayer().append(svg);
-	notes.push(svg);
-	if (name) noteByText.set(noteKey(name), svg);
-	if (fromNote) {
-		arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
-		arrowEls.set(fromNote, [...arrowEls.get(fromNote) ?? [], svg]);
-	}
-	let was = "";
-	const follow = () => {
-		if (!svg.isConnected) return;
-		const f = from(), t = to(), now = f && t ? [
-			f.left,
-			f.top,
-			f.width,
-			f.height,
-			t.left,
-			t.top,
-			t.width,
-			t.height
-		].map(Math.round).join() : "";
-		if (now && now !== was) {
-			was = now;
-			shape();
-		}
-		requestAnimationFrame(follow);
-	};
-	requestAnimationFrame(follow);
-	drawingArrow = true;
-	try {
-		const start = shaft()?.getPointAtLength(0);
-		if (start) await glide(start.x, start.y, r, 260);
-		svg.classList.add("tracing");
-		const dur = Math.min(900, 350 + len * .6), t0 = performance.now();
-		for (;;) {
-			alive(r);
-			const t = Math.min(1, (performance.now() - t0) / dur);
-			drawnSoFar = 1 - Math.pow(1 - t, 2);
-			const path = shaft();
-			if (path) {
-				path.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
-				const p = path.getPointAtLength(path.getTotalLength() * drawnSoFar);
-				pos.x = p.x;
-				pos.y = p.y;
-				paintPointer();
-			}
-			if (t >= 1) break;
-			await new Promise((res) => requestAnimationFrame(res));
-		}
-		svg.classList.add("drawn");
-		if (kind !== "line") {
-			svg.classList.add("headed");
-			await sleep(220);
-		}
-	} finally {
-		drawingArrow = false;
-	}
-	if (!holding) window.setTimeout(() => {
-		if (!holding && !drawingArrow) restPointer();
-	}, REST_MS);
-}
-var sketch = null;
-var SVG_NS = "http://www.w3.org/2000/svg";
-var LABEL_FONT = "600 15px ui-monospace, SFMono-Regular, Menlo, monospace";
-var measurer = null;
-var textWidth = (t) => {
-	measurer ??= document.createElement("canvas").getContext("2d");
-	if (!measurer) return t.length * 9;
-	measurer.font = LABEL_FONT;
-	return measurer.measureText(t).width;
-};
-/**
-* A shape's size in px within a box `within` (its group's, or the board): w and h on that box's grid, never
-* smaller than its label; a circle with only a w is round. Text is as big as its words.
-*/
-function shapeSize$1(spec, within) {
-	const tw = textWidth((spec.label ?? "").replace(/\$([^$]*)\$?/g, (_, m) => m.replace(/\\[a-zA-Z]+\s*/g, "x").replace(/[{}_^\\]/g, "")));
-	if (spec.type === "text") return {
-		w: tw * 14 / 15 + 6,
-		h: 20
-	};
-	const fit = spec.type === "diamond" ? tw * 1.6 + 30 : spec.type === "ellipse" ? Math.max(36, tw * 1.22 + 26) : Math.max(34, tw + 22);
-	const w = Math.max(fit, spec.w ? spec.w / 100 * within.w : 0);
-	return {
-		w,
-		h: spec.h ? Math.max(spec.h / 100 * within.h, 30) : spec.type === "diamond" ? 46 : spec.type === "ellipse" ? spec.w || tw < 20 ? w : 42 : 32
-	};
-}
-/** The group a spec sits in, if it names one on the board. */
-var groupOf = (b, e) => e.group ? b.specs.find((g) => g.type === "group" && g.id === e.group) ?? null : null;
-/** How far the learner dragged it: its own drag and its groups'. */
-function offsetOf(b, e) {
-	const o = {
-		x: 0,
-		y: 0
-	};
-	for (let g = e, i = 0; g && i < 50; g = groupOf(b, g), i++) {
-		const m = b.moved.get(g);
-		if (m) {
-			o.x += m.x;
-			o.y += m.y;
-		}
-	}
-	return o;
-}
-/** A laid-out element's box in the drawing's space, where the learner left it. */
-function boxOf(b, e) {
-	const r = laidBox(b, e);
-	if (!r) return null;
-	const o = offsetOf(b, e);
-	let x = r.x + o.x, y = r.y + o.y, w = r.w, h = r.h;
-	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) {
-		const z = b.zoom.get(g), gr = z && z !== 1 ? laidBox(b, g) : null;
-		if (!z || !gr) continue;
-		const go = offsetOf(b, g), gx = gr.x + go.x, gy = gr.y + go.y;
-		x = gx + (x - gx) * z;
-		y = gy + (y - gy) * z;
-		w *= z;
-		h *= z;
-	}
-	return new DOMRect(x, y, w, h);
-}
-/** How long things take to glide to where a new layout puts them, and how far along they are. */
-var GLIDE_MS = 480;
-var glideK = (b) => {
-	if (!b.glide) return 1;
-	const t = Math.min(1, (performance.now() - b.glide.t0) / GLIDE_MS);
-	return 1 - Math.pow(1 - t, 3);
-};
-var mix = (a, z, k) => a + (z - a) * k;
-/** Where the layout has it now: on its way from its old place to its new one while a new layout glides in. */
-function laidBox(b, e) {
-	const r = b.laid.boxes.get(e), f = b.glide?.from.get(e);
-	if (!r || !f) return r ?? null;
-	const k = glideK(b);
-	return {
-		x: mix(f.x, r.x, k),
-		y: mix(f.y, r.y, k),
-		w: mix(f.w, r.w, k),
-		h: mix(f.h, r.h, k)
-	};
-}
-/**
-* A group's box as it is now: where it was laid out, grown to hold what is in it wherever the learner dragged it.
-* Its background and the links to it use this.
-*/
-function extentOf(b, g, depth = 0) {
-	const root = g === b.root;
-	let r = root ? new DOMRect(0, 0, b.laid.w, b.laid.h) : boxOf(b, g);
-	if (!r || depth > 20) return r;
-	for (const e of b.specs) {
-		if ((root ? groupOf(b, e) !== null : groupOf(b, e) !== g) || e.type === "path" || LINKS.has(e.type)) continue;
-		const c = e.type === "group" ? extentOf(b, e, depth + 1) : b.all.find((d) => d.spec === e)?.local() ?? null;
-		if (!c) continue;
-		const x0 = Math.min(r.left, c.left), y0 = Math.min(r.top, c.top), x1 = Math.max(r.right, c.right), y1 = Math.max(r.bottom, c.bottom);
-		r = new DOMRect(x0, y0, x1 - x0, y1 - y0);
-	}
-	return r;
-}
-/** The box a picture's points are on: its group's, or the whole drawing's. */
-function frameOf(b, e) {
-	const g = groupOf(b, e);
-	return g && boxOf(b, g) || new DOMRect(0, 0, b.laid.w, b.laid.h);
-}
-var toScreen = (b, x, y) => {
-	const o = b.el.getBoundingClientRect();
-	return {
-		x: o.left + b.view.ox + x * b.view.s,
-		y: o.top + b.view.oy + y * b.view.s
-	};
-};
-var fromScreen = (b, r) => {
-	const o = b.el.getBoundingClientRect(), s = b.view.s;
-	return new DOMRect((r.left - o.left - b.view.ox) / s, (r.top - o.top - b.view.oy) / s, r.width / s, r.height / s);
-};
-/** Lay the drawing out again, fit it to the board, and put everything where it now goes. */
-function layoutBoard(b, grow = true) {
-	const from = /* @__PURE__ */ new Map();
-	for (const e of b.laid.boxes.keys()) {
-		const r = laidBox(b, e);
-		if (r) from.set(e, r);
-	}
-	const first = !from.size;
-	b.laid = layoutDrawing(b.specs, b.layout, {
-		box: {
-			w: b.w,
-			h: b.h
-		},
-		sizeOf: shapeSize$1
-	});
-	const pad = 12, fit = () => Math.min(b.sized ? 4 : 1, (b.w - 24) / Math.max(1, b.laid.w), (b.h - 24) / Math.max(1, b.laid.h));
-	if (grow && fit() < MIN_SCALE) {
-		const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
-		const w = Math.min(view.width * .92, Math.max(b.w, b.laid.w * MIN_SCALE + 24)), h = Math.min(view.height * .88, Math.max(b.h, b.laid.h * MIN_SCALE + 24));
-		if (w > b.w + 1 || h > b.h + 1) {
-			sizeBoard(b, w, h);
-			b.laid = layoutDrawing(b.specs, b.layout, {
-				box: {
-					w: b.w,
-					h: b.h
-				},
-				sizeOf: shapeSize$1
-			});
-		}
-	}
-	const to = {
-		ox: pad,
-		oy: pad,
-		s: fit()
-	};
-	if (first) {
-		b.glide = null;
-		b.view = to;
-		fitCanvas(b);
-		placeAll(b);
-		return;
-	}
-	const running = !!b.glide;
-	b.glide = {
-		from,
-		view: { ...b.view },
-		to,
-		t0: performance.now()
-	};
-	if (running) return;
-	const tick = () => {
-		if (!b.glide || !b.el.isConnected) return;
-		const k = glideK(b), { view: v, to: z } = b.glide;
-		b.view = {
-			ox: mix(v.ox, z.ox, k),
-			oy: mix(v.oy, z.oy, k),
-			s: mix(v.s, z.s, k)
-		};
-		fitCanvas(b);
-		placeAll(b);
-		if (k < 1) requestAnimationFrame(tick);
-		else b.glide = null;
-	};
-	tick();
-}
-/** Below this the drawing would be too small to read: the board grows instead. */
-var MIN_SCALE = .75;
-/** The board's size in px: its top left stays put, and it grows no further than the window's edge. */
-function sizeBoard(b, w, h) {
-	const left = parseFloat(b.el.style.left), top = parseFloat(b.el.style.top);
-	b.w = Math.round(Math.max(80, Math.min(w, innerWidth - 8 - left)));
-	b.h = Math.round(Math.max(60, Math.min(h, innerHeight - 8 - top)));
-	b.el.style.width = `${b.w}px`;
-	b.el.style.height = `${b.h}px`;
-}
-var fitCanvas = (b) => {
-	b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`;
-	b.canvas.style.setProperty("--draw-scale", String(b.view.s));
-};
-function placeAll(b) {
-	for (const item of b.all) item.place();
-	for (const [g, el] of b.groups) {
-		const r = extentOf(b, g);
-		if (!r) continue;
-		const n = nesting(b, g), side = (12 + 10 * n) / b.view.s, head = (34 + 30 * n) / b.view.s;
-		el.style.left = `${r.left - side}px`;
-		el.style.top = `${r.top - head}px`;
-		el.style.width = `${r.width + 2 * side}px`;
-		el.style.height = `${r.height + head + side}px`;
-	}
-	for (const [e, el] of b.hits) {
-		const r = b.all.find((d) => d.spec === e)?.local();
-		if (!r) continue;
-		const pad = 4 / b.view.s;
-		el.style.left = `${r.left - pad}px`;
-		el.style.top = `${r.top - pad}px`;
-		el.style.width = `${r.width + 2 * pad}px`;
-		el.style.height = `${r.height + 2 * pad}px`;
-	}
-}
-/** Drag `el` to move what it holds: `drag` gets each step of the move in screen px. */
-function draggable(el, drag, lit = el) {
-	el.addEventListener("pointerdown", (e) => {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		e.stopPropagation();
-		el.setPointerCapture(e.pointerId);
-		lit.classList.add("dragging");
-		let x = e.clientX, y = e.clientY;
-		const move = (ev) => {
-			if (!ev.buttons) {
-				up();
-				return;
-			}
-			drag(ev.clientX - x, ev.clientY - y);
-			x = ev.clientX;
-			y = ev.clientY;
-		};
-		const up = () => {
-			el.removeEventListener("pointermove", move);
-			el.removeEventListener("pointerup", up);
-			el.removeEventListener("pointercancel", up);
-			el.removeEventListener("lostpointercapture", up);
-			lit.classList.remove("dragging");
-		};
-		el.addEventListener("pointermove", move);
-		el.addEventListener("pointerup", up);
-		el.addEventListener("pointercancel", up);
-		el.addEventListener("lostpointercapture", up);
-	});
-}
-/** Move a drawn element (and what is in it) by a drag of (dx, dy) screen px; the links to it follow. */
-function nudge(b, e, dx, dy) {
-	const m = b.moved.get(e) ?? {
-		x: 0,
-		y: 0
-	};
-	b.moved.set(e, {
-		x: m.x + dx / b.view.s,
-		y: m.y + dy / b.view.s
-	});
-	placeAll(b);
-}
-/** How deep the groups inside `g` go: 0 when it holds none. */
-function nesting(b, g, depth = 0) {
-	if (depth > 20) return 0;
-	const inner = b.specs.filter((e) => e.type === "group" && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
-	return inner.length ? 1 + Math.max(...inner.map((e) => nesting(b, e, depth + 1))) : 0;
-}
-/** How much the groups around `e` that the learner resized scale it: its words grow and shrink with its box. */
-function zoomOf(b, e) {
-	let z = 1;
-	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) z *= b.zoom.get(g) ?? 1;
-	return z;
-}
-/** The groups `e` sits in, innermost first. */
-function groupsAround(b, e) {
-	const out = [];
-	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) out.push(g);
-	return out;
-}
-/**
-* A group's handle, under its shapes: pointed at (or anything in it), it lights up behind them, the scene dimmed,
-* so they read over a busy view, and shows its title; the title drags the whole group.
-*/
-function groupHandle(b, g) {
-	const el = document.createElement("div");
-	el.className = "ai-draw-group";
-	const title = document.createElement("div");
-	title.className = "ai-draw-group-title";
-	title.textContent = g.label || g.id || "";
-	title.title = "Drag to move";
-	el.append(title);
-	draggable(title, (dx, dy) => {
-		if (g !== b.root) {
-			nudge(b, g, dx, dy);
-			return;
-		}
-		b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;
-		b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
-		placeAll(b);
-	}, el);
-	const light = (on) => {
-		for (const o of g === b.root ? [] : [...groupsAround(b, g), b.root]) b.groups.get(o)?.classList.toggle("lit", on);
-	};
-	el.addEventListener("pointerenter", (e) => {
-		if (e.isTrusted) light(true);
-	});
-	el.addEventListener("pointerleave", (e) => {
-		if (e.isTrusted) light(false);
-	});
-	const grip = document.createElement("div");
-	grip.className = "ai-draw-resize";
-	grip.title = "Drag to resize";
-	el.append(grip);
-	if (g !== b.root) draggable(grip, (dx, dy) => {
-		const r = extentOf(b, g);
-		if (!r || r.width < 1 || r.height < 1) return;
-		const f = Math.max((r.width + dx / b.view.s) / r.width, (r.height + dy / b.view.s) / r.height);
-		b.zoom.set(g, Math.min(4, Math.max(.3, (b.zoom.get(g) ?? 1) * f)));
-		placeAll(b);
-	}, el);
-	if (g === b.root) draggable(grip, (dx, dy) => {
-		if (!b.sized) {
-			b.w = b.laid.w * b.view.s + 24;
-			b.h = b.laid.h * b.view.s + 24;
-			b.sized = true;
-		}
-		sizeBoard(b, b.w + dx, b.h + dy);
-		b.glide = null;
-		b.laid = {
-			boxes: /* @__PURE__ */ new Map(),
-			w: b.w,
-			h: b.h
-		};
-		layoutBoard(b, false);
-	}, el);
-	b.canvas.insertBefore(el, b.svg);
-	b.groups.set(g, el);
-	return el;
-}
-/** A shape's or a word's own handle, over it: drag it anywhere, and it lights its groups while pointed at. */
-function nodeHandle(b, e) {
-	const el = document.createElement("div");
-	el.className = "ai-draw-hit";
-	el.title = "Drag to move";
-	draggable(el, (dx, dy) => nudge(b, e, dx, dy));
-	const light = (on) => {
-		for (const g of [...groupsAround(b, e), b.root]) b.groups.get(g)?.classList.toggle("lit", on);
-	};
-	el.addEventListener("pointerenter", (e) => {
-		if (e.isTrusted) light(true);
-	});
-	el.addEventListener("pointerleave", (e) => {
-		if (e.isTrusted) light(false);
-	});
-	b.canvas.append(el);
-	b.hits.set(e, el);
-	return el;
-}
-/** The board, made on the first drawing: a wide box (3 by 2) in a free part of the view, clear of notes and panels. */
-function sketchBoard() {
-	if (sketch?.el.isConnected && !sketch.el.classList.contains("fading")) return sketch;
-	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
-	const w = Math.round(Math.max(300, Math.min(560, view.width * .62, (view.height - 120) * 1.5))), h = Math.round(w * 2 / 3);
-	const el = document.createElement("div");
-	el.className = "ai-drawing";
-	const at = placeNote(w, h, null);
-	el.style.left = `${at.x}px`;
-	el.style.top = `${at.y}px`;
-	el.style.width = `${w}px`;
-	el.style.height = `${h}px`;
-	const canvas = document.createElement("div");
-	canvas.className = "ai-drawing-canvas";
-	const svg = document.createElementNS(SVG_NS, "svg");
-	canvas.append(svg);
-	el.append(canvas);
-	notesLayer().append(el);
-	notes.push(el);
-	sketch = {
-		el,
-		canvas,
-		svg,
-		w,
-		h,
-		layout: "",
-		specs: [],
-		laid: {
-			boxes: /* @__PURE__ */ new Map(),
-			w,
-			h
-		},
-		view: {
-			ox: 0,
-			oy: 0,
-			s: 1
-		},
-		moved: /* @__PURE__ */ new Map(),
-		items: /* @__PURE__ */ new Map(),
-		all: [],
-		groups: /* @__PURE__ */ new Map(),
-		hits: /* @__PURE__ */ new Map(),
-		root: {
-			type: "group",
-			label: "Drawing"
-		},
-		glide: null,
-		zoom: /* @__PURE__ */ new Map()
-	};
-	groupHandle(sketch, sketch.root).classList.add("ai-draw-root");
-	return sketch;
-}
-/**
-* Links with an end on the view (a cell, a chart bar, a note), not on the board: what they join there moves as the
-* scene plays, turns or is resized, so they are put in place again every frame while there are any.
-*/
-var linksToView = (b) => b.all.filter((d) => LINKS.has(d.spec.type) && [d.spec.start, d.spec.end].some((e) => e && !b.items.has(e)));
-var followingView = false;
-function followView(b) {
-	if (followingView) return;
-	followingView = true;
-	const tick = () => {
-		const live = sketch === b && b.el.isConnected && !b.el.classList.contains("fading") ? linksToView(b) : [];
-		if (!live.length) {
-			followingView = false;
-			return;
-		}
-		if (!b.glide) for (const d of live) d.place();
-		requestAnimationFrame(tick);
-	};
-	requestAnimationFrame(tick);
-}
-/** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
-function drawnRect(id, part = "") {
-	const b = sketch, item = b?.el.isConnected ? b.items.get(id) : void 0;
-	if (!item || !b) return null;
-	if (part && item.label) {
-		const t = textRect(item.label, part);
-		if (t) return t;
-	}
-	const l = item.local();
-	if (!l) return null;
-	const p = toScreen(b, l.left, l.top);
-	return new DOMRect(p.x, p.y, l.width * b.view.s, l.height * b.view.s);
-}
-/**
-* Where a link's end is now, in the drawing's space: anything drawn (a shape, a group, text, another link) by its
-* id, or a ref on the view. Read on every redraw, so a link follows what it joins as it's laid out or dragged.
-*/
-function linkEnd(name) {
-	const b = sketch;
-	if (!b) return null;
-	const item = b.items.get(name);
-	const r = item ? item.local() : (() => {
-		const v = resolveTarget$1(name);
-		return v ? fromScreen(b, v) : null;
-	})();
-	if (!r) return null;
-	return {
-		type: item && SHAPES.has(item.spec.type) ? item.spec.type : "rectangle",
-		cx: r.left + r.width / 2,
-		cy: r.top + r.height / 2,
-		w: r.width,
-		h: r.height
-	};
-}
-/** The pointer draws `path` (in the drawing's space) as a hand would: onto its start, then along it as it appears. */
-async function traceStroke(path, r, speed = 1) {
-	const b = sketch;
-	if (!b) return;
-	const total = path.getTotalLength(), s0 = path.getPointAtLength(0), p0 = toScreen(b, s0.x, s0.y);
-	await glide(p0.x, p0.y, r, 220);
-	path.classList.add("tracing");
-	const dur = Math.min(900, 200 + total * b.view.s * 1.3) / speed, t0 = performance.now();
-	for (;;) {
-		alive(r);
-		const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-		path.style.setProperty("stroke-dashoffset", String(1 - k));
-		const p = path.getPointAtLength(total * k), at = toScreen(b, p.x, p.y);
-		pos.x = at.x;
-		pos.y = at.y;
-		paintPointer();
-		if (t >= 1) break;
-		await new Promise((res) => requestAnimationFrame(res));
-	}
-	path.classList.add("drawn");
-}
-/** Write a label key by key, quicker than a note, the pointer moving along with the words. */
-async function typeLabel(el, text, r) {
-	el.textContent = "";
-	let prev = "\n", shown = "";
-	for (const ch of text) {
-		alive(r);
-		await sleep(keyDelay(prev, ch) * .45);
-		shown += ch;
-		el.innerHTML = inkHtml(shown);
-		prev = ch;
-		const b = el.getBoundingClientRect();
-		pos.x += (b.right - pos.x) * .5;
-		pos.y += (b.bottom - 2 - pos.y) * .5;
-		paintPointer();
-	}
-}
-var newPath = (cls, color) => {
-	const p = document.createElementNS(SVG_NS, "path");
-	p.setAttribute("pathLength", "1");
-	p.setAttribute("class", `${cls} ${inkClass(color)}`.trim());
-	return p;
-};
-var newLabel = (b, cls, ink) => {
-	const lab = Object.assign(document.createElement("div"), { className: `ai-draw-label ${cls} ${inkClass(ink)}`.replace(/\s+/g, " ").trim() });
-	b.canvas.append(lab);
-	return lab;
-};
-/** Draw a beat's drawing on the board: each element in turn, the pointer making its strokes and writing its words. */
-async function drawSketch(d, color, r) {
-	const b = sketchBoard();
-	const fresh = d.elements.filter((e) => !e.id || !b.items.has(e.id));
-	b.specs.push(...fresh);
-	if (d.layout) b.layout = d.layout;
-	for (const g of fresh) if (g.type === "group" && g.id) {
-		groupHandle(b, g);
-		const item = {
-			spec: g,
-			paths: [],
-			label: null,
-			place: () => void 0,
-			local: () => extentOf(b, g)
-		};
-		b.items.set(g.id, item);
-		b.all.push(item);
-	}
-	layoutBoard(b);
-	drawingArrow = true;
-	try {
-		for (const spec of fresh) {
-			alive(r);
-			const ink = spec.color || color;
-			if (SHAPES.has(spec.type)) {
-				const label = spec.label ?? "";
-				const jitter = [
-					Math.random() - .5,
-					Math.random() - .5,
-					Math.random() - .5,
-					Math.random() - .5
-				];
-				const path = newPath("ai-draw-stroke", ink);
-				b.svg.append(path);
-				const lab = label ? newLabel(b, "", ink) : null;
-				const local = () => boxOf(b, spec);
-				const place = () => {
-					const l = local();
-					if (!l) return;
-					path.setAttribute("d", shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
-					if (lab) {
-						lab.style.left = `${l.left + l.width / 2}px`;
-						lab.style.top = `${l.top + l.height / 2}px`;
-						lab.style.scale = String(zoomOf(b, spec));
-					}
-				};
-				const item = {
-					spec,
-					paths: [path],
-					label: lab,
-					place,
-					local
-				};
-				if (spec.id) b.items.set(spec.id, item);
-				b.all.push(item);
-				place();
-				await traceStroke(path, r);
-				if (lab) await typeLabel(lab, label, r);
-				nodeHandle(b, spec);
-				placeAll(b);
-			} else if (spec.type === "outline" && spec.around?.length) {
-				const path = newPath("ai-draw-stroke", ink);
-				b.svg.append(path);
-				const lab = spec.label ? newLabel(b, "", ink) : null;
-				const hull = () => hullAround(spec.around.map((id) => b.items.get(id)?.local()).filter((x) => !!x).map((x) => ({
-					x: x.left,
-					y: x.top,
-					w: x.width,
-					h: x.height
-				})));
-				const place = () => {
-					const h = hull();
-					if (h.length < 3) return;
-					path.setAttribute("d", smoothPath(h, true));
-					if (lab) {
-						const top = Math.min(...h.map((p) => p.y)), mid = h.reduce((a, p) => a + p.x, 0) / h.length;
-						lab.style.left = `${mid}px`;
-						lab.style.top = `${top - 12}px`;
-					}
-				};
-				const local = () => {
-					const bb = path.getBBox();
-					return bb.width ? new DOMRect(bb.x, bb.y, bb.width, bb.height) : null;
-				};
-				const item = {
-					spec,
-					paths: [path],
-					label: lab,
-					place,
-					local
-				};
-				if (spec.id) b.items.set(spec.id, item);
-				b.all.push(item);
-				place();
-				await traceStroke(path, r);
-				if (lab) await typeLabel(lab, spec.label, r);
-			} else if (LINKS.has(spec.type) && (spec.start && spec.end || (spec.points?.length ?? 0) >= 2)) {
-				const heads = spec.type === "line" ? "none" : spec.heads || "end";
-				const atEnd = heads === "end" || heads === "both", atStart = heads === "start" || heads === "both";
-				const shaft = newPath("ai-draw-stroke", ink);
-				const head = atEnd ? newPath("ai-draw-stroke", ink) : null, tail = atStart ? newPath("ai-draw-stroke", ink) : null;
-				b.svg.append(shaft);
-				if (head) b.svg.append(head);
-				if (tail) b.svg.append(tail);
-				const lab = spec.label ? newLabel(b, "", ink) : null;
-				const bow = (Math.random() - .5) * .25;
-				const free = !(spec.start && spec.end);
-				const pts = () => {
-					const f = frameOf(b, spec);
-					return spec.points.map(([x = 0, y = 0]) => ({
-						x: f.left + x / 100 * f.width,
-						y: f.top + y / 100 * f.height
-					}));
-				};
-				const place = () => {
-					let a, z, mx, my, nx, ny;
-					if (free) {
-						const ps = pts();
-						a = ps[0];
-						z = ps[ps.length - 1];
-						if (ps.length > 2) {
-							shaft.setAttribute("d", smoothPath(ps));
-							({x: mx, y: my} = ps[ps.length - 2]);
-							({x: nx, y: ny} = ps[1]);
-						} else {
-							mx = nx = (a.x + z.x) / 2;
-							my = ny = (a.y + z.y) / 2;
-							shaft.setAttribute("d", `M${a.x} ${a.y} L${z.x} ${z.y}`);
-						}
-					} else {
-						const s = linkEnd(spec.start), e = linkEnd(spec.end);
-						if (!s || !e) return;
-						a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {
-							x: e.cx,
-							y: e.cy
-						}, tail ? 5 : 3);
-						z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {
-							x: s.cx,
-							y: s.cy
-						}, head ? 5 : 3);
-						const dx = z.x - a.x, dy = z.y - a.y;
-						mx = nx = (a.x + z.x) / 2 - dy * bow;
-						my = ny = (a.y + z.y) / 2 + dx * bow;
-						shaft.setAttribute("d", `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
-					}
-					const headAt = (path, tip, fx, fy) => {
-						const ex = tip.x - fx, ey = tip.y - fy, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
-						const wing = (k) => {
-							const c = Math.cos(k), si = Math.sin(k);
-							return `${tip.x - len * (ux * c - uy * si)} ${tip.y - len * (uy * c + ux * si)}`;
-						};
-						path.setAttribute("d", `M${wing(.5)} L${tip.x} ${tip.y} L${wing(-.45)}`);
-					};
-					if (head) headAt(head, z, mx, my);
-					if (tail) headAt(tail, a, nx, ny);
-					if (lab) {
-						const m = shaft.getPointAtLength(shaft.getTotalLength() / 2), dx = z.x - a.x, dy = z.y - a.y, l = Math.hypot(dx, dy) || 1;
-						lab.style.left = `${m.x + dy / l * 14}px`;
-						lab.style.top = `${m.y - dx / l * 14}px`;
-					}
-				};
-				const local = () => {
-					const bb = shaft.getBBox();
-					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
-				};
-				const item = {
-					spec,
-					paths: [
-						shaft,
-						...head ? [head] : [],
-						...tail ? [tail] : []
-					],
-					label: lab,
-					place,
-					local
-				};
-				if (spec.id) b.items.set(spec.id, item);
-				b.all.push(item);
-				place();
-				await traceStroke(shaft, r);
-				if (head) await traceStroke(head, r, 2.5);
-				if (tail) await traceStroke(tail, r, 2.5);
-				followView(b);
-				if (lab) await typeLabel(lab, spec.label, r);
-			} else if (spec.type === "path" && (spec.points?.length ?? 0) >= 2) {
-				const path = newPath("ai-draw-stroke", ink);
-				b.svg.append(path);
-				const place = () => {
-					const f = frameOf(b, spec);
-					path.setAttribute("d", smoothPath(spec.points.map(([x = 0, y = 0]) => ({
-						x: f.left + x / 100 * f.width,
-						y: f.top + y / 100 * f.height
-					})), spec.closed));
-				};
-				const local = () => {
-					const bb = path.getBBox();
-					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
-				};
-				const item = {
-					spec,
-					paths: [path],
-					label: null,
-					place,
-					local
-				};
-				if (spec.id) b.items.set(spec.id, item);
-				b.all.push(item);
-				place();
-				await traceStroke(path, r);
-			} else if (spec.type === "text" && spec.label) {
-				const lab = newLabel(b, `ai-draw-text${spec.near ? " beside" : ""}`, ink);
-				const local = () => {
-					if (!spec.near) return boxOf(b, spec);
-					const w = lab.offsetWidth, h = lab.offsetHeight;
-					return w ? new DOMRect(lab.offsetLeft, lab.offsetTop - h / 2, w, h) : null;
-				};
-				const place = () => {
-					if (!spec.near) {
-						const l = boxOf(b, spec);
-						if (l) {
-							lab.style.left = `${l.left + l.width / 2}px`;
-							lab.style.top = `${l.top + l.height / 2}px`;
-							lab.style.scale = String(zoomOf(b, spec));
-						}
-						return;
-					}
-					const n = linkEnd(spec.near);
-					lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.laid.w / 2}px`;
-					lab.style.top = `${n ? n.cy : b.laid.h - 14}px`;
-				};
-				const item = {
-					spec,
-					paths: [],
-					label: lab,
-					place,
-					local
-				};
-				if (spec.id) b.items.set(spec.id, item);
-				b.all.push(item);
-				place();
-				const p0 = lab.getBoundingClientRect();
-				await glide(p0.left, p0.top + p0.height / 2, r, 260);
-				await typeLabel(lab, spec.label, r);
-				if (!spec.near) {
-					nodeHandle(b, spec);
-					placeAll(b);
-				}
-			}
-		}
-	} finally {
-		drawingArrow = false;
-	}
-	if (!holding) window.setTimeout(() => {
-		if (!holding && !drawingArrow) restPointer();
-	}, REST_MS);
-}
-/**
-* Rub out drawn things as with an eraser: the pointer scrubs back and forth over each while it fades. The links
-* and text joined to one go with it, and what is in a group goes with the group; what stays is laid out again.
-*/
-async function eraseSketch(ids, r) {
-	const b = sketch;
-	if (!b?.el.isConnected || !ids.length) return;
-	const gone = new Set(ids.filter((id) => b.items.has(id)));
-	if (!gone.size) return;
-	for (let grew = true; grew;) {
-		grew = false;
-		for (const e of b.specs) if (e.id && e.group && gone.has(e.group) && !gone.has(e.id)) {
-			gone.add(e.id);
-			grew = true;
-		}
-	}
-	const inGone = (e) => !!e.group && gone.has(e.group);
-	const joined = (item) => [
-		item.spec.start,
-		item.spec.end,
-		item.spec.near
-	].some((e) => e && gone.has(e));
-	const going = b.all.filter((item) => item.spec.id && gone.has(item.spec.id) || joined(item) || inGone(item.spec));
-	drawingArrow = true;
-	try {
-		for (const item of going) {
-			alive(r);
-			const l = item.local();
-			const parts = [...item.paths, ...item.label ? [item.label] : []];
-			if (l && l.width + l.height > 0 && parts.length) {
-				const tl = toScreen(b, l.left, l.top), br = toScreen(b, l.right, l.bottom), pad = 6;
-				const x0 = tl.x - pad, x1 = br.x + pad, y0 = tl.y - pad, h = br.y - tl.y + 12;
-				await glide(x0, y0, r, 220);
-				const passes = 5, dur = 650, t0 = performance.now();
-				for (;;) {
-					alive(r);
-					const t = Math.min(1, (performance.now() - t0) / dur), u = t * passes, leg = Math.floor(u), f = u - leg;
-					pos.x = leg % 2 ? x1 - (x1 - x0) * f : x0 + (x1 - x0) * f;
-					pos.y = y0 + h * Math.min(1, (leg + f) / passes);
-					paintPointer();
-					for (const el of parts) el.style.opacity = String(1 - t);
-					if (t >= 1) break;
-					await new Promise((res) => requestAnimationFrame(res));
-				}
-			}
-			for (const el of parts) el.remove();
-			b.groups.get(item.spec)?.remove();
-			b.groups.delete(item.spec);
-			b.hits.get(item.spec)?.remove();
-			b.hits.delete(item.spec);
-		}
-	} finally {
-		drawingArrow = false;
-	}
-	b.all = b.all.filter((item) => !going.includes(item));
-	b.specs = b.specs.filter((spec) => !going.some((item) => item.spec === spec));
-	for (const item of going) if (item.spec.id && b.items.get(item.spec.id) === item) b.items.delete(item.spec.id);
-	layoutBoard(b);
-	if (!holding) window.setTimeout(() => {
-		if (!holding && !drawingArrow) restPointer();
-	}, REST_MS);
-}
-/**
-* The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
-* note is theirs to keep in place: the presenter's later notes are placed around it.
-*/
-function makeMovable(note) {
-	note.addEventListener("pointerdown", (e) => {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		e.stopPropagation();
-		note.setPointerCapture(e.pointerId);
-		note.classList.add("dragging");
-		const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-		const move = (ev) => {
-			if (!ev.buttons) {
-				up();
-				return;
-			}
-			note.dataset.moved = "1";
-			note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
-			note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
-			for (const redraw of arrowsFrom.get(note) ?? []) redraw();
-		};
-		const up = () => {
-			note.removeEventListener("pointermove", move);
-			note.removeEventListener("pointerup", up);
-			note.removeEventListener("pointercancel", up);
-			note.removeEventListener("lostpointercapture", up);
-			note.classList.remove("dragging");
-		};
-		note.addEventListener("pointermove", move);
-		note.addEventListener("pointerup", up);
-		note.addEventListener("pointercancel", up);
-		note.addEventListener("lostpointercapture", up);
-	});
-}
-/** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
-function eraseNotes(all = false) {
-	const going = all ? [...notes, ...board] : notes;
-	if (sketch && going.includes(sketch.el)) sketch = null;
-	notes = [];
-	if (all) {
-		board = [];
-		noteByText.clear();
-	}
-	for (const n of going) {
-		n.classList.add("fading");
-		window.setTimeout(() => n.remove(), 700);
-	}
-}
-/**
-* Send a note to the board: it slides to the top left of the view, under the notes already there, and stays.
-* Arrows from it follow it there.
-*/
-/** The board's next line: the top left of the view, below its own corner buttons, under the lines already there. */
-function boardSlot() {
-	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
-	return {
-		x: view.left + 16,
-		y: board.reduce((top, n) => Math.max(top, n.getBoundingClientRect().bottom + 8), view.top + 52)
-	};
-}
-async function sendToBoard(note, r) {
-	if (board.includes(note)) return;
-	notes = notes.filter((n) => n !== note);
-	const slot = boardSlot();
-	board.push(note);
-	note.classList.add("boarded");
-	note.style.transition = "left .65s cubic-bezier(.4, 0, .2, 1), top .65s cubic-bezier(.4, 0, .2, 1), opacity .3s, transform .3s";
-	note.style.left = `${slot.x}px`;
-	note.style.top = `${slot.y}px`;
-	const t0 = performance.now();
-	while (performance.now() - t0 < 700) {
-		alive(r);
-		for (const redraw of arrowsFrom.get(note) ?? []) redraw();
-		await new Promise((res) => requestAnimationFrame(res));
-	}
-	note.style.transition = "";
-}
-/**
-* Move a parameter slider to `value` as a person would: onto its thumb, press, drag smoothly along the track while
-* the view follows, release. Off screen (its panel folded), it just takes the value.
-*/
-async function dragParamTo(id, value, r) {
-	const s = state.sceneSliders[id];
-	if (!s) return;
-	const to = Math.max(s.min, Math.min(s.max, value)), from = Number(s.value), input = paramInput(id);
-	if (!input || s.max <= s.min) {
-		setSliderValue(id, to);
-		return;
-	}
-	const thumb = 14, at = (v) => {
-		const rr = input.getBoundingClientRect(), t = (v - s.min) / (s.max - s.min);
-		return {
-			x: rr.left + thumb / 2 + t * (rr.width - thumb),
-			y: rr.top + rr.height / 2
-		};
-	};
-	const start = at(from);
-	await glide(start.x, start.y, r);
-	ensurePointer().classList.add("pressed");
-	await sleep(180);
-	const dur = Math.min(1800, 500 + Math.abs(to - from) / (s.max - s.min) * 1600), t0 = performance.now();
-	for (;;) {
-		alive(r);
-		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-		let v = from + (to - from) * e;
-		if (s.step) v = Math.round(v / s.step) * s.step;
-		setSliderValue(id, v);
-		const p = at(v);
-		pos.x = p.x;
-		pos.y = p.y;
-		paintPointer();
-		if (t >= 1) break;
-		await new Promise((res) => requestAnimationFrame(res));
-	}
-	setSliderValue(id, to);
-	await sleep(160);
-	ensurePointer().classList.remove("pressed");
-	await sleep(300);
-}
-function speak$1(text, into, r) {
-	return new Promise((res) => {
-		let finished = false;
-		const end = () => {
-			if (!finished) {
-				finished = true;
-				res();
-			}
-		};
-		const words = text.split(/(\s+)/);
-		let shown = "", k = 0;
-		const follow = () => into.scrollIntoView({ block: "nearest" });
-		const reveal = () => {
-			if (r !== run || k >= words.length) return;
-			shown += words[k++];
-			into.textContent = shown;
-			follow();
-			window.setTimeout(reveal, words[k - 1].trim() ? 130 : 0);
-		};
-		reveal();
-		const speakNow = window.algebenchSpeakText;
-		if (speakNow) speakNow(text, () => {
-			into.textContent = text;
-			end();
-		}, "presenter");
-		else window.setTimeout(() => {
-			into.textContent = text;
-			end();
-		}, Math.max(1500, text.split(/\s+/).length * 260));
-	});
-}
-/** What the expert is told about the view: the lesson around it, what is on screen, and the run's states. */
-function describeView(question) {
-	const ctx = window.algebenchBuildChatContext?.();
-	const scene = sceneNow();
-	const step = scene?.steps?.[state.currentStepIndex];
-	const lesson = [
-		`Lesson: ${ctx?.lessonTitle ?? ""}`,
-		`Scene: ${scene?.title ?? ""}`,
-		step ? `Step: ${step.title ?? ""}${step.description ? ` (${step.description})` : ""}` : "",
-		(scene?.markdown ?? "").slice(0, 3500)
-	].filter(Boolean).join("\n");
-	const rt = ctx?.runtime;
-	const view = [
-		rt?.currentCaption ? `Caption: ${rt.currentCaption}` : "",
-		rt?.screenValues?.length ? `Values on screen:\n${rt.screenValues.join("\n")}` : "",
-		rt?.simulationState ? `State:\n${rt.simulationState.slice(0, 2500)}` : ""
-	].filter(Boolean).join("\n");
-	const frames = [];
-	const s = playbackSlider(), m = /dataTable\(\s*'([^']+)'\s*,\s*frame\s*,\s*'([^']+)'\s*\)/.exec(step?.descriptionExpr ?? "");
-	const rows = m ? scene?.data?.[m[1]] : void 0;
-	if (s && Array.isArray(rows)) for (let n = s.min; n <= s.max && n < rows.length; n++) frames.push({
-		n,
-		text: String(rows[n]?.[m[2]] ?? "").slice(0, 400),
-		state: frameState(rows[n], m[2])
-	});
-	return {
-		question,
-		lesson,
-		view,
-		frames,
-		frame: s && frames.length ? s.value : -1,
-		targets: presentTargets(),
-		on_view: onView()
-	};
-}
-/** What earlier walk-throughs left on the view (it stays until the presenter wipes it): notes, board lines, shapes. */
-function onView() {
-	const here = (n) => n.isConnected && !n.classList.contains("fading");
-	const texts = (list) => [...noteByText].filter(([, n]) => list.includes(n) && here(n)).map(([t]) => t.slice(0, 200)).slice(0, 40);
-	const drawn = sketch && here(sketch.el) ? sketch.all.filter((d) => d.spec.id).slice(0, 80).map(({ spec }) => ({
-		id: spec.id.slice(0, 40),
-		type: spec.type,
-		label: (spec.label ?? "").slice(0, 120),
-		joins: (spec.start && spec.end ? [spec.start, spec.end] : spec.near ? [spec.near] : spec.group ? [spec.group] : []).map((j) => j.slice(0, 120))
-	})) : [];
-	return {
-		notes: texts(notes),
-		board: texts(board),
-		drawn
-	};
-}
-/**
-* A state's values, from its row of the run's table: what the presenter needs to talk about a state it moves to,
-* as it has the values on screen for the one shown. The caption column and the view's own bookkeeping (tooltips,
-* line links, status) are left out.
-*/
-function frameState(row, caption) {
-	if (!row) return "";
-	const skip = /* @__PURE__ */ new Set([
-		caption,
-		"line",
-		"status",
-		"running",
-		"message"
-	]);
-	const parts = [];
-	for (const [k, v] of Object.entries(row)) {
-		if (skip.has(k) || /^(tip_|ln_)/.test(k) || v === "" || v === null || typeof v === "object" && !Array.isArray(v)) continue;
-		parts.push(`${k}=${Array.isArray(v) ? `[${v.map((x) => typeof x === "object" ? JSON.stringify(x) : String(x)).join(", ")}]` : String(v)}`);
-	}
-	return parts.join(", ").slice(0, 700);
-}
-var playing = false;
-var narratingRun = 0;
-var presenting = () => playing;
-/** A walk-through narrating playback is about the state it began at: the learner moving the run ends it. */
-function stopNarrating() {
-	if (playing && narratingRun === run) stopPresenting();
-}
-var playingMsg = null;
-var markPlaying = (msg) => {
-	playingMsg?.classList.remove("presenting-now");
-	playingMsg = msg;
-	msg?.classList.add("presenting-now");
-};
-/**
-* Answer `question` as a walk-through. Resolves to what was said, as far as it got when stopped: '' when there was
-* nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
-* when it asked for the walk-through).
-*/
-/**
-* What a walk-through has said so far, as the chat's history keeps it: each beat's words, with what it wrote on the
-* scratchpad or the board, so a follow-up question can refer to it.
-*/
-function transcript(body, beats) {
-	return [...body.querySelectorAll(".ai-present-line")].map((l) => l.textContent ?? "").map((l, i) => beats[i] ?? l).join(" ").replace(/\s+/g, " ").trim();
-}
-/**
-* Present `question` as a walk-through in a new chat bubble. ``onProgress`` hears the transcript after each beat, so
-* the chat's history holds what was said even while it plays (a follow-up asked mid-walk-through sees it).
-*/
-async function presentQuestion(question, { joinHistory = true, narrating = false, onProgress } = {}) {
-	if (narrating) eraseNotes(true);
-	const r = begin(!narrating);
-	narratingRun = narrating ? r : 0;
-	const start = {
-		scene: state.currentSceneIndex,
-		step: state.currentStepIndex,
-		frame: playbackSlider()?.value ?? -1
-	};
-	const add = window.addChatMessage;
-	const msg = add("assistant", "");
-	markPlaying(msg);
-	const body = msg.querySelector(".msg-body") ?? msg;
-	body.classList.add("ai-present-msg");
-	body.innerHTML = "<div class=\"chat-loading\"><span></span><span></span><span></span></div>";
-	let steps = null;
-	let heard = [];
-	try {
-		const out = await invokeExpert("scene_present", describeView(question));
-		alive(r);
-		if (!out.result) {
-			body.textContent = out.reason ?? "No walk-through came back.";
-			return "";
-		}
-		body.replaceChildren();
-		steps = narrating ? out.result.steps.map((b) => ({
-			...b,
-			frame: -1,
-			slider: ""
-		})) : out.result.steps;
-		const said = transcript(body, await playBeats(steps, body, r, (beats) => {
-			heard = beats;
-			onProgress?.(transcript(body, beats));
-		}));
-		addReplay(body, steps, start);
-		if (joinHistory) window.algebenchRecordChatTurn?.(question, said);
-		return said;
-	} catch (e) {
-		if (!(e instanceof Stopped)) {
-			body.textContent = e.message || "The walk-through failed.";
-			return "";
-		}
-		body.querySelector(".chat-loading")?.remove();
-		const spoken = transcript(body, heard);
-		if (!spoken) msg.remove();
-		else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
-		if (spoken && steps) addReplay(body, steps, start);
-		return spoken || null;
-	} finally {
-		end(r);
-	}
-}
-/** A walk-through's start: a new run, the pointer's mode on, the lesson's own playback paused (unless it narrates it). */
-function begin(pause = true) {
-	const r = ++run;
-	playing = true;
-	document.body.classList.add("ai-presenting");
-	if (pause) window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
-	return r;
-}
-function end(r) {
-	if (r !== run) return;
-	markPlaying(null);
-	playing = false;
-	unhover();
-	document.body.classList.remove("ai-presenting");
-	spotlightBeat = false;
-	drawRing(null);
-	pointer?.classList.remove("on", "pressed");
-}
-/** Play the beats, each line said into `body`; resolves to what was said. */
-/** Play the beats; returns each beat's words with what it wrote, and tells ``onBeat`` the same after each beat. */
-async function playBeats(steps, body, r, onBeat) {
-	const viewport = state.renderer?.domElement.getBoundingClientRect();
-	if (viewport && pos.x < 0) {
-		pos.x = viewport.left + viewport.width / 2;
-		pos.y = viewport.top + viewport.height * .4;
-		paintPointer();
-	}
-	ensurePointer().classList.add("on");
-	const said = [];
-	for (const beat of steps) {
-		alive(r);
-		if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
-		if (beat.slider?.startsWith("slider:") && typeof beat.slider_to === "number") await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
-		spotlightBeat = !!beat.spotlight && !!beat.target && beat.mark !== "point";
-		drawRing(null);
-		if (beat.erase) eraseNotes();
-		for (const t of beat.erase_notes ?? []) {
-			const n = noteByText.get(noteKey(t));
-			if (!n?.isConnected) continue;
-			const going = [n, ...arrowEls.get(n) ?? []];
-			notes = notes.filter((x) => !going.includes(x));
-			board = board.filter((x) => x !== n);
-			for (const el of going) {
-				el.classList.add("fading");
-				window.setTimeout(() => el.remove(), 700);
-			}
-		}
-		if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
-		for (const t of beat.board ?? []) {
-			const n = noteByText.get(noteKey(t));
-			if (n instanceof HTMLElement && n.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
-			else await typeNote(t, "", r, true, beat.color);
-		}
-		const line = document.createElement("p");
-		line.className = "ai-present-line";
-		body.append(line);
-		const words = speak$1(beat.say, line, r);
-		const sketched = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color, beat.write_side ?? "") : Promise.resolve(null)).then(async (note) => {
-			if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? "", r);
-			return note;
-		});
-		const writing = sketched.then(async (note) => {
-			if (beat.arrow_to) await arrowFor(note);
-		});
-		const arrowFor = async (note) => {
-			if (!beat.arrow_to) return;
-			const fromRef = beat.arrow_from || (note ? "" : beat.target);
-			if (sketch?.el.isConnected && fromRef && [beat.arrow_to, fromRef].some((x) => x.startsWith("draw:"))) {
-				const end = (x) => x.startsWith("draw:") ? x.slice(5) : x;
-				await drawSketch({ elements: [{
-					type: beat.arrow_kind === "line" ? "line" : "arrow",
-					heads: beat.arrow_kind === "both" ? "both" : "",
-					start: end(fromRef),
-					end: end(beat.arrow_to)
-				}] }, beat.color ?? "", r);
-				return;
-			}
-			const to = resolveTarget$1(beat.arrow_to);
-			const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
-			const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
-			const name = `arrow: ${beat.arrow_from || (note ? noteKey(beat.write ?? "") : beat.target)} -> ${beat.arrow_to}`;
-			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind, name);
-		};
-		const both = Promise.all([words, writing]).then(() => void 0);
-		both.catch(() => void 0);
-		if ([beat.target, ...beat.together ?? []].some((t) => t?.startsWith("draw:") && beat.draw?.elements?.some((e) => e.id === t.slice(5)))) {
-			await sketched;
-			for (let t0 = performance.now(); sketch?.glide && performance.now() - t0 < 580;) await new Promise((res) => requestAnimationFrame(res));
-		}
-		const marked = beat.together?.length ? [beat.target, ...beat.together].join("\n") : beat.target;
-		if (beat.target) await holdOn(marked, beat.mark, r, both, beat.color, beat.together?.length ? "" : beat.part);
-		else await both;
-		alive(r);
-		const wrote = [beat.write, ...beat.board ?? []].filter(Boolean);
-		const drew = (beat.draw?.elements ?? []).map((e) => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === "line" || e.heads === "none" ? "-" : e.heads === "both" ? "<->" : e.heads === "start" ? "<-" : "->"} ${e.end}` : `${e.type} "${e.label || e.id || ""}"`);
-		const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(", ")}]` : "";
-		said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(" | ")}]` : "") + (drew.length ? ` [drew: ${drew.join(", ")}]` : ""));
-		onBeat?.([...said]);
-		await sleep(250);
-	}
-	return said;
-}
-/**
-* A replay button under a walk-through, for a learner who missed it: the same beats again, from the state they
-* started at, without asking again. Only while the view is still on the step it was about. The message's speaker
-* button replays it too (chat.ts reads `_replay`).
-*/
-function addReplay(body, steps, start) {
-	if (body.querySelector(".ai-present-replay")) return;
-	const btn = document.createElement("button");
-	btn.type = "button";
-	btn.className = "ai-present-replay";
-	btn.title = "Play this walk-through again";
-	btn.innerHTML = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 1 0 3-6.7\"/><path d=\"M3 4v5h5\"/></svg><span>Replay</span>";
-	const msg = body.closest(".chat-msg");
-	const replay = async () => {
-		if (state.currentSceneIndex !== start.scene || state.currentStepIndex !== start.step) {
-			btn.disabled = true;
-			btn.title = "The view has moved on from the step this was about";
-			return;
-		}
-		stopPresenting();
-		eraseNotes(true);
-		const r = begin(), kept = [...body.childNodes];
-		markPlaying(msg);
-		body.replaceChildren();
-		let whole = false;
-		try {
-			if (start.frame >= 0 && playbackSlider()?.value !== start.frame) await dragSliderTo(start.frame, r);
-			await playBeats(steps, body, r);
-			whole = true;
-		} catch (e) {
-			if (!(e instanceof Stopped)) throw e;
-		} finally {
-			if (whole) body.append(btn);
-			else body.replaceChildren(...kept);
-			end(r);
-		}
-	};
-	btn.addEventListener("click", () => void replay());
-	if (msg) msg._replay = () => void replay();
-	body.append(btn);
-}
-/** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
-function stopPresenting(voiceTaken = false) {
-	if (!playing) return;
-	run++;
-	markPlaying(null);
-	playing = false;
-	unhover();
-	document.body.classList.remove("ai-presenting");
-	spotlightBeat = false;
-	drawRing(null);
-	pointer?.classList.remove("on", "pressed");
-	if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
-}
-var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttribute("aria-pressed") === "true";
-function setupPresenter() {
-	const btn = document.getElementById("presenter-toggle-btn");
-	if (!btn) return;
-	let on = true;
-	try {
-		on = localStorage.getItem(PREF_KEY) !== "0";
-	} catch {}
-	const paint = () => {
-		btn.setAttribute("aria-pressed", String(on));
-		btn.classList.toggle("active", on);
-		btn.title = on ? "AI presenter is on: questions about the view are answered as a walk-through with a pointer (click to turn off)" : "AI presenter: answer questions about the view as a spoken walk-through with a laser pointer";
-	};
-	paint();
-	btn.addEventListener("click", () => {
-		on = !on;
-		paint();
-		try {
-			localStorage.setItem(PREF_KEY, on ? "1" : "0");
-		} catch {}
-		if (!on) {
-			stopPresenting();
-			eraseNotes(true);
-		}
-	});
-	document.addEventListener("keydown", (e) => {
-		if (e.key !== "Escape") return;
-		if (playing) {
-			e.preventDefault();
-			stopPresenting();
-		} else if (notes.length || board.length) eraseNotes(true);
-	});
-	window.addEventListener("algebench:navchange", () => {
-		stopPresenting();
-		eraseNotes(true);
-	});
-	window.addEventListener("algebench:voice", (e) => {
-		if (e.detail.owner !== "presenter") stopPresenting(true);
-	});
-}
-//#endregion
-//#region src/step-player.ts
-/** Generic discrete state playback. It writes a slider; views bind to its data. */
-/** The presenter's brief for narrating one state of a run. */
-var NARRATE_PRESENTING = "Narrate the execution state on screen now, in one or two short beats: point at what changes at this state and say it with the values shown, and write on the scratchpad what makes it visible (a value in binary, the arithmetic, the condition checked). Stay at this state; say only what is new here; no question.";
-/** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
-*  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
-function playbackPosition(value, min, max) {
-	const current = Math.max(min, Math.min(max, Math.round(value)));
-	return {
-		current,
-		total: max - min + 1,
-		display: `${current} / ${max}`
-	};
-}
-function setupStepPlayer() {
-	const wrapper = document.getElementById("mathbox-wrapper");
-	if (!wrapper) return;
-	const host = wrapper;
-	const bar = document.createElement("div");
-	bar.id = "state-player";
-	bar.hidden = true;
-	bar.setAttribute("role", "group");
-	bar.setAttribute("aria-label", "Execution state player");
-	const previous = document.createElement("button"), play = document.createElement("button"), next = document.createElement("button");
-	const icon = (path) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:block;margin:auto"><path d="${path}"/></svg>`;
-	const playIcon = icon("M7 4v16l13-8z");
-	const pauseIcon = icon("M6 4h4v16H6z M14 4h4v16h-4z");
-	previous.innerHTML = icon("M17 4v16L4 12z");
-	next.innerHTML = playIcon;
-	previous.setAttribute("aria-label", "Previous execution state");
-	next.setAttribute("aria-label", "Next execution state");
-	previous.dataset.tip = "Previous state";
-	next.dataset.tip = "Next state";
-	for (const button of [
-		previous,
-		play,
-		next
-	]) button.type = "button";
-	const track = document.createElement("input");
-	track.type = "range";
-	track.step = "1";
-	track.setAttribute("aria-label", "Execution state");
-	const counter = document.createElement("output");
-	counter.setAttribute("aria-label", "Execution position");
-	const speed = document.createElement("select");
-	speed.className = "state-player-speed";
-	speed.setAttribute("aria-label", "Playback speed");
-	for (const factor of [
-		.25,
-		.5,
-		1,
-		2,
-		4
-	]) {
-		const option = document.createElement("option");
-		option.value = String(factor);
-		option.textContent = factor + "×";
-		speed.append(option);
-	}
-	speed.value = "1";
-	speed.hidden = true;
-	const narrate = document.createElement("button");
-	narrate.type = "button";
-	narrate.className = "state-player-narrate";
-	narrate.innerHTML = icon("M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z");
-	const paintNarrate = () => {
-		narrate.setAttribute("aria-pressed", String(narrator.on));
-		narrate.setAttribute("aria-label", narrator.on ? "Stop narrating each state" : "Narrate each state");
-		narrate.dataset.tip = narrator.on ? "Narrating each state · click to stop" : "Narrate each state: the tutor explains it in one sentence as you move";
-	};
-	bar.append(previous, play, next, track, counter, speed, narrate);
-	host.append(bar);
-	new ResizeObserver(() => {
-		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
-	}).observe(bar);
-	let timer = null;
-	let config;
-	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
-	const narrator = createNarrator(() => {
-		const s = slider();
-		return s && !bar.hidden ? `${state.currentSceneIndex}/${state.currentStepIndex}:${playbackPosition(s.value, s.min, s.max).current}` : null;
-	}, () => {
-		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
-		const step = scene?.steps?.[state.currentStepIndex];
-		const s = slider();
-		return `scene "${scene?.title ?? ""}"${step?.title ? `, step "${step.title}"` : ""}${s ? `, execution state ${playbackPosition(s.value, s.min, s.max).display}` : ""}`;
-	}, () => {
-		const s = slider(), first = opening;
-		opening = false;
-		if (first && s && s.value <= s.min && sceneHasCode()) return describeProblem;
-		return presenterOn() ? () => presentQuestion(NARRATE_PRESENTING, {
-			joinHistory: false,
-			narrating: true
-		}).then(() => true) : null;
-	});
-	let opening = false;
-	narrate.onclick = () => {
-		opening = !narrator.on;
-		narrator.set(!narrator.on);
-		paintNarrate();
-		watchNarration();
-	};
-	let watching = null;
-	function watchNarration() {
-		const paint = () => {
-			const mode = !narrator.on ? "" : window.algebenchTTSActive?.() ? "speaking" : narrator.busy ? "thinking" : "";
-			if ((narrate.dataset.ai ?? "") !== mode) {
-				if (mode) narrate.dataset.ai = mode;
-				else delete narrate.dataset.ai;
-			}
-			if (!narrator.on && watching !== null) {
-				clearInterval(watching);
-				watching = null;
-			}
-		};
-		if (narrator.on && watching === null) watching = setInterval(paint, WAIT_MS);
-		paint();
-	}
-	window.algebenchNarrating = () => narrator.on;
-	paintNarrate();
-	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
-	function pause() {
-		if (timer !== null) clearTimeout(timer);
-		timer = null;
-		play.innerHTML = playIcon;
-		play.setAttribute("aria-label", "Play execution");
-		play.dataset.tip = "Play";
-	}
-	function render() {
-		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
-		if (scene?.steps?.[state.currentStepIndex]?.descriptionExpr) updateStepCaption(scene, state.currentStepIndex, true);
-		const s = slider();
-		if (!s || s.kind === "tensor" || !Number.isInteger(s.min) || !Number.isInteger(s.max)) {
-			pause();
-			bar.hidden = true;
-			host.classList.remove("has-state-player");
-			return;
-		}
-		bar.hidden = false;
-		host.classList.add("has-state-player");
-		const p = playbackPosition(s.value, s.min, s.max);
-		track.min = String(s.min);
-		track.max = String(s.max);
-		track.value = String(p.current);
-		track.setAttribute("aria-valuetext", `${p.current} of ${s.max}`);
-		counter.textContent = p.display;
-		previous.disabled = p.current <= s.min;
-		next.disabled = p.current >= s.max;
-		play.disabled = p.total <= 1;
-		if (p.current >= s.max) pause();
-		const at = `${state.currentSceneIndex}/${state.currentStepIndex}:${p.current}`;
-		if (renderedAt && at !== renderedAt) stopNarrating();
-		renderedAt = at;
-		narrator.stateChanged();
-	}
-	let renderedAt = "";
-	function move(value) {
-		if (config) setSliderValue(config.slider, value);
-		render();
-	}
-	previous.onclick = () => {
-		pause();
-		const s = slider();
-		if (s) move(s.value - 1);
-	};
-	next.onclick = () => {
-		pause();
-		const s = slider();
-		if (s) move(s.value + 1);
-	};
-	track.oninput = () => {
-		pause();
-		move(Number(track.value));
-	};
-	const narrationPending = () => narrator.on && (narrator.busy || !!window.algebenchTTSActive?.());
-	const WAIT_MS = 150;
-	function advance() {
-		timer = null;
-		if (narrationPending()) {
-			timer = setTimeout(advance, WAIT_MS);
-			return;
-		}
-		const current = slider();
-		if (!current) {
-			pause();
-			return;
-		}
-		move(current.value + 1);
-		if (play.getAttribute("aria-label") === "Pause execution" && slider() && slider().value < slider().max) timer = setTimeout(advance, interval());
-	}
-	function start() {
-		play.innerHTML = pauseIcon;
-		play.setAttribute("aria-label", "Pause execution");
-		play.dataset.tip = "Pause";
-		timer = setTimeout(advance, interval());
-	}
-	play.onclick = () => {
-		if (timer !== null) {
-			pause();
-			return;
-		}
-		const s = slider();
-		if (!s) return;
-		if (s.value >= s.max) move(s.min);
-		start();
-	};
-	speed.onchange = () => {
-		if (timer !== null) {
-			clearTimeout(timer);
-			timer = null;
-			start();
-		}
-	};
-	let shownAt = "";
-	function refresh() {
-		const at = `${state.currentSceneIndex}/${state.currentStepIndex}`;
-		if (at !== shownAt || timer === null) pause();
-		if (shownAt && at.split("/")[0] !== shownAt.split("/")[0] && narrator.on) {
-			narrator.set(false);
-			paintNarrate();
-			watchNarration();
-		}
-		shownAt = at;
-		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
-		speed.hidden = !config?.speedControl;
-		render();
-		document.querySelectorAll(".slider-range").forEach((input) => {
-			const row = input.closest(".slider-row");
-			if (row) row.hidden = input.dataset.sliderId === config?.slider;
-		});
-	}
-	window.addEventListener("algebench:playbackpause", pause);
-	window.addEventListener("algebench:narrationoff", () => {
-		if (narrator.on) {
-			narrator.set(false);
-			paintNarrate();
-			watchNarration();
-		}
-	});
-	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", render);
-	document.addEventListener("visibilitychange", () => {
-		if (document.hidden) pause();
-	});
-	pause();
-	refresh();
-}
-//#endregion
-//#region src/code-annotations.ts
-var span = (e) => (e.endLine ?? e.line ?? 0) - (e.line ?? 0);
-var holds = (e, line) => e.line !== void 0 && line >= e.line && line <= (e.endLine ?? e.line);
-/**
-* The entry documenting the first of `names` that has one at `line` (`g[cell]` before `g`): the narrowest range
-* holding the line, else the file-wide entry. Null when none does.
-*/
-function annotationFor(entries, names, line) {
-	for (const name of names) {
-		const own = entries.filter((e) => e.name === name);
-		const found = own.filter((e) => holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? own.find((e) => e.line === void 0);
-		if (found) return found;
-	}
-	return null;
-}
-/** Unnamed entries over a column range: expressions, wrapped in the line's code. */
-var annotatedExpressions = (entries) => entries.filter((e) => !e.name && e.line !== void 0 && e.col !== void 0 && e.endCol !== void 0 && e.endCol > e.col);
-/** The narrowest unnamed whole-line entry (a block) holding `line`, or null. */
-function annotatedBlockAt(entries, line) {
-	return entries.filter((e) => !e.name && e.col === void 0 && holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? null;
-}
-//#endregion
 //#region src/objects/composite-parts.ts
 function registerCompositePart(id, parentId, view, meshes, labels, label, prompt, type = "system_dag", codeRef) {
 	let hidden = false;
@@ -13626,7 +10115,7 @@ function contrastTextColor(rgb) {
 }
 var tensorState = state;
 /** Element count implied by a shape. */
-function shapeSize(dims) {
+function shapeSize$1(dims) {
 	return dims.reduce((a, b) => a * b, 1);
 }
 /**
@@ -13660,7 +10149,7 @@ function fmtShape(dims) {
 */
 function normalizeValues(raw, dims) {
 	if (!Array.isArray(raw)) return { error: "`values` must be an array" };
-	const expected = shapeSize(dims);
+	const expected = shapeSize$1(dims);
 	if (!raw.some((v) => Array.isArray(v))) {
 		if (raw.length !== expected) return { error: `flat \`values\` has ${raw.length} entries but shape ${fmtShape(dims)} needs ${expected}` };
 		return { values: raw.map((v) => Number.isFinite(Number(v)) ? Number(v) : 0) };
@@ -13856,7 +10345,7 @@ function renderTensor(el, _view) {
 	const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
 	const { rows, cols, drawn } = layout;
 	if (dims.length > 2) {
-		const total = shapeSize(dims);
+		const total = shapeSize$1(dims);
 		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: shape [${dims.join(", ")}] has rank ${dims.length}; the grid layout draws the trailing ${rows}x${cols} slice, so ${total - drawn} of ${total} values are not shown. Split it into separate tensors with their own origin until slice layouts exist.`);
 	}
 	const baseColor = parseColor(el.color || "#3b528b");
@@ -28946,6 +25435,3521 @@ function setupSceneDock() {
 	});
 }
 //#endregion
+//#region src/code-assist-play.ts
+/** The lines of a and b that stay, as pairs of indices (a longest common subsequence). */
+function commonLines(a, b) {
+	const n = a.length, m = b.length;
+	const len = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+	for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) len[i][j] = a[i] === b[j] ? len[i + 1][j + 1] + 1 : Math.max(len[i + 1][j], len[i][j + 1]);
+	const out = [];
+	for (let i = 0, j = 0; i < n && j < m;) if (a[i] === b[j]) {
+		out.push([i, j]);
+		i++;
+		j++;
+	} else if (len[i + 1][j] >= len[i][j + 1]) i++;
+	else j++;
+	return out;
+}
+/**
+* The edits taking `from` to `to`, top to bottom: one per run of changed lines, trimmed to the characters that
+* really change (a renamed variable is retyped, not its line), each `at` already counting the edits before it.
+*/
+function editsBetween(from, to) {
+	const a = from.split("\n"), b = to.split("\n");
+	const kept = [...commonLines(a, b), [a.length, b.length]];
+	const lineStart = (lines, k) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
+	const edits = [];
+	let i = 0, j = 0;
+	for (const [ki, kj] of kept) {
+		if (ki > i || kj > j) {
+			const lead = j > 0 ? 1 : 0;
+			let old = (lead ? "\n" : "") + a.slice(i, ki).map((l) => l + "\n").join("");
+			let neu = (lead ? "\n" : "") + b.slice(j, kj).map((l) => l + "\n").join("");
+			let at = lineStart(b, j) - lead;
+			let tail = 0;
+			while (tail < old.length && tail < neu.length && old[old.length - 1 - tail] === neu[neu.length - 1 - tail]) tail++;
+			old = old.slice(0, old.length - tail);
+			neu = neu.slice(0, neu.length - tail);
+			let head = 0;
+			while (head < old.length && head < neu.length && old[head] === neu[head]) head++;
+			at += head;
+			old = old.slice(head);
+			neu = neu.slice(head);
+			if (old || neu) edits.push({
+				at,
+				remove: old.length,
+				insert: neu
+			});
+		}
+		i = ki + 1;
+		j = kj + 1;
+	}
+	return edits;
+}
+/**
+* The keystrokes typing `insert`: one character each, except that a new line's indentation comes with its Enter
+* (as an editor indents), and a run of spaces inside a line is typed as one.
+*/
+function keystrokes(insert) {
+	const out = [];
+	for (let k = 0; k < insert.length;) if (insert[k] === "\n") {
+		const indent = /^[ \t]*/.exec(insert.slice(k + 1))[0];
+		out.push("\n" + indent);
+		k += 1 + indent.length;
+	} else {
+		out.push(insert[k]);
+		k++;
+	}
+	return out;
+}
+/** Backspaces removing `count` characters ending at the caret: one at a time for a few, a word at a time for more. */
+function backspaces(text, count) {
+	if (count <= 10) return Array(count).fill(1);
+	const out = [];
+	let left = count, end = text.length;
+	while (left > 0) {
+		let k = end - 1;
+		while (k > end - left && /\s/.test(text[k])) k--;
+		while (k > end - left && /\w/.test(text[k]) && /\w/.test(text[k - 1])) k--;
+		const n = Math.max(1, end - k);
+		out.push(Math.min(n, left));
+		left -= n;
+		end -= n;
+	}
+	return out;
+}
+/** How long to wait before typing `key` after `prev`, in ms: a steady pace, slower after a line, a stop or a word. */
+function keyDelay(prev, key, random = Math.random) {
+	const r = random();
+	if (key.startsWith("\n")) return 140 + r * 160;
+	if (prev.endsWith("\n") || /^[ \t]*$/.test(prev)) return 90 + r * 120;
+	if (/[:,)\]]/.test(prev)) return 70 + r * 140;
+	if (prev === " " && r < .12) return 220 + r * 260;
+	return 28 + r * 52;
+}
+/**
+* Where `snippet` (a step's `select`) is in `text`, as [start, end). With `line` (1-based, the line the model says it
+* starts on), an occurrence starting on that line wins, so a name used on many lines is taken where it was meant.
+* Otherwise the first occurrence from `from` on (after the last selection), else from the top; failing that, the
+* lines it spans compared without their indentation (the model may re-indent what it quotes). Null when it isn't there.
+*/
+function findSelection(text, snippet, from = 0, line = 0) {
+	const want = snippet.trim();
+	if (!want) return null;
+	const lines = text.split("\n"), parts = want.split("\n").map((l) => l.trim());
+	const offset = (k) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
+	const byLines = (k) => {
+		if (k < 0 || k + parts.length > lines.length || !parts.every((p, j) => lines[k + j].trim() === p)) return null;
+		const last = k + parts.length - 1;
+		return [offset(k) + lines[k].length - lines[k].trimStart().length, offset(last) + lines[last].trimEnd().length];
+	};
+	if (line >= 1 && line <= lines.length) {
+		const at = text.indexOf(want, offset(line - 1));
+		if (at >= 0 && at <= offset(line - 1) + lines[line - 1].length) return [at, at + want.length];
+		const there = byLines(line - 1);
+		if (there) return there;
+	}
+	for (const start of [text.indexOf(want, from), text.indexOf(want)]) if (start >= 0) return [start, start + want.length];
+	for (let k = 0; k + parts.length <= lines.length; k++) {
+		const found = byLines(k);
+		if (found) return found;
+	}
+	return null;
+}
+//#endregion
+//#region src/drawing-layout.ts
+var SHAPES = /* @__PURE__ */ new Set([
+	"rectangle",
+	"ellipse",
+	"diamond"
+]);
+var LINKS = /* @__PURE__ */ new Set(["arrow", "line"]);
+var LAYOUTS = /* @__PURE__ */ new Set([
+	"row",
+	"column",
+	"grid",
+	"cells",
+	"tree",
+	"flow",
+	"graph",
+	"free"
+]);
+var placed$1 = (e) => typeof e.x === "number" && typeof e.y === "number";
+var GAP = 28;
+var guess = {
+	box: {
+		w: 600,
+		h: 400
+	},
+	sizeOf: () => ({
+		w: 40,
+		h: 30
+	})
+};
+/**
+* What a layout places: shapes, groups, and text on its own. Text `near` something goes beside that instead, and a
+* an "outline" is drawn round what it picks out.
+*/
+var isNode = (e) => SHAPES.has(e.type) || e.type === "group" || e.type === "text" && !e.near;
+/**
+* Lay a drawing out. Every element sits in a group (`group`, a group's id) or in the drawing itself, the outermost
+* group, whose layout is `layout`. A group arranges what is in it: "row", "column", "grid", "tree" (top down, from
+* the links), "flow" (left to right, from the links), "graph" (any graph, cycles too: linked things pulled
+* together, all of them pushed apart) or "free" (each at its own x and y, 0 to 100 across and down
+* the group's box). Its size comes from what is in it (a free group's from its w and h), and its place from the
+* group it is in: so places are always relative, and nothing is measured by the model. With no layout, a group
+* whose things are linked is a flow, one with things given places is free, any other a row.
+*/
+function layoutDrawing(elements, layout = "", m = guess) {
+	const nodes = elements.filter(isNode);
+	const groups = new Map(nodes.filter((e) => e.type === "group" && e.id).map((e) => [e.id, e]));
+	const byId = new Map(nodes.filter((e) => e.id).map((e) => [e.id, e]));
+	const parent = /* @__PURE__ */ new Map();
+	for (const e of nodes) {
+		let g = e.group ? groups.get(e.group) ?? null : null;
+		for (let up = g, i = 0; up && i < 50; up = up.group ? groups.get(up.group) ?? null : null, i++) if (up === e) {
+			g = null;
+			break;
+		}
+		parent.set(e, g);
+	}
+	const kids = (g) => nodes.filter((e) => parent.get(e) === g);
+	const holder = (id, among) => {
+		for (let e = id ? byId.get(id) ?? null : null, i = 0; e && i < 50; e = parent.get(e) ?? null, i++) if (among.has(e)) return e;
+		return null;
+	};
+	const linksAmong = (among) => {
+		const set = new Set(among), seen = /* @__PURE__ */ new Set(), out = [];
+		for (const l of elements) {
+			if (!LINKS.has(l.type)) continue;
+			const a = holder(l.start, set), z = holder(l.end, set);
+			if (!a || !z || a === z) continue;
+			const k = `${among.indexOf(a)}>${among.indexOf(z)}`;
+			if (!seen.has(k)) {
+				seen.add(k);
+				out.push([a, z]);
+			}
+		}
+		return out;
+	};
+	const local = /* @__PURE__ */ new Map();
+	const sizes = /* @__PURE__ */ new Map();
+	const freeBox = (g) => g ? {
+		w: (g.w ?? 50) / 100 * m.box.w,
+		h: (g.h ?? 50) / 100 * m.box.h
+	} : m.box;
+	const kindOf = (g, inside) => {
+		const asked = g ? g.layout ?? "" : layout;
+		if (asked === "free" && linksAmong(inside).length) return "flow";
+		if (LAYOUTS.has(asked)) return asked;
+		if (linksAmong(inside).length) return "flow";
+		return inside.some(placed$1) ? "free" : "row";
+	};
+	const measure = (g) => {
+		const inside = kids(g), kind = kindOf(g, inside);
+		const within = kind === "free" ? freeBox(g) : m.box;
+		for (const e of inside) sizes.set(e, e.type === "group" ? measure(e) : m.sizeOf(e, within));
+		const size = (e) => sizes.get(e);
+		let at, span, resized;
+		if (kind === "free") {
+			at = new Map(inside.map((e) => [e, {
+				x: (e.x ?? 50) / 100 * within.w,
+				y: (e.y ?? 50) / 100 * within.h
+			}]));
+			span = within;
+		} else if (kind === "tree") ({at, span} = treePx(inside, linksAmong(inside), size));
+		else if (kind === "flow") ({at, span} = flowPx(inside, linksAmong(inside), size));
+		else if (kind === "graph") ({at, span} = graphPx(inside, linksAmong(inside), size));
+		else if (kind === "cells") ({at, span, resized} = cellsPx(inside, size));
+		else ({at, span} = linePx(inside, kind, size, g?.align ?? "center"));
+		for (const e of inside) {
+			const c = at.get(e), s = resized?.get(e) ?? size(e);
+			local.set(e, {
+				x: c.x - s.w / 2,
+				y: c.y - s.h / 2,
+				w: s.w,
+				h: s.h
+			});
+		}
+		return span;
+	};
+	const whole = measure(null);
+	const boxes = /* @__PURE__ */ new Map();
+	const place = (g, ox, oy) => {
+		for (const e of kids(g)) {
+			const l = local.get(e), r = {
+				x: ox + l.x,
+				y: oy + l.y,
+				w: l.w,
+				h: l.h
+			};
+			boxes.set(e, r);
+			if (e.type === "group") place(e, r.x, r.y);
+		}
+	};
+	place(null, 0, 0);
+	return {
+		boxes,
+		w: whole.w,
+		h: whole.h
+	};
+}
+/**
+* An array's cells: side by side with no gap, all as wide and tall as the widest and tallest, so they read as one
+* row of boxes; words (its name) stand before them with a gap.
+*/
+function cellsPx(items, size) {
+	const at = /* @__PURE__ */ new Map(), resized = /* @__PURE__ */ new Map();
+	const cells = items.filter((e) => SHAPES.has(e.type));
+	const cw = Math.max(34, ...cells.map((e) => size(e).w)), ch = Math.max(30, ...cells.map((e) => size(e).h));
+	let x = 0;
+	for (const e of items) {
+		if (SHAPES.has(e.type)) {
+			at.set(e, {
+				x: x + cw / 2,
+				y: ch / 2
+			});
+			resized.set(e, {
+				w: cw,
+				h: ch
+			});
+			x += cw;
+			continue;
+		}
+		const s = size(e);
+		at.set(e, {
+			x: x + s.w / 2,
+			y: ch / 2
+		});
+		x += s.w + GAP * .5;
+	}
+	return {
+		at,
+		span: {
+			w: x,
+			h: ch
+		},
+		resized
+	};
+}
+/** Side by side ("row"), one under another ("column"), or in a square-ish grid; lined up by `align` across. */
+function linePx(items, kind, size, align) {
+	const at = /* @__PURE__ */ new Map();
+	if (!items.length) return {
+		at,
+		span: {
+			w: 0,
+			h: 0
+		}
+	};
+	if (kind === "grid") {
+		const cols = Math.ceil(Math.sqrt(items.length)), cw = Math.max(...items.map((e) => size(e).w)), ch = Math.max(...items.map((e) => size(e).h));
+		items.forEach((e, i) => at.set(e, {
+			x: i % cols * (cw + GAP) + cw / 2,
+			y: Math.floor(i / cols) * (ch + GAP) + ch / 2
+		}));
+		const rows = Math.ceil(items.length / cols);
+		return {
+			at,
+			span: {
+				w: cols * cw + (cols - 1) * GAP,
+				h: rows * ch + (rows - 1) * GAP
+			}
+		};
+	}
+	const across = kind === "column";
+	const along = (s) => across ? s.h : s.w, cross = (s) => across ? s.w : s.h;
+	const thick = Math.max(...items.map((e) => cross(size(e))));
+	let run = 0;
+	for (const e of items) {
+		const s = size(e), c = align === "start" ? cross(s) / 2 : align === "end" ? thick - cross(s) / 2 : thick / 2;
+		const p = run + along(s) / 2;
+		at.set(e, across ? {
+			x: c,
+			y: p
+		} : {
+			x: p,
+			y: c
+		});
+		run += along(s) + GAP;
+	}
+	run -= GAP;
+	return {
+		at,
+		span: across ? {
+			w: thick,
+			h: run
+		} : {
+			w: run,
+			h: thick
+		}
+	};
+}
+/**
+* A tidy tree from the links (parent -> child); the roots are what no link ends at, in drawing order. Leaves go
+* across side by side, each as wide as it is; a parent sits over the middle of its children; a level per row.
+*/
+function treePx(items, links, size) {
+	const children = /* @__PURE__ */ new Map(), parent = /* @__PURE__ */ new Map();
+	for (const [a, z] of links) {
+		if (parent.has(z)) continue;
+		parent.set(z, a);
+		children.set(a, [...children.get(a) ?? [], z]);
+	}
+	const cx = /* @__PURE__ */ new Map(), depth = /* @__PURE__ */ new Map(), rowH = [];
+	let cursor = 0;
+	const visit = (e, d, seen) => {
+		if (seen.has(e)) return cx.get(e) ?? 0;
+		seen.add(e);
+		depth.set(e, d);
+		rowH[d] = Math.max(rowH[d] ?? 0, size(e).h);
+		const ks = (children.get(e) ?? []).filter((k) => !seen.has(k));
+		let at;
+		if (ks.length) {
+			const xs = ks.map((k) => visit(k, d + 1, seen));
+			at = (Math.min(...xs) + Math.max(...xs)) / 2;
+			cursor = Math.max(cursor, at + size(e).w / 2 + GAP);
+		} else {
+			at = cursor + size(e).w / 2;
+			cursor += size(e).w + GAP;
+		}
+		cx.set(e, at);
+		return at;
+	};
+	const seen = /* @__PURE__ */ new Set();
+	for (const e of items) if (!parent.has(e)) visit(e, 0, seen);
+	for (const e of items) if (!seen.has(e)) visit(e, 0, seen);
+	const rowY = [], vgap = GAP * 1.6;
+	let y = 0;
+	for (const h of rowH) {
+		rowY.push(y + h / 2);
+		y += h + vgap;
+	}
+	const at = /* @__PURE__ */ new Map();
+	for (const e of items) at.set(e, {
+		x: cx.get(e),
+		y: rowY[depth.get(e)]
+	});
+	return {
+		at,
+		span: {
+			w: Math.max(0, cursor - GAP),
+			h: Math.max(0, y - vgap)
+		}
+	};
+}
+/**
+* Any graph, cycles and all: a force layout. Things start round a circle (in drawing order, so the same graph is
+* always drawn the same way); every pair pushes apart, every link pulls its two ends to a rest length; then the
+* boxes still touching are pushed clear of each other, measured as they are.
+*/
+function graphPx(items, links, size) {
+	const n = items.length, at = /* @__PURE__ */ new Map();
+	if (!n) return {
+		at,
+		span: {
+			w: 0,
+			h: 0
+		}
+	};
+	const sz = items.map(size), idx = new Map(items.map((e, i) => [e, i]));
+	const rest = sz.reduce((a, s) => a + Math.max(s.w, s.h), 0) / n + GAP * 2.2;
+	const r0 = Math.max(rest, rest * n / (2 * Math.PI));
+	const p = items.map((_, i) => ({
+		x: r0 * Math.cos(2 * Math.PI * i / n - Math.PI / 2),
+		y: r0 * Math.sin(2 * Math.PI * i / n - Math.PI / 2)
+	}));
+	const edges = links.map(([a, z]) => [idx.get(a), idx.get(z)]);
+	for (let it = 0, heat = rest; it < 300; it++, heat *= .985) {
+		const f = p.map(() => ({
+			x: 0,
+			y: 0
+		}));
+		for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+			let dx = p[i].x - p[j].x, dy = p[i].y - p[j].y;
+			if (!dx && !dy) {
+				dx = .1 * (i - j);
+				dy = .1;
+			}
+			const d = Math.hypot(dx, dy), push = rest * rest / d;
+			f[i].x += dx / d * push;
+			f[i].y += dy / d * push;
+			f[j].x -= dx / d * push;
+			f[j].y -= dy / d * push;
+		}
+		for (const [i, j] of edges) {
+			const dx = p[j].x - p[i].x, dy = p[j].y - p[i].y, d = Math.hypot(dx, dy) || 1, pull = d * d / rest;
+			f[i].x += dx / d * pull;
+			f[i].y += dy / d * pull;
+			f[j].x -= dx / d * pull;
+			f[j].y -= dy / d * pull;
+		}
+		for (let i = 0; i < n; i++) {
+			const m = Math.hypot(f[i].x, f[i].y) || 1, step = Math.min(m, heat);
+			p[i].x += f[i].x / m * step;
+			p[i].y += f[i].y / m * step;
+		}
+	}
+	for (let pass = 0; pass < 60; pass++) {
+		let moved = false;
+		for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+			const ox = (sz[i].w + sz[j].w) / 2 + GAP * .8 - Math.abs(p[i].x - p[j].x);
+			const oy = (sz[i].h + sz[j].h) / 2 + GAP * .8 - Math.abs(p[i].y - p[j].y);
+			if (ox <= 0 || oy <= 0) continue;
+			moved = true;
+			if (ox < oy) {
+				const s = (p[i].x < p[j].x ? -1 : 1) * ox / 2;
+				p[i].x += s;
+				p[j].x -= s;
+			} else {
+				const s = (p[i].y < p[j].y ? -1 : 1) * oy / 2;
+				p[i].y += s;
+				p[j].y -= s;
+			}
+		}
+		if (!moved) break;
+	}
+	const x0 = Math.min(...p.map((q, i) => q.x - sz[i].w / 2)), y0 = Math.min(...p.map((q, i) => q.y - sz[i].h / 2));
+	const x1 = Math.max(...p.map((q, i) => q.x + sz[i].w / 2)), y1 = Math.max(...p.map((q, i) => q.y + sz[i].h / 2));
+	items.forEach((e, i) => at.set(e, {
+		x: p[i].x - x0,
+		y: p[i].y - y0
+	}));
+	return {
+		at,
+		span: {
+			w: x1 - x0,
+			h: y1 - y0
+		}
+	};
+}
+/** A flow left to right: each a column after what leads to it (the longest way in), a column stacked in the order of what leads to it. */
+function flowPx(items, links, size) {
+	const ins = new Map(items.map((e) => [e, []]));
+	for (const [a, z] of links) ins.get(z).push(a);
+	const rank = /* @__PURE__ */ new Map();
+	const rankOf = (e, path) => {
+		if (rank.has(e)) return rank.get(e);
+		if (path.has(e)) return 0;
+		path.add(e);
+		const r = Math.max(-1, ...ins.get(e).map((p) => rankOf(p, path))) + 1;
+		path.delete(e);
+		rank.set(e, r);
+		return r;
+	};
+	for (const e of items) rankOf(e, /* @__PURE__ */ new Set());
+	const cols = [];
+	for (const e of items) (cols[rank.get(e)] ??= []).push(e);
+	const order = /* @__PURE__ */ new Map();
+	for (const col of cols) {
+		if (!col) continue;
+		const key = (e) => {
+			const ps = ins.get(e).filter((p) => order.has(p));
+			return ps.length ? ps.reduce((a, p) => a + order.get(p), 0) / ps.length : Infinity;
+		};
+		col.sort((a, b) => key(a) - key(b) || items.indexOf(a) - items.indexOf(b));
+		col.forEach((e, i) => order.set(e, i));
+	}
+	const full = cols.filter(Boolean);
+	const heights = full.map((col) => col.reduce((a, e) => a + size(e).h, 0) + GAP * (col.length - 1));
+	const tall = Math.max(0, ...heights), hgap = GAP * 1.4;
+	const at = /* @__PURE__ */ new Map();
+	let x = 0;
+	full.forEach((col, c) => {
+		const w = Math.max(...col.map((e) => size(e).w));
+		let y = (tall - heights[c]) / 2;
+		for (const e of col) {
+			const s = size(e);
+			at.set(e, {
+				x: x + w / 2,
+				y: y + s.h / 2
+			});
+			y += s.h + GAP;
+		}
+		x += w + hgap;
+	});
+	return {
+		at,
+		span: {
+			w: Math.max(0, x - hgap),
+			h: tall
+		}
+	};
+}
+/**
+* The stroke of a shape centred at (cx, cy), w by h, as a hand draws it: a box from its top left round and a little
+* past the corner, a circle from the top left once round and on, a diamond from its top point. `j` (-.5..5 each)
+* is the hand's wobble, kept so a redraw is the same stroke.
+*/
+function shapeStroke(type, cx, cy, w, h, j = [
+	0,
+	0,
+	0,
+	0
+]) {
+	const x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - h / 2, y1 = cy + h / 2, k = (i) => (j[i] ?? 0) * 3;
+	if (type === "ellipse") {
+		const rx = w / 2, ry = h / 2, at = (deg) => {
+			const a = deg * Math.PI / 180;
+			return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
+		};
+		return `M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`;
+	}
+	if (type === "diamond") return `M${cx + k(0)} ${y0} L${x1} ${cy + k(1)} L${cx + k(2)} ${y1} L${x0} ${cy + k(3)} L${cx + 4} ${y0 + 2}`;
+	return `M${x0 + k(0)} ${y0} L${x1} ${y0 + k(1)} L${x1 + k(2)} ${y1} L${x0} ${y1 + k(3)} L${x0} ${y0 - 3}`;
+}
+/**
+* A free stroke through `pts` as one smooth curve (Catmull-Rom, as cubic Béziers): it passes through every point,
+* bending between them as a hand does. `closed` carries on from the last point round to the first.
+*/
+function smoothPath(pts, closed = false) {
+	if (pts.length < 2) return "";
+	const n = pts.length, at = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
+	const f = (v) => +v.toFixed(2);
+	let d = `M${f(at(0).x)} ${f(at(0).y)}`;
+	for (let i = 0; i < (closed ? n : n - 1); i++) {
+		const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+		d += ` C${f(p1.x + (p2.x - p0.x) / 6)} ${f(p1.y + (p2.y - p0.y) / 6)} ${f(p2.x - (p3.x - p1.x) / 6)} ${f(p2.y - (p3.y - p1.y) / 6)} ${f(p2.x)} ${f(p2.y)}`;
+	}
+	return d;
+}
+/** The point where the line from a box's centre towards `p` leaves the box (an ellipse's or diamond's own edge). */
+function edgePoint(type, cx, cy, w, h, p, pad = 3) {
+	const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+	const rx = w / 2 + pad, ry = h / 2 + pad;
+	let t;
+	if (type === "ellipse") t = 1 / Math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2);
+	else if (type === "diamond") t = 1 / (Math.abs(ux) / rx + Math.abs(uy) / ry);
+	else t = Math.min(Math.abs(ux) > 1e-9 ? rx / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-9 ? ry / Math.abs(uy) : Infinity);
+	return {
+		x: cx + ux * t,
+		y: cy + uy * t
+	};
+}
+/**
+* A contour round `boxes`: the convex hull of their corners, each rounded off `pad` out, as the points of a closed
+* stroke (smoothPath draws it). It holds just them, never what lies beside them.
+*/
+function hullAround(boxes, pad = 12) {
+	const pts = [];
+	for (const b of boxes) for (const [cx, cy] of [
+		[b.x, b.y],
+		[b.x + b.w, b.y],
+		[b.x + b.w, b.y + b.h],
+		[b.x, b.y + b.h]
+	]) for (let k = 0; k < 8; k++) pts.push({
+		x: cx + pad * Math.cos(k * Math.PI / 4),
+		y: cy + pad * Math.sin(k * Math.PI / 4)
+	});
+	if (pts.length < 3) return pts;
+	pts.sort((a, b) => a.x - b.x || a.y - b.y);
+	const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+	const half = (list) => {
+		const h = [];
+		for (const p of list) {
+			while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop();
+			h.push(p);
+		}
+		h.pop();
+		return h;
+	};
+	const hull = [...half(pts), ...half([...pts].reverse())];
+	const out = [];
+	for (const p of hull) if (!out.length || Math.hypot(p.x - out[out.length - 1].x, p.y - out[out.length - 1].y) > 6) out.push(p);
+	return out;
+}
+//#endregion
+//#region src/ink-marks.ts
+/**
+* Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
+* it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
+*/
+function markGeometry(rect, shape) {
+	if (shape === "underline") {
+		const w = rect.width + 8;
+		return {
+			left: rect.left - 4,
+			top: rect.bottom,
+			w: w + 4,
+			h: 12,
+			strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]
+		};
+	}
+	if (shape === "check") {
+		const s = Math.max(22, Math.min(44, rect.height * 1.3));
+		return {
+			left: rect.left + rect.width / 2 - s / 2,
+			top: rect.top + rect.height / 2 - s / 2,
+			w: s,
+			h: s,
+			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
+		};
+	}
+	if (shape === "cross") {
+		const w = Math.min(rect.width, 160) + 8, h = Math.min(rect.height, 80) + 8;
+		return {
+			left: rect.left + rect.width / 2 - w / 2,
+			top: rect.top + rect.height / 2 - h / 2,
+			w,
+			h,
+			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
+		};
+	}
+	const { rx, ry } = ringRadii(rect), cx = rx + 2, cy = ry + 2;
+	const at = (deg) => {
+		const a = deg * Math.PI / 180;
+		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
+	};
+	return {
+		left: rect.left + rect.width / 2 - rx - 2,
+		top: rect.top + rect.height / 2 - ry - 2,
+		w: rx * 2 + 4,
+		h: ry * 2 + 4,
+		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]
+	};
+}
+/**
+* A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
+* what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
+* to sit inside, with a margin.
+*/
+function ringRadii(rect) {
+	const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
+	return {
+		rx,
+		ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4
+	};
+}
+//#endregion
+//#region src/presenter.ts
+/**
+* AI presenter: with the presenter switch on (chat toolbar), a question typed in the chat is answered as a
+* walk-through of the view, the way a person at the front of the room would answer it with a laser pointer. The
+* scene_present expert gets the view (the lesson, what is on screen, the run's execution states) and every target
+* the pointer can reach, and answers with beats: move the run to a state (the pointer drags the slider there), point
+* at or circle a target, and say a sentence or two. The beats play here: a red pointer glides over the view, follows
+* its target as the camera moves, and the words appear in the chat as they are spoken.
+*
+* Refs the expert may use, all resolved here to a place on screen:
+*   <id>          an element of the scene (its bounds, or its label);
+*   <id>[<i>]     cell i of an array, entry i of a dict, node i of a graph; <id>[i:j] a run of them, <id>[i,j,k]
+*                 a few; for a tensor, numpy style: <id>[r, c], <id>[r, :], <id>[:, c], <id>[r0:r1, c0:c1];
+*   row:<id>      an expression label's row in the variables panel;
+*   caption       the step caption;  slider  the execution slider.
+*/
+var PREF_KEY = "algebench-presenter";
+var MAX_CELLS = 60;
+var sceneNow = () => state.lessonSpec?.scenes?.[state.currentSceneIndex];
+/** The lesson JSON of a live element: the scene's own, else added by a step up to the one on screen. */
+function elementSpec(id) {
+	const scene = sceneNow();
+	const own = scene?.elements ?? [];
+	const added = (scene?.steps ?? []).slice(0, state.currentStepIndex + 1).flatMap((s) => s.add ?? []);
+	return [...own, ...added].reverse().find((e) => e.id === id);
+}
+var short$1 = (v) => {
+	return ((typeof v === "string" ? v : JSON.stringify(v)) ?? "").slice(0, 60);
+};
+/** Everything the pointer can reach now, each with what it is (an array's cells with their values). */
+function presentTargets() {
+	const out = [];
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (!reg || reg.hidden || state.legendToggledOff.has(id)) continue;
+		const spec = elementSpec(id);
+		const name = reg.label ?? spec?.label ?? spec?.title ?? "";
+		const type = reg.type ?? spec?.type ?? "object";
+		if (objectCellAnchor(id, 0)) {
+			const valueFn = spec?.valueExpr ? compileExpr(spec.valueExpr) : null, keyFn = spec?.keyExpr ? compileExpr(spec.keyExpr) : null;
+			const cells = [], graph = !!objectCellAnchor(id, 0)?.graph;
+			for (let i = 0; i < MAX_CELLS && objectCellAnchor(id, i); i++) {
+				let about = `${spec?.keyExpr ? "entry" : graph ? "node" : "cell"} ${i} of ${name || id}`;
+				try {
+					const value = valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : void 0;
+					const key = keyFn ? evalExpr(keyFn, 0, { overrideScope: { idx: i } }) : void 0;
+					if (keyFn) about += `: key ${short$1(key)} -> ${short$1(value)}`;
+					else if (valueFn) about += `: ${short$1(value)}`;
+				} catch {}
+				cells.push({
+					ref: `${id}[${i}]`,
+					about
+				});
+			}
+			out.push({
+				ref: id,
+				about: `${type} ${name ? `"${name}"` : ""} with ${cells.length} ${spec?.keyExpr ? "entries" : graph ? "nodes" : "cells"}`.replace(/\s+/g, " ")
+			}, ...cells);
+			continue;
+		}
+		const marks = objectChartMarks(id);
+		if (marks?.length) {
+			out.push({
+				ref: id,
+				about: `chart${name ? ` "${name}"` : ""} with ${marks.length} bars/points`
+			}, ...marks.slice(0, MAX_CELLS).map((m, i) => ({
+				ref: `${id}[${i}]`,
+				about: m.about
+			})));
+			continue;
+		}
+		const tensor = objectTensorRegion(id);
+		if (tensor) {
+			out.push({
+				ref: id,
+				about: `tensor${name ? ` "${name}"` : ""}, ${tensor.rows} rows x ${tensor.cols} columns: point at a cell ${id}[r, c], a row ${id}[r, :], a column ${id}[:, c] or a block ${id}[r0:r1, c0:c1] (0-based, ends excluded)`
+			});
+			continue;
+		}
+		const row = objectLabelRow(id);
+		if (row) {
+			out.push({
+				ref: `row:${id}`,
+				about: `variables panel row: ${row.textContent?.trim().slice(0, 120) ?? ""}`
+			});
+			continue;
+		}
+		if (objectWorldAnchor(id) || objectLabelElement(id)) out.push({
+			ref: id,
+			about: `${type}${name ? ` "${name}"` : ""}${objectLabelElement(id)?.textContent ? `: ${objectLabelElement(id).textContent.trim().slice(0, 80)}` : ""}`
+		});
+	}
+	const caption = document.getElementById("step-caption");
+	if (caption && !caption.classList.contains("hidden") && caption.offsetParent) out.push({
+		ref: "caption",
+		about: `the step caption: ${caption.textContent?.trim().slice(0, 160) ?? ""}`
+	});
+	if (sliderInput()) out.push({
+		ref: "slider",
+		about: "the execution slider, which steps through the run"
+	});
+	const run = playbackSlider()?.id;
+	for (const [id, sl] of Object.entries(state.sceneSliders)) {
+		const s = sl;
+		if (id === run || s.kind === "tensor" || !paramInput(id)) continue;
+		out.push({
+			ref: `slider:${id}`,
+			about: `slider "${(s.label ?? id).replace(/\$/g, "")}" = ${s.value} (from ${s.min} to ${s.max}${s.step ? `, step ${s.step}` : ""})`
+		});
+	}
+	return out.slice(0, 400);
+}
+/** The run's slider: the scene's step playback, else the step's own slider. */
+function playbackSlider() {
+	const id = sceneNow()?.stepPlayback?.slider;
+	const s = id ? state.sceneSliders[id] : void 0;
+	if (!id || !s) return null;
+	const sl = s;
+	return {
+		id,
+		min: sl.min ?? 0,
+		max: sl.max ?? 0,
+		value: Number(sl.value)
+	};
+}
+/** A parameter slider's control, when it is on screen. */
+function paramInput(id) {
+	const el = document.querySelector(`input[data-slider-id="${CSS.escape(id)}"]`);
+	return el && el.offsetParent ? el : null;
+}
+function sliderInput() {
+	const el = document.querySelector("#state-player input[type=range]");
+	return el && el.offsetParent ? el : null;
+}
+/** Where the slider's thumb sits for frame `f`. */
+function sliderPoint(f) {
+	const input = sliderInput(), s = playbackSlider();
+	if (!input || !s) return null;
+	const r = input.getBoundingClientRect(), t = s.max > s.min ? (f - s.min) / (s.max - s.min) : 0;
+	const thumb = 14;
+	return {
+		x: r.left + thumb / 2 + t * (r.width - thumb),
+		y: r.top + r.height / 2
+	};
+}
+function project(world) {
+	if (!state.camera || !state.renderer) return null;
+	const p = world.clone().project(state.camera);
+	if (p.z < -1 || p.z >= 1) return null;
+	const v = state.renderer.domElement.getBoundingClientRect();
+	return {
+		x: v.left + (p.x * .5 + .5) * v.width,
+		y: v.top + (-p.y * .5 + .5) * v.height
+	};
+}
+function rectOf(points) {
+	const ok = points.filter((p) => !!p);
+	if (!ok.length) return null;
+	const xs = ok.map((p) => p.x), ys = ok.map((p) => p.y);
+	return new DOMRect(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+}
+var V3 = (p) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0);
+/** A ref's place on screen, re-read each frame (the camera, the panels and the values move). */
+/** The cells an index names, for an array, dict or graph: one (`3`), a slice (`1:4`, end excluded) or a list
+*  (`1,3,4`). Null when it is none of these. */
+function cellIndices(index) {
+	const t = index.replace(/\s+/g, "");
+	if (/^\d+$/.test(t)) return [Number(t)];
+	const slice = /^(\d+):(\d+)$/.exec(t);
+	if (slice) {
+		const from = Number(slice[1]), to = Number(slice[2]);
+		return to > from ? Array.from({ length: Math.min(to - from, MAX_CELLS) }, (_, k) => from + k) : null;
+	}
+	return /^\d+(,\d+)+$/.test(t) ? t.split(",").map(Number) : null;
+}
+/** The rows and columns (first and last, inclusive) a tensor index names, numpy style: `r, c`, `r, :`, `:, c`,
+*  `r0:r1, c0:c1` (ends excluded, either end may be left out). A 1D index is a column of a single row. */
+function tensorBlock(index, rows, cols) {
+	const parts = index.replace(/\s+/g, "").split(",");
+	if (parts.length > 2) return null;
+	if (parts.length === 1) parts.unshift(":");
+	const span = (p, n) => {
+		const m = /^(\d*)(:?)(\d*)$/.exec(p);
+		if (!m) return null;
+		const from = m[1] ? Number(m[1]) : 0;
+		const to = m[2] ? (m[3] ? Number(m[3]) : n) - 1 : m[1] ? from : n - 1;
+		return from <= to && to < n ? [from, to] : null;
+	};
+	const r = span(parts[0], rows), c = span(parts[1], cols);
+	return r && c ? [
+		r[0],
+		r[1],
+		c[0],
+		c[1]
+	] : null;
+}
+/** On screen: a tensor's cell, row, column or block; or an array's, dict's or graph's cells, boxed together. */
+function indexedRect(id, index) {
+	const tensor = objectTensorRegion(id);
+	if (tensor) {
+		const block = tensorBlock(index, tensor.rows, tensor.cols);
+		return block ? rectOf(tensor.corners(...block).map((c) => project(V3(c)))) : null;
+	}
+	const cells = cellIndices(index);
+	if (!cells) return null;
+	const marks = objectChartMarks(id);
+	if (marks) return cells.every((i) => marks[i]) ? rectOf(cells.flatMap((i) => marks[i].corners.map((c) => project(V3(c))))) : null;
+	const points = [];
+	for (const i of cells) {
+		const at = objectCellAnchor(id, i);
+		if (!at) return null;
+		points.push(...at.corners.length ? at.corners.map((c) => project(V3(dataToWorld(c)))) : [project(V3(dataToWorld(at.position)))]);
+	}
+	return rectOf(points);
+}
+/**
+* The box of what an element reads, without its buttons: a label row ends in small Ask-AI, code and wire buttons
+* that show on hover, and a mark round the whole row would sit off to their side.
+*/
+function inkRect(el) {
+	const rs = [];
+	for (const n of el.childNodes) if (n.nodeType === Node.TEXT_NODE) {
+		if (!n.textContent?.trim()) continue;
+		const range = document.createRange();
+		range.selectNodeContents(n);
+		rs.push(range.getBoundingClientRect());
+	} else if (n instanceof HTMLElement && !n.matches("button, .ai-ask-btn, .expression-wire-toggle") && n.offsetWidth) rs.push(n.getBoundingClientRect());
+	const shown = rs.filter((r) => r.width && r.height);
+	if (!shown.length) return el.getBoundingClientRect();
+	const x0 = Math.min(...shown.map((r) => r.left)), y0 = Math.min(...shown.map((r) => r.top)), x1 = Math.max(...shown.map((r) => r.right)), y1 = Math.max(...shown.map((r) => r.bottom));
+	return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+}
+function resolveTarget$1(ref, part = "") {
+	if (ref.includes("\n")) {
+		const rs = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
+		if (!rs.length) return null;
+		const x0 = Math.min(...rs.map((r) => r.left)), y0 = Math.min(...rs.map((r) => r.top)), x1 = Math.max(...rs.map((r) => r.right)), y1 = Math.max(...rs.map((r) => r.bottom));
+		return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+	}
+	if (ref.startsWith("note:")) return noteRect(ref.slice(5), part);
+	if (ref.startsWith("draw:")) return drawnRect(ref.slice(5), part);
+	if (ref === "caption") {
+		const c = document.getElementById("step-caption");
+		return c?.offsetParent ? c.getBoundingClientRect() : null;
+	}
+	if (ref === "slider") {
+		const i = sliderInput();
+		return i ? i.getBoundingClientRect() : null;
+	}
+	if (ref.startsWith("slider:")) {
+		const i = paramInput(ref.slice(7));
+		return i ? (i.parentElement ?? i).getBoundingClientRect() : null;
+	}
+	if (ref.startsWith("row:")) {
+		const row = objectLabelRow(ref.slice(4));
+		return row ? inkRect(row) : null;
+	}
+	const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
+	if (indexed) return indexedRect(indexed[1], indexed[2]);
+	const corners = objectWorldCorners(ref);
+	const box = corners.length ? rectOf(corners.map((c) => project(c))) : null;
+	if (box && box.width * box.height > 4) return box;
+	const label = objectLabelElement(ref);
+	if (label?.offsetParent) return label.getBoundingClientRect();
+	const row = objectLabelRow(ref);
+	if (row) return inkRect(row);
+	const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
+	return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
+}
+var pointer = null;
+var ring = null;
+var pos = {
+	x: -100,
+	y: -100
+};
+function ensurePointer() {
+	if (pointer?.isConnected) return pointer;
+	pointer = document.createElement("div");
+	pointer.className = "ai-pointer";
+	pointer.setAttribute("aria-hidden", "true");
+	for (let k = 0; k < 6; k++) {
+		const t = document.createElement("span");
+		t.className = "ai-pointer-trail";
+		pointer.append(t);
+	}
+	const dot = document.createElement("span");
+	dot.className = "ai-pointer-dot";
+	pointer.append(dot);
+	ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	ring.classList.add("ai-pointer-ring");
+	ring.setAttribute("aria-hidden", "true");
+	document.body.append(pointer, ring);
+	return pointer;
+}
+var hovered = [];
+var learnerPressing = false;
+for (const [type, down] of [
+	["pointerdown", true],
+	["pointerup", false],
+	["pointercancel", false]
+]) window.addEventListener(type, (e) => {
+	if (e.isTrusted) learnerPressing = down;
+}, true);
+var chain = (el) => {
+	const out = [];
+	for (let e = el; e; e = e.parentElement) out.push(e);
+	return out;
+};
+function fire(el, type, x, y, bubbles) {
+	const init = {
+		bubbles,
+		cancelable: true,
+		clientX: x,
+		clientY: y,
+		view: window
+	};
+	el.dispatchEvent(type.startsWith("pointer") ? new PointerEvent(type, {
+		...init,
+		pointerId: 9001,
+		pointerType: "mouse",
+		isPrimary: false
+	}) : new MouseEvent(type, init));
+}
+function hoverAt(x, y) {
+	if (learnerPressing) return;
+	const under = document.elementFromPoint(x, y);
+	const now = chain(under), was = hovered;
+	if (under !== was[0]) {
+		if (was[0]) {
+			fire(was[0], "pointerout", x, y, true);
+			fire(was[0], "mouseout", x, y, true);
+		}
+		for (const el of was) if (!now.includes(el)) {
+			fire(el, "pointerleave", x, y, false);
+			fire(el, "mouseleave", x, y, false);
+		}
+		for (const el of [...now].reverse()) if (!was.includes(el)) {
+			fire(el, "pointerenter", x, y, false);
+			fire(el, "mouseenter", x, y, false);
+		}
+		if (under) {
+			fire(under, "pointerover", x, y, true);
+			fire(under, "mouseover", x, y, true);
+		}
+		hovered = now;
+	}
+	if (under) {
+		fire(under, "pointermove", x, y, true);
+		fire(under, "mousemove", x, y, true);
+	}
+}
+/** The pointer has gone: whatever it hovered is left, as when a mouse moves away. */
+function unhover() {
+	const x = pos.x, y = pos.y;
+	if (hovered[0]) {
+		fire(hovered[0], "pointerout", x, y, true);
+		fire(hovered[0], "mouseout", x, y, true);
+	}
+	for (const el of hovered) {
+		fire(el, "pointerleave", x, y, false);
+		fire(el, "mouseleave", x, y, false);
+	}
+	hovered = [];
+}
+var trail = [];
+function paintPointer() {
+	if (playing) hoverAt(pos.x, pos.y);
+	const el = ensurePointer();
+	el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+	trail.unshift({ ...pos });
+	trail.length = Math.min(trail.length, 7);
+	[...el.querySelectorAll(".ai-pointer-trail")].forEach((t, k) => {
+		const p = trail[k + 1] ?? pos;
+		t.style.transform = `translate(${p.x - pos.x}px, ${p.y - pos.y}px)`;
+	});
+}
+var sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
+var Stopped = class extends Error {};
+var run = 0;
+var alive = (r) => {
+	if (r !== run) throw new Stopped();
+};
+/** Glide to (x, y): eased, quicker for short hops, as a hand moves. */
+async function glide(x, y, r, ms) {
+	showPointer();
+	const from = { ...pos }, d = Math.hypot(x - from.x, y - from.y), dur = ms ?? Math.min(900, 250 + d * .9);
+	const t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+		pos.x = from.x + (x - from.x) * e;
+		pos.y = from.y + (y - from.y) * e;
+		paintPointer();
+		if (t >= 1) return;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+}
+var ringShape = "circle";
+/** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
+function drawRing(rect, color = "", shape = "circle") {
+	ensurePointer();
+	if (!ring) return;
+	for (const extra of [...moreRings, ...markLinks]) extra.remove();
+	moreRings = [];
+	markLinks = [];
+	if (!rect) {
+		ring.classList.remove("on", "drawn");
+		if (!spotlightBeat) hideSpotlight();
+		return;
+	}
+	ringShape = shape;
+	ring.setAttribute("class", `ai-pointer-ring ai-mark-${shape} ${inkClass(color)}`.trim());
+	ring.innerHTML = markGeometry(rect, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
+	fitRing(rect);
+	ring.classList.add("on");
+}
+/** Fit the mark to `rect`: as the view zooms or pans, it keeps to its target (the stroke isn't redrawn). */
+function fitRing(rect, el = ring) {
+	if (!el) return;
+	const g = markGeometry(rect, ringShape);
+	el.style.left = `${g.left}px`;
+	el.style.top = `${g.top}px`;
+	el.setAttribute("width", String(g.w));
+	el.setAttribute("height", String(g.h));
+	el.querySelectorAll("path").forEach((p, k) => p.setAttribute("d", g.strokes[k] ?? ""));
+}
+/** Marks on several things at once (a beat's `together`), one per cluster of them: the rings after the first. */
+var moreRings = [];
+/** And for rings apart, the lines that join them, one from each ring to the next: what is marked belongs together. */
+var markLinks = [];
+/** A slightly bowed line from ring `a`'s edge to ring `b`'s (each ring is its target's box, padded as markGeometry does). */
+function linkGeometry(a, b) {
+	const ca = {
+		x: a.left + a.width / 2,
+		y: a.top + a.height / 2
+	}, cb = {
+		x: b.left + b.width / 2,
+		y: b.top + b.height / 2
+	};
+	const ra = ringRadii(a), rb = ringRadii(b);
+	const p = edgePoint("ellipse", ca.x, ca.y, ra.rx * 2, ra.ry * 2, cb, 3), q = edgePoint("ellipse", cb.x, cb.y, rb.rx * 2, rb.ry * 2, ca, 3);
+	const dx = q.x - p.x, dy = q.y - p.y, m = {
+		x: (p.x + q.x) / 2 - dy * .12,
+		y: (p.y + q.y) / 2 + dx * .12
+	};
+	const left = Math.min(p.x, q.x, m.x) - 6, top = Math.min(p.y, q.y, m.y) - 6;
+	return {
+		left,
+		top,
+		w: Math.max(p.x, q.x, m.x) - left + 6,
+		h: Math.max(p.y, q.y, m.y) - top + 6,
+		d: `M${p.x - left} ${p.y - top} Q${m.x - left} ${m.y - top} ${q.x - left} ${q.y - top}`
+	};
+}
+function fitLink(el, a, b) {
+	const g = linkGeometry(a, b);
+	el.style.left = `${g.left}px`;
+	el.style.top = `${g.top}px`;
+	el.setAttribute("width", String(g.w));
+	el.setAttribute("height", String(g.h));
+	el.querySelector("path")?.setAttribute("d", g.d);
+}
+/** Put marks on `rects`, one each, in the beat's ink: the first is the ring, the rest go alongside it. */
+function drawRings(rects, color, shape) {
+	drawRing(rects[0] ?? null, color, shape);
+	if (!ring) return;
+	if (spotlightBeat && rects.length) showSpotlight(rects, shape);
+	for (const r of rects.slice(1)) {
+		const el = ring.cloneNode(false);
+		el.innerHTML = markGeometry(r, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
+		ring.parentElement?.append(el);
+		moreRings.push(el);
+		fitRing(r, el);
+	}
+	if (shape !== "circle") return;
+	for (let k = 1; k < rects.length; k++) {
+		const el = ring.cloneNode(false);
+		el.innerHTML = "<path pathLength=\"1\"/>";
+		ring.parentElement?.append(el);
+		markLinks.push(el);
+		fitLink(el, rects[k - 1], rects[k]);
+	}
+}
+function fitRings(rects) {
+	if (rects[0]) fitRing(rects[0]);
+	if (spot?.classList.contains("on")) fitSpotlight(rects);
+	moreRings.forEach((el, k) => {
+		if (rects[k + 1]) fitRing(rects[k + 1], el);
+	});
+	markLinks.forEach((el, k) => {
+		if (rects[k] && rects[k + 1]) fitLink(el, rects[k], rects[k + 1]);
+	});
+}
+/**
+* Whether this beat dims the view round its marks (the presenter's `spotlight`, for a crowded view). Set as the beat
+* starts, so the dimming of one beat carries on into the next that has it too: its hole moves on, not off and on.
+*/
+var spotlightBeat = false;
+var spot = null;
+var spotShape = "circle";
+/** What the holes show now, and where they are going: a move from `from` that began at `t0` (none when still). */
+var spotHoles = [];
+var spotRects = [];
+var spotMove = null;
+var SPOT_MOVE_MS = 650;
+function showSpotlight(rects, shape) {
+	if (!spot?.isConnected) {
+		spot = document.createElementNS(SVG_NS, "svg");
+		spot.classList.add("ai-spotlight");
+		spot.setAttribute("aria-hidden", "true");
+		spot.innerHTML = "<defs><mask id=\"ai-spotlight-mask\" maskUnits=\"userSpaceOnUse\"><rect class=\"ai-spotlight-all\" fill=\"white\"/><g class=\"ai-spotlight-holes\"/></mask></defs><rect class=\"ai-spotlight-dim\" mask=\"url(#ai-spotlight-mask)\"/>";
+		document.body.append(spot);
+	}
+	spotMove = spot.classList.contains("on") && spotHoles.length > 0 ? {
+		from: spotHoles,
+		t0: performance.now()
+	} : null;
+	spotShape = shape;
+	spotRects = rects;
+	fitSpotlight(rects);
+	if (spotMove) requestAnimationFrame(moveSpotlight);
+	spot.getBoundingClientRect();
+	spot.classList.add("on");
+}
+/** Step the hole's glide each frame until it arrives (the marks' own refits keep it on target after). */
+function moveSpotlight() {
+	if (!spotMove || !spot?.classList.contains("on")) return;
+	fitSpotlight(spotRects);
+	if (spotMove) requestAnimationFrame(moveSpotlight);
+}
+function hideSpotlight() {
+	spot?.classList.remove("on");
+	spotMove = null;
+}
+/** The hole for a mark on `rect`: the ring's own ellipse for a circle, else the box it is drawn on (an underline's takes in its line). */
+function holeFor(rect, view) {
+	const x = rect.left - view.left, y = rect.top - view.top;
+	if (spotShape === "circle") {
+		const { rx, ry } = ringRadii(rect);
+		return {
+			x: x + rect.width / 2 - rx,
+			y: y + rect.height / 2 - ry,
+			w: rx * 2,
+			h: ry * 2,
+			rx,
+			ry
+		};
+	}
+	const pad = 6, below = spotShape === "underline" ? 12 : 0;
+	return {
+		x: x - pad,
+		y: y - pad,
+		w: rect.width + 12,
+		h: rect.height + 12 + below,
+		rx: 6,
+		ry: 6
+	};
+}
+/** Lay the dimming over the 3D view, and nowhere else, with a hole for each mark, partway there while it glides. */
+function fitSpotlight(rects) {
+	const view = state.renderer?.domElement.getBoundingClientRect();
+	if (!spot || !view) return;
+	spotRects = rects;
+	spot.style.left = `${view.left}px`;
+	spot.style.top = `${view.top}px`;
+	spot.setAttribute("width", String(view.width));
+	spot.setAttribute("height", String(view.height));
+	for (const r of spot.querySelectorAll(".ai-spotlight-all, .ai-spotlight-dim")) {
+		r.setAttribute("width", String(view.width));
+		r.setAttribute("height", String(view.height));
+	}
+	let holes = rects.map((rect) => holeFor(rect, view));
+	if (spotMove) {
+		const t = Math.min(1, (performance.now() - spotMove.t0) / SPOT_MOVE_MS), k = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+		const from = spotMove.from, lerp = (a, b) => a + (b - a) * k;
+		holes = holes.map((h, i) => {
+			const f = from[Math.min(i, from.length - 1)];
+			return {
+				x: lerp(f.x, h.x),
+				y: lerp(f.y, h.y),
+				w: lerp(f.w, h.w),
+				h: lerp(f.h, h.h),
+				rx: lerp(f.rx, h.rx),
+				ry: lerp(f.ry, h.ry)
+			};
+		});
+		if (t >= 1) spotMove = null;
+	}
+	spotHoles = holes;
+	spot.querySelector(".ai-spotlight-holes").innerHTML = holes.map((h) => `<rect fill="black" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="${Math.min(h.rx, h.w / 2)}" ry="${Math.min(h.ry, h.h / 2)}"/>`).join("");
+}
+/**
+* What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
+* things side by side share one ring, things apart get one each (a ring round both would take in all between).
+*/
+function markRects(ref, part) {
+	if (!ref.includes("\n")) {
+		const r = resolveTarget$1(ref, part);
+		return r ? [r] : [];
+	}
+	const clusters = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
+	const near = (a, b) => {
+		return Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom)) <= Math.max(24, Math.min(a.height, b.height) * .8);
+	};
+	for (let merged = true; merged;) {
+		merged = false;
+		for (let i = 0; i < clusters.length && !merged; i++) for (let j = i + 1; j < clusters.length && !merged; j++) {
+			const a = clusters[i], b = clusters[j];
+			if (!near(a, b)) continue;
+			const x0 = Math.min(a.left, b.left), y0 = Math.min(a.top, b.top);
+			clusters[i] = new DOMRect(x0, y0, Math.max(a.right, b.right) - x0, Math.max(a.bottom, b.bottom) - y0);
+			clusters.splice(j, 1);
+			merged = true;
+		}
+	}
+	return clusters;
+}
+/** Draw the mark as a hand would, the pointer making each stroke: a loop, a line, a tick, the two lines of a cross. */
+async function traceMark(r) {
+	if (!ring) return;
+	for (const el of [
+		ring,
+		...moreRings,
+		...markLinks
+	]) for (const path of [...el.querySelectorAll("path")]) {
+		const box = el.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+		await glide(box.left + start.x, box.top + start.y, r, 200);
+		path.classList.add("tracing");
+		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
+		for (;;) {
+			alive(r);
+			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+			path.style.setProperty("stroke-dashoffset", String(1 - k));
+			const b = el.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+			pos.x = b.left + p.x;
+			pos.y = b.top + p.y;
+			paintPointer();
+			if (t >= 1) break;
+			await new Promise((res) => requestAnimationFrame(res));
+		}
+	}
+	for (const el of [
+		ring,
+		...moreRings,
+		...markLinks
+	]) el.classList.add("drawn");
+}
+/**
+* The pointer, for another surface's strokes (the code canvas): it glides to `path`'s start and draws it as it does a
+* mark here. Ends early when `live` says the drawing is over. The surface owns the path; this only moves the hand.
+*/
+async function pointerTrace(path, live) {
+	const svg = path.ownerSVGElement;
+	if (!svg) return;
+	const frame = () => new Promise((res) => {
+		requestAnimationFrame(res);
+		window.setTimeout(res, 60);
+	});
+	try {
+		const box = svg.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+		await glide(box.left + start.x, box.top + start.y, run, 200);
+		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
+		for (;;) {
+			if (!live() || !path.isConnected) break;
+			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+			path.style.strokeDashoffset = String(1 - k);
+			const b = svg.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+			pos.x = b.left + p.x;
+			pos.y = b.top + p.y;
+			paintPointer();
+			if (t >= 1) break;
+			await frame();
+		}
+	} catch (e) {
+		if (!(e instanceof Stopped)) throw e;
+	}
+	path.style.strokeDashoffset = "0";
+}
+/** The pointer to (x, y) on the page, as the hand moves to where it will write. */
+async function pointerTo(x, y) {
+	try {
+		await glide(x, y, run, 200);
+	} catch (e) {
+		if (!(e instanceof Stopped)) throw e;
+	}
+}
+/** The hand has finished: it goes after a moment, as after a mark. */
+function pointerDone() {
+	restPointer();
+}
+/** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
+function showPointer() {
+	ensurePointer().classList.add("on");
+}
+function restPointer() {
+	if (!pointer?.classList.contains("on")) return;
+	pointer.classList.remove("on");
+	unhover();
+}
+/** How long the pointer stays on what it showed before it goes (the mark stays). */
+var REST_MS = 1e3;
+var holding = false;
+var drawingArrow = false;
+/**
+* Show a target (or the `part` of a note) while `until` runs: the pointer goes to it and, if asked, draws a mark on
+* it (a circle round it, a line under it, a tick by it, a cross over it), rests there a second and goes; the mark
+* stays, following the target as the view moves, until the next beat.
+*/
+async function holdOn(ref, mark, r, until, color = "", part = "") {
+	let done = false;
+	until.then(() => {
+		done = true;
+	});
+	holding = true;
+	try {
+		await holdPointer(ref, mark, r, () => done, color, part);
+	} finally {
+		holding = false;
+	}
+}
+async function holdPointer(ref, mark, r, done, color, part) {
+	showPointer();
+	const at = resolveTarget$1(ref, part);
+	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
+	let drawn = mark === "point", since = 0;
+	const t0 = performance.now();
+	while (!done()) {
+		alive(r);
+		if (drawingArrow) {
+			since = 0;
+			await new Promise((res) => requestAnimationFrame(res));
+			continue;
+		}
+		const now = resolveTarget$1(ref, part);
+		if (now) {
+			if (!drawn) {
+				drawRings(markRects(ref, part), color, mark);
+				await traceMark(r);
+				drawn = true;
+				since = 0;
+				continue;
+			}
+			if (mark !== "point" && ring?.classList.contains("on")) fitRings(markRects(ref, part));
+			since ||= performance.now();
+			if (pointer?.classList.contains("on")) {
+				if (mark === "point") {
+					const cx = now.left + now.width / 2, cy = now.top + now.height / 2;
+					pos.x += (cx - pos.x) * .35;
+					pos.y += (cy - pos.y) * .35;
+					paintPointer();
+				}
+				if (performance.now() - since > REST_MS) restPointer();
+			}
+		} else if (performance.now() - t0 > 4e3) restPointer();
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+}
+/** Move the run to frame `f` as a person would: onto the slider's thumb, press, drag along the track, release. */
+async function dragSliderTo(f, r) {
+	const s = playbackSlider(), from = s ? sliderPoint(s.value) : null, to = sliderPoint(f);
+	if (!s || !from || !to) {
+		if (s) setSliderValue(s.id, f);
+		return;
+	}
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	await glide(from.x, from.y, r);
+	ensurePointer().classList.add("pressed");
+	await sleep(180);
+	const steps = Math.abs(f - s.value), dir = Math.sign(f - s.value);
+	for (let k = 1; k <= steps; k++) {
+		alive(r);
+		const v = s.value + dir * k, p = sliderPoint(v);
+		await glide(p.x, p.y, r, Math.max(40, Math.min(160, 900 / steps)));
+		setSliderValue(s.id, v);
+	}
+	await sleep(160);
+	ensurePointer().classList.remove("pressed");
+	await sleep(350);
+}
+var notes = [];
+var board = [];
+var noteByText = /* @__PURE__ */ new Map();
+var noteKey = (t) => t.replace(/\s+/g, " ").trim();
+/** A note on the view, by what was written, or the `part` of it named (the box round those words); null when gone. */
+function noteRect(text, part = "") {
+	const note = noteByText.get(noteKey(text));
+	if (!note?.isConnected || note.classList.contains("fading")) return null;
+	const ink = note.querySelector(".ai-note-ink") ?? note;
+	return part && textRect(ink, part) || ink.getBoundingClientRect();
+}
+/**
+* Where `part` is in `text`: the first place it stands as a whole word (the `p` of `build_lps(p)` is the parameter,
+* not the last letter of `lps`), else the first place at all; -1 if absent.
+*/
+function partAt(text, part) {
+	const word = /\w/;
+	for (let at = text.indexOf(part); at >= 0; at = text.indexOf(part, at + 1)) {
+		const before = text[at - 1] ?? "", after = text[at + part.length] ?? "";
+		if (!(word.test(part[0]) && word.test(before)) && !(word.test(part.at(-1)) && word.test(after))) return at;
+	}
+	return text.indexOf(part);
+}
+/** The box round `part` (see partAt) in the text shown under `root` (KaTeX's hidden MathML left out); null if absent. */
+function textRect(root, part) {
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement?.closest(".katex-mathml") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+	const nodes = [];
+	let all = "";
+	for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+		nodes.push(n);
+		all += n.nodeValue ?? "";
+	}
+	const at = partAt(all, part);
+	if (at < 0) return null;
+	const range = document.createRange();
+	let seen = 0;
+	for (const n of nodes) {
+		const len = n.nodeValue?.length ?? 0;
+		if (seen <= at && at < seen + len) range.setStart(n, at - seen);
+		if (at + part.length <= seen + len) {
+			range.setEnd(n, at + part.length - seen);
+			break;
+		}
+		seen += len;
+	}
+	const box = range.getBoundingClientRect();
+	return box.width ? box : null;
+}
+function notesLayer() {
+	let layer = document.getElementById("ai-scratchpad");
+	if (!layer) {
+		layer = document.createElement("div");
+		layer.id = "ai-scratchpad";
+		layer.setAttribute("aria-live", "polite");
+		document.body.append(layer);
+	}
+	return layer;
+}
+var overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+/** Where a w×h note on `side` of `near` sits, before any shift to keep it clear: level with it, `gap` off its edge. */
+function besideAt(near, side, w, h, gap = 16) {
+	const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
+	return side === "right" ? {
+		x: near.right + gap,
+		y: cy
+	} : side === "left" ? {
+		x: near.left - gap - w,
+		y: cy
+	} : side === "above" ? {
+		x: cx,
+		y: near.top - gap - h
+	} : {
+		x: cx,
+		y: near.bottom + gap
+	};
+}
+/**
+* Where a note of size w×h goes: beside `near` on `side` when it fits there, else on the side that does (right,
+* left, above, below), within the view and clear of the notes already written; with nothing to sit beside, down
+* the view's top-left corner. Says which side it took, for a note that follows what it is beside.
+*/
+function placeNote(w, h, near, side = "") {
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
+	const gap = 16, taken = [
+		...notes.filter((n) => n.classList.contains("ai-note") || n.classList.contains("ai-drawing")).map((n) => n.getBoundingClientRect()),
+		...board.map((n) => n.getBoundingClientRect()),
+		...panels,
+		...near ? [near] : []
+	].filter((r) => r.width);
+	const fits = (x, y) => {
+		const r = new DOMRect(x, y, w, h);
+		return x >= view.left + 6 && y >= view.top + 6 && x + w <= view.right - 6 && y + h <= view.bottom - 6 && !taken.some((t) => overlaps(r, t));
+	};
+	const sides = [
+		"right",
+		"left",
+		"above",
+		"below"
+	];
+	const order = side ? [side, ...sides.filter((s) => s !== side)] : sides;
+	const host = near ? panels.find((p) => near.left >= p.left - 1 && near.right <= p.right + 1 && near.top >= p.top - 1 && near.bottom <= p.bottom + 1) : void 0;
+	if (near && host) {
+		const cy = near.top + near.height / 2 - h / 2;
+		const at = {
+			right: [host.right + gap, cy],
+			left: [host.left - gap - w, cy],
+			above: [host.left, host.top - gap - h],
+			below: [host.left, host.bottom + gap]
+		};
+		for (const s of order) if (fits(...at[s])) return {
+			x: at[s][0],
+			y: at[s][1],
+			side: s
+		};
+	}
+	if (near) {
+		for (const s of order) {
+			const p = besideAt(near, s, w, h, gap);
+			if (fits(p.x, p.y)) return {
+				...p,
+				side: s
+			};
+		}
+		const p = besideAt(near, "right", w, h, gap);
+		for (const y of [p.y + h + 8, p.y - h - 8]) if (fits(p.x, y)) return {
+			x: p.x,
+			y,
+			side: "right"
+		};
+	}
+	for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56; y + h < view.bottom - 6; y += h + 10) if (fits(x, y)) return {
+		x,
+		y,
+		side: ""
+	};
+	return {
+		x: view.left + 24,
+		y: view.top + 56,
+		side: ""
+	};
+}
+var esc = (t) => t.replace(/[&<>"]/g, (c) => ({
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	"\"": "&quot;"
+})[c]);
+/**
+* A note's text as shown: plain text in the typing face, `code` in code colours, and $math$, when a note needs real
+* notation, set by KaTeX as the info overlays are (an unclosed one too, as it is being typed).
+*/
+function inkHtml(src) {
+	const katex = window.katex;
+	let out = "", i = 0;
+	while (i < src.length) {
+		const mark = src[i];
+		if (mark === "$" || mark === "`") {
+			const end = src.indexOf(mark, i + 1), body = src.slice(i + 1, end < 0 ? src.length : end);
+			if (mark === "`") out += `<code>${esc(body)}</code>`;
+			else if (body) out += mathHtml(body, end < 0, katex);
+			i = end < 0 ? src.length : end + 1;
+			continue;
+		}
+		const next = src.slice(i).search(/[$`]/), plain = next < 0 ? src.slice(i) : src.slice(i, i + next);
+		out += /\\[A-Za-z]/.test(plain) ? strayMath(plain, katex) : esc(plain);
+		i += plain.length;
+	}
+	return out;
+}
+/**
+* Plain text holding LaTeX commands the model wrote without $...$ ("temps[2]=75 \\ge temps[3]=71"): its formula runs
+* (words with a command, a digit, a bracket or an operator, and single letters) set as math, the words between as text.
+*/
+function strayMath(plain, katex) {
+	const mathy = (w) => /\\[A-Za-z]|[\d=<>^_[\](){}+*|]/.test(w) || /^[A-Za-z]$/.test(w);
+	let out = "", run = [];
+	const flush = () => {
+		if (run.length) out += mathHtml(run.join(" "), true, katex);
+		run = [];
+	};
+	for (const part of plain.split(/(\s+)/)) {
+		if (!part) continue;
+		if (!part.trim()) {
+			if (!run.length) out += esc(part);
+			continue;
+		}
+		if (mathy(part)) {
+			run.push(part);
+			continue;
+		}
+		const after = run.length > 0;
+		flush();
+		out += (after ? " " : "") + esc(part);
+	}
+	flush();
+	return out;
+}
+/**
+* Math set by KaTeX. Being typed (`open`), it is set as far as it goes: a command still being spelled is left out
+* and the braces still open are closed, so `\frac{1}{2` already reads as a fraction.
+*/
+function mathHtml(body, open, katex) {
+	if (!katex) return esc(body);
+	const tries = [body];
+	if (open) {
+		let cut = body;
+		for (let k = 0; k < 3; k++) cut = cut.replace(/\\(begin|end)\{[A-Za-z*]*$/, "").replace(/\\[A-Za-z]*$/, "").replace(/[\\^_]$/, "");
+		if (!cut.trim()) return "";
+		const depth = [...cut].reduce((d, c, i) => c === "{" && cut[i - 1] !== "\\" ? d + 1 : c === "}" && cut[i - 1] !== "\\" ? Math.max(0, d - 1) : d, 0);
+		const open = [...cut.matchAll(/\\(begin|end)\{([A-Za-z*]+)\}/g)].reduce((stack, m) => {
+			if (m[1] === "begin") stack.push(m[2]);
+			else stack.pop();
+			return stack;
+		}, []);
+		tries.push(cut + "}".repeat(depth) + open.reverse().map((env) => `\\end{${env}}`).join(""));
+	}
+	for (const t of tries) if (t) try {
+		return katex.renderToString(t, {
+			throwOnError: true,
+			displayMode: false
+		});
+	} catch {}
+	return `<span class="ai-note-raw">${esc(body)}</span>`;
+}
+/** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
+/** The presenter's colours (style.css `.ai-ink-*`); green when none is named. */
+var INKS$1 = /* @__PURE__ */ new Set([
+	"yellow",
+	"red",
+	"blue",
+	"purple",
+	"orange",
+	"pink"
+]);
+var inkClass = (color) => color && INKS$1.has(color) ? `ai-ink-${color}` : "";
+async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
+	if (side === "free") near = "";
+	const note = document.createElement("div");
+	note.className = `ai-note ${inkClass(color)}`.trim();
+	note.title = "Drag to move";
+	makeMovable(note);
+	const ink = document.createElement("span");
+	ink.className = "ai-note-ink";
+	const caret = document.createElement("span");
+	caret.className = "ai-note-caret";
+	const ask = makeAiAskButton("ai-ask-btn ai-note-ask", "Ask AI about this", () => labelAskMessage({ text }));
+	ask.addEventListener("pointerdown", (e) => e.stopPropagation());
+	note.append(ink, caret, ask);
+	notesLayer().append(note);
+	ink.innerHTML = inkHtml(text);
+	const size = note.getBoundingClientRect(), anchor = near ? resolveTarget$1(near) : null;
+	const at = onBoard ? {
+		...boardSlot(),
+		side: ""
+	} : placeNote(size.width + 12, size.height, anchor, side === "free" ? "" : side);
+	note.style.left = `${at.x}px`;
+	note.style.top = `${at.y}px`;
+	ink.textContent = "";
+	if (!onBoard && anchor && at.side) followAnchor(note, near, at.side, size.width + 12, size.height, at);
+	if (onBoard) {
+		board.push(note);
+		note.classList.add("boarded");
+	} else notes.push(note);
+	noteByText.set(noteKey(text), note);
+	note.classList.add("on");
+	let prev = "\n";
+	try {
+		for (let k = 1; k <= text.length; k++) {
+			const ch = text[k - 1];
+			if (ch === "$" || ch === "`") continue;
+			alive(r);
+			await sleep(keyDelay(prev, ch));
+			ink.innerHTML = inkHtml(text.slice(0, k));
+			prev = ch;
+		}
+	} catch (stop) {
+		note.classList.add("set");
+		if (!ink.textContent) {
+			notes = notes.filter((n) => n !== note);
+			board = board.filter((n) => n !== note);
+			if (noteByText.get(noteKey(text)) === note) noteByText.delete(noteKey(text));
+			note.remove();
+		}
+		throw stop;
+	}
+	await sleep(250);
+	note.classList.add("set");
+	return note;
+}
+/**
+* A note written beside something stays beside it as the view turns, zooms or plays: on the side it took, as far
+* along it as it was put, every frame while it's up. Once the learner moves it, it stays where they put it.
+*/
+function followAnchor(note, ref, side, w, h, at) {
+	const first = resolveTarget$1(ref);
+	if (!first) return;
+	const base = besideAt(first, side, w, h), dx = at.x - base.x, dy = at.y - base.y;
+	let was = "";
+	const tick = () => {
+		if (!note.isConnected || note.classList.contains("fading") || note.classList.contains("boarded") || note.dataset.moved) return;
+		const now = resolveTarget$1(ref);
+		if (now) {
+			const p = besideAt(now, side, w, h), key = `${Math.round(p.x + dx)},${Math.round(p.y + dy)}`;
+			if (key !== was) {
+				was = key;
+				note.style.left = `${p.x + dx}px`;
+				note.style.top = `${p.y + dy}px`;
+			}
+		}
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+}
+/** The point where the line from a rect's centre towards (x, y) leaves the rect, `pad` outside it. */
+function edgeToward(r, x, y, pad) {
+	const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy;
+	const hw = r.width / 2 + pad, hh = r.height / 2 + pad;
+	const t = Math.min(Math.abs(dx) > 1e-6 ? hw / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? hh / Math.abs(dy) : Infinity, 1);
+	return {
+		x: cx + dx * t,
+		y: cy + dy * t
+	};
+}
+/**
+* A hand-drawn arrow from one rect to another: a gently bowed, slightly wobbly stroke drawn out from its tail,
+* then its head, two quick strokes. It stays with the notes and goes when they are wiped.
+*/
+var arrowsFrom = /* @__PURE__ */ new WeakMap();
+var arrowEls = /* @__PURE__ */ new WeakMap();
+async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow", name = "") {
+	const side = Math.random() < .5 ? -1 : 1, jitter = [
+		Math.random() - .5,
+		Math.random() - .5,
+		Math.random() - .5,
+		Math.random() - .5
+	];
+	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	svg.classList.add("ai-arrow");
+	if (inkClass(color)) svg.classList.add(inkClass(color));
+	let drawnSoFar = 0;
+	const shaft = () => svg.querySelector(".ai-arrow-shaft");
+	const shape = () => {
+		const f = from(), t = to();
+		if (!f || !t) return 0;
+		const fc = {
+			x: f.left + f.width / 2,
+			y: f.top + f.height / 2
+		}, tc = {
+			x: t.left + t.width / 2,
+			y: t.top + t.height / 2
+		};
+		const a = edgeToward(f, tc.x, tc.y, kind === "both" ? 7 : 4), b = edgeToward(t, fc.x, fc.y, kind === "line" ? 4 : 7);
+		const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+		if (len < 12) {
+			svg.innerHTML = "";
+			return 0;
+		}
+		const nx = -dy / len, ny = dx / len, bow = side * Math.min(60, len * .18), wob = (k) => jitter[k] * Math.min(10, len * .04);
+		const c1 = {
+			x: a.x + dx * .3 + nx * bow + wob(0),
+			y: a.y + dy * .3 + ny * bow + wob(1)
+		};
+		const c2 = {
+			x: a.x + dx * .7 + nx * bow * .8 + wob(2),
+			y: a.y + dy * .7 + ny * bow * .8 + wob(3)
+		};
+		const headAt = (tip, from) => {
+			const ex = tip.x - from.x, ey = tip.y - from.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
+			const wing = (k) => {
+				const c = Math.cos(k), s = Math.sin(k);
+				return {
+					x: tip.x - head * (ux * c - uy * s),
+					y: tip.y - head * (uy * c + ux * s)
+				};
+			};
+			const w1 = wing(.48), w2 = wing(-.42);
+			return `M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}`;
+		};
+		const heads = [...kind !== "line" ? [headAt(b, c2)] : [], ...kind === "both" ? [headAt(a, c1)] : []];
+		const d = `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, drawnHeads = svg.querySelectorAll(".ai-arrow-head");
+		if (shaft() && drawnHeads.length === heads.length) {
+			shaft().setAttribute("d", d);
+			drawnHeads.forEach((h, k) => h.setAttribute("d", heads[k]));
+		} else svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="${d}"/>` + heads.map((h) => `<path class="ai-arrow-head" pathLength="1" d="${h}"/>`).join("");
+		if (!svg.classList.contains("drawn")) shaft()?.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
+		return len;
+	};
+	const len = shape();
+	if (!len) return;
+	notesLayer().append(svg);
+	notes.push(svg);
+	if (name) noteByText.set(noteKey(name), svg);
+	if (fromNote) {
+		arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
+		arrowEls.set(fromNote, [...arrowEls.get(fromNote) ?? [], svg]);
+	}
+	let was = "";
+	const follow = () => {
+		if (!svg.isConnected) return;
+		const f = from(), t = to(), now = f && t ? [
+			f.left,
+			f.top,
+			f.width,
+			f.height,
+			t.left,
+			t.top,
+			t.width,
+			t.height
+		].map(Math.round).join() : "";
+		if (now && now !== was) {
+			was = now;
+			shape();
+		}
+		requestAnimationFrame(follow);
+	};
+	requestAnimationFrame(follow);
+	drawingArrow = true;
+	try {
+		const start = shaft()?.getPointAtLength(0);
+		if (start) await glide(start.x, start.y, r, 260);
+		svg.classList.add("tracing");
+		const dur = Math.min(900, 350 + len * .6), t0 = performance.now();
+		for (;;) {
+			alive(r);
+			const t = Math.min(1, (performance.now() - t0) / dur);
+			drawnSoFar = 1 - Math.pow(1 - t, 2);
+			const path = shaft();
+			if (path) {
+				path.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
+				const p = path.getPointAtLength(path.getTotalLength() * drawnSoFar);
+				pos.x = p.x;
+				pos.y = p.y;
+				paintPointer();
+			}
+			if (t >= 1) break;
+			await new Promise((res) => requestAnimationFrame(res));
+		}
+		svg.classList.add("drawn");
+		if (kind !== "line") {
+			svg.classList.add("headed");
+			await sleep(220);
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
+}
+var sketch = null;
+var SVG_NS = "http://www.w3.org/2000/svg";
+var LABEL_FONT = "600 15px ui-monospace, SFMono-Regular, Menlo, monospace";
+var measurer = null;
+var textWidth = (t) => {
+	measurer ??= document.createElement("canvas").getContext("2d");
+	if (!measurer) return t.length * 9;
+	measurer.font = LABEL_FONT;
+	return measurer.measureText(t).width;
+};
+/**
+* A shape's size in px within a box `within` (its group's, or the board): w and h on that box's grid, never
+* smaller than its label; a circle with only a w is round. Text is as big as its words.
+*/
+function shapeSize(spec, within) {
+	const tw = textWidth((spec.label ?? "").replace(/\$([^$]*)\$?/g, (_, m) => m.replace(/\\[a-zA-Z]+\s*/g, "x").replace(/[{}_^\\]/g, "")));
+	if (spec.type === "text") return {
+		w: tw * 14 / 15 + 6,
+		h: 20
+	};
+	const fit = spec.type === "diamond" ? tw * 1.6 + 30 : spec.type === "ellipse" ? Math.max(36, tw * 1.22 + 26) : Math.max(34, tw + 22);
+	const w = Math.max(fit, spec.w ? spec.w / 100 * within.w : 0);
+	return {
+		w,
+		h: spec.h ? Math.max(spec.h / 100 * within.h, 30) : spec.type === "diamond" ? 46 : spec.type === "ellipse" ? spec.w || tw < 20 ? w : 42 : 32
+	};
+}
+/** The group a spec sits in, if it names one on the board. */
+var groupOf = (b, e) => e.group ? b.specs.find((g) => g.type === "group" && g.id === e.group) ?? null : null;
+/** How far the learner dragged it: its own drag and its groups'. */
+function offsetOf(b, e) {
+	const o = {
+		x: 0,
+		y: 0
+	};
+	for (let g = e, i = 0; g && i < 50; g = groupOf(b, g), i++) {
+		const m = b.moved.get(g);
+		if (m) {
+			o.x += m.x;
+			o.y += m.y;
+		}
+	}
+	return o;
+}
+/** A laid-out element's box in the drawing's space, where the learner left it. */
+function boxOf(b, e) {
+	const r = laidBox(b, e);
+	if (!r) return null;
+	const o = offsetOf(b, e);
+	let x = r.x + o.x, y = r.y + o.y, w = r.w, h = r.h;
+	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) {
+		const z = b.zoom.get(g), gr = z && z !== 1 ? laidBox(b, g) : null;
+		if (!z || !gr) continue;
+		const go = offsetOf(b, g), gx = gr.x + go.x, gy = gr.y + go.y;
+		x = gx + (x - gx) * z;
+		y = gy + (y - gy) * z;
+		w *= z;
+		h *= z;
+	}
+	return new DOMRect(x, y, w, h);
+}
+/** How long things take to glide to where a new layout puts them, and how far along they are. */
+var GLIDE_MS = 480;
+var glideK = (b) => {
+	if (!b.glide) return 1;
+	const t = Math.min(1, (performance.now() - b.glide.t0) / GLIDE_MS);
+	return 1 - Math.pow(1 - t, 3);
+};
+var mix = (a, z, k) => a + (z - a) * k;
+/** Where the layout has it now: on its way from its old place to its new one while a new layout glides in. */
+function laidBox(b, e) {
+	const r = b.laid.boxes.get(e), f = b.glide?.from.get(e);
+	if (!r || !f) return r ?? null;
+	const k = glideK(b);
+	return {
+		x: mix(f.x, r.x, k),
+		y: mix(f.y, r.y, k),
+		w: mix(f.w, r.w, k),
+		h: mix(f.h, r.h, k)
+	};
+}
+/**
+* A group's box as it is now: where it was laid out, grown to hold what is in it wherever the learner dragged it.
+* Its background and the links to it use this.
+*/
+function extentOf(b, g, depth = 0) {
+	const root = g === b.root;
+	let r = root ? new DOMRect(0, 0, b.laid.w, b.laid.h) : boxOf(b, g);
+	if (!r || depth > 20) return r;
+	for (const e of b.specs) {
+		if ((root ? groupOf(b, e) !== null : groupOf(b, e) !== g) || e.type === "path" || LINKS.has(e.type)) continue;
+		const c = e.type === "group" ? extentOf(b, e, depth + 1) : b.all.find((d) => d.spec === e)?.local() ?? null;
+		if (!c) continue;
+		const x0 = Math.min(r.left, c.left), y0 = Math.min(r.top, c.top), x1 = Math.max(r.right, c.right), y1 = Math.max(r.bottom, c.bottom);
+		r = new DOMRect(x0, y0, x1 - x0, y1 - y0);
+	}
+	return r;
+}
+/** The box a picture's points are on: its group's, or the whole drawing's. */
+function frameOf(b, e) {
+	const g = groupOf(b, e);
+	return g && boxOf(b, g) || new DOMRect(0, 0, b.laid.w, b.laid.h);
+}
+var toScreen = (b, x, y) => {
+	const o = b.el.getBoundingClientRect();
+	return {
+		x: o.left + b.view.ox + x * b.view.s,
+		y: o.top + b.view.oy + y * b.view.s
+	};
+};
+var fromScreen = (b, r) => {
+	const o = b.el.getBoundingClientRect(), s = b.view.s;
+	return new DOMRect((r.left - o.left - b.view.ox) / s, (r.top - o.top - b.view.oy) / s, r.width / s, r.height / s);
+};
+/** Lay the drawing out again, fit it to the board, and put everything where it now goes. */
+function layoutBoard(b, grow = true) {
+	const from = /* @__PURE__ */ new Map();
+	for (const e of b.laid.boxes.keys()) {
+		const r = laidBox(b, e);
+		if (r) from.set(e, r);
+	}
+	const first = !from.size;
+	b.laid = layoutDrawing(b.specs, b.layout, {
+		box: {
+			w: b.w,
+			h: b.h
+		},
+		sizeOf: shapeSize
+	});
+	const pad = 12, fit = () => Math.min(b.sized ? 4 : 1, (b.w - 24) / Math.max(1, b.laid.w), (b.h - 24) / Math.max(1, b.laid.h));
+	if (grow && fit() < MIN_SCALE) {
+		const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+		const w = Math.min(view.width * .92, Math.max(b.w, b.laid.w * MIN_SCALE + 24)), h = Math.min(view.height * .88, Math.max(b.h, b.laid.h * MIN_SCALE + 24));
+		if (w > b.w + 1 || h > b.h + 1) {
+			sizeBoard(b, w, h);
+			b.laid = layoutDrawing(b.specs, b.layout, {
+				box: {
+					w: b.w,
+					h: b.h
+				},
+				sizeOf: shapeSize
+			});
+		}
+	}
+	const to = {
+		ox: pad,
+		oy: pad,
+		s: fit()
+	};
+	if (first) {
+		b.glide = null;
+		b.view = to;
+		fitCanvas(b);
+		placeAll(b);
+		return;
+	}
+	const running = !!b.glide;
+	b.glide = {
+		from,
+		view: { ...b.view },
+		to,
+		t0: performance.now()
+	};
+	if (running) return;
+	const tick = () => {
+		if (!b.glide || !b.el.isConnected) return;
+		const k = glideK(b), { view: v, to: z } = b.glide;
+		b.view = {
+			ox: mix(v.ox, z.ox, k),
+			oy: mix(v.oy, z.oy, k),
+			s: mix(v.s, z.s, k)
+		};
+		fitCanvas(b);
+		placeAll(b);
+		if (k < 1) requestAnimationFrame(tick);
+		else b.glide = null;
+	};
+	tick();
+}
+/** Below this the drawing would be too small to read: the board grows instead. */
+var MIN_SCALE = .75;
+/** The board's size in px: its top left stays put, and it grows no further than the window's edge. */
+function sizeBoard(b, w, h) {
+	const left = parseFloat(b.el.style.left), top = parseFloat(b.el.style.top);
+	b.w = Math.round(Math.max(80, Math.min(w, innerWidth - 8 - left)));
+	b.h = Math.round(Math.max(60, Math.min(h, innerHeight - 8 - top)));
+	b.el.style.width = `${b.w}px`;
+	b.el.style.height = `${b.h}px`;
+}
+var fitCanvas = (b) => {
+	b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`;
+	b.canvas.style.setProperty("--draw-scale", String(b.view.s));
+};
+function placeAll(b) {
+	for (const item of b.all) item.place();
+	for (const [g, el] of b.groups) {
+		const r = extentOf(b, g);
+		if (!r) continue;
+		const n = nesting(b, g), side = (12 + 10 * n) / b.view.s, head = (34 + 30 * n) / b.view.s;
+		el.style.left = `${r.left - side}px`;
+		el.style.top = `${r.top - head}px`;
+		el.style.width = `${r.width + 2 * side}px`;
+		el.style.height = `${r.height + head + side}px`;
+	}
+	for (const [e, el] of b.hits) {
+		const r = b.all.find((d) => d.spec === e)?.local();
+		if (!r) continue;
+		const pad = 4 / b.view.s;
+		el.style.left = `${r.left - pad}px`;
+		el.style.top = `${r.top - pad}px`;
+		el.style.width = `${r.width + 2 * pad}px`;
+		el.style.height = `${r.height + 2 * pad}px`;
+	}
+}
+/** Drag `el` to move what it holds: `drag` gets each step of the move in screen px. */
+function draggable(el, drag, lit = el) {
+	el.addEventListener("pointerdown", (e) => {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		e.stopPropagation();
+		el.setPointerCapture(e.pointerId);
+		lit.classList.add("dragging");
+		let x = e.clientX, y = e.clientY;
+		const move = (ev) => {
+			if (!ev.buttons) {
+				up();
+				return;
+			}
+			drag(ev.clientX - x, ev.clientY - y);
+			x = ev.clientX;
+			y = ev.clientY;
+		};
+		const up = () => {
+			el.removeEventListener("pointermove", move);
+			el.removeEventListener("pointerup", up);
+			el.removeEventListener("pointercancel", up);
+			el.removeEventListener("lostpointercapture", up);
+			lit.classList.remove("dragging");
+		};
+		el.addEventListener("pointermove", move);
+		el.addEventListener("pointerup", up);
+		el.addEventListener("pointercancel", up);
+		el.addEventListener("lostpointercapture", up);
+	});
+}
+/** Move a drawn element (and what is in it) by a drag of (dx, dy) screen px; the links to it follow. */
+function nudge(b, e, dx, dy) {
+	const m = b.moved.get(e) ?? {
+		x: 0,
+		y: 0
+	};
+	b.moved.set(e, {
+		x: m.x + dx / b.view.s,
+		y: m.y + dy / b.view.s
+	});
+	placeAll(b);
+}
+/** How deep the groups inside `g` go: 0 when it holds none. */
+function nesting(b, g, depth = 0) {
+	if (depth > 20) return 0;
+	const inner = b.specs.filter((e) => e.type === "group" && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
+	return inner.length ? 1 + Math.max(...inner.map((e) => nesting(b, e, depth + 1))) : 0;
+}
+/** How much the groups around `e` that the learner resized scale it: its words grow and shrink with its box. */
+function zoomOf(b, e) {
+	let z = 1;
+	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) z *= b.zoom.get(g) ?? 1;
+	return z;
+}
+/** The groups `e` sits in, innermost first. */
+function groupsAround(b, e) {
+	const out = [];
+	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) out.push(g);
+	return out;
+}
+/**
+* A group's handle, under its shapes: pointed at (or anything in it), it lights up behind them, the scene dimmed,
+* so they read over a busy view, and shows its title; the title drags the whole group.
+*/
+function groupHandle(b, g) {
+	const el = document.createElement("div");
+	el.className = "ai-draw-group";
+	const title = document.createElement("div");
+	title.className = "ai-draw-group-title";
+	title.textContent = g.label || g.id || "";
+	title.title = "Drag to move";
+	el.append(title);
+	draggable(title, (dx, dy) => {
+		if (g !== b.root) {
+			nudge(b, g, dx, dy);
+			return;
+		}
+		b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;
+		b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
+		placeAll(b);
+	}, el);
+	const light = (on) => {
+		for (const o of g === b.root ? [] : [...groupsAround(b, g), b.root]) b.groups.get(o)?.classList.toggle("lit", on);
+	};
+	el.addEventListener("pointerenter", (e) => {
+		if (e.isTrusted) light(true);
+	});
+	el.addEventListener("pointerleave", (e) => {
+		if (e.isTrusted) light(false);
+	});
+	const grip = document.createElement("div");
+	grip.className = "ai-draw-resize";
+	grip.title = "Drag to resize";
+	el.append(grip);
+	if (g !== b.root) draggable(grip, (dx, dy) => {
+		const r = extentOf(b, g);
+		if (!r || r.width < 1 || r.height < 1) return;
+		const f = Math.max((r.width + dx / b.view.s) / r.width, (r.height + dy / b.view.s) / r.height);
+		b.zoom.set(g, Math.min(4, Math.max(.3, (b.zoom.get(g) ?? 1) * f)));
+		placeAll(b);
+	}, el);
+	if (g === b.root) draggable(grip, (dx, dy) => {
+		if (!b.sized) {
+			b.w = b.laid.w * b.view.s + 24;
+			b.h = b.laid.h * b.view.s + 24;
+			b.sized = true;
+		}
+		sizeBoard(b, b.w + dx, b.h + dy);
+		b.glide = null;
+		b.laid = {
+			boxes: /* @__PURE__ */ new Map(),
+			w: b.w,
+			h: b.h
+		};
+		layoutBoard(b, false);
+	}, el);
+	b.canvas.insertBefore(el, b.svg);
+	b.groups.set(g, el);
+	return el;
+}
+/** A shape's or a word's own handle, over it: drag it anywhere, and it lights its groups while pointed at. */
+function nodeHandle(b, e) {
+	const el = document.createElement("div");
+	el.className = "ai-draw-hit";
+	el.title = "Drag to move";
+	draggable(el, (dx, dy) => nudge(b, e, dx, dy));
+	const light = (on) => {
+		for (const g of [...groupsAround(b, e), b.root]) b.groups.get(g)?.classList.toggle("lit", on);
+	};
+	el.addEventListener("pointerenter", (e) => {
+		if (e.isTrusted) light(true);
+	});
+	el.addEventListener("pointerleave", (e) => {
+		if (e.isTrusted) light(false);
+	});
+	b.canvas.append(el);
+	b.hits.set(e, el);
+	return el;
+}
+/** The board, made on the first drawing: a wide box (3 by 2) in a free part of the view, clear of notes and panels. */
+function sketchBoard() {
+	if (sketch?.el.isConnected && !sketch.el.classList.contains("fading")) return sketch;
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	const w = Math.round(Math.max(300, Math.min(560, view.width * .62, (view.height - 120) * 1.5))), h = Math.round(w * 2 / 3);
+	const el = document.createElement("div");
+	el.className = "ai-drawing";
+	const at = placeNote(w, h, null);
+	el.style.left = `${at.x}px`;
+	el.style.top = `${at.y}px`;
+	el.style.width = `${w}px`;
+	el.style.height = `${h}px`;
+	const canvas = document.createElement("div");
+	canvas.className = "ai-drawing-canvas";
+	const svg = document.createElementNS(SVG_NS, "svg");
+	canvas.append(svg);
+	el.append(canvas);
+	notesLayer().append(el);
+	notes.push(el);
+	sketch = {
+		el,
+		canvas,
+		svg,
+		w,
+		h,
+		layout: "",
+		specs: [],
+		laid: {
+			boxes: /* @__PURE__ */ new Map(),
+			w,
+			h
+		},
+		view: {
+			ox: 0,
+			oy: 0,
+			s: 1
+		},
+		moved: /* @__PURE__ */ new Map(),
+		items: /* @__PURE__ */ new Map(),
+		all: [],
+		groups: /* @__PURE__ */ new Map(),
+		hits: /* @__PURE__ */ new Map(),
+		root: {
+			type: "group",
+			label: "Drawing"
+		},
+		glide: null,
+		zoom: /* @__PURE__ */ new Map()
+	};
+	groupHandle(sketch, sketch.root).classList.add("ai-draw-root");
+	return sketch;
+}
+/**
+* Links with an end on the view (a cell, a chart bar, a note), not on the board: what they join there moves as the
+* scene plays, turns or is resized, so they are put in place again every frame while there are any.
+*/
+var linksToView = (b) => b.all.filter((d) => LINKS.has(d.spec.type) && [d.spec.start, d.spec.end].some((e) => e && !b.items.has(e)));
+var followingView = false;
+function followView(b) {
+	if (followingView) return;
+	followingView = true;
+	const tick = () => {
+		const live = sketch === b && b.el.isConnected && !b.el.classList.contains("fading") ? linksToView(b) : [];
+		if (!live.length) {
+			followingView = false;
+			return;
+		}
+		if (!b.glide) for (const d of live) d.place();
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+}
+/** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
+function drawnRect(id, part = "") {
+	const b = sketch, item = b?.el.isConnected ? b.items.get(id) : void 0;
+	if (!item || !b) return null;
+	if (part && item.label) {
+		const t = textRect(item.label, part);
+		if (t) return t;
+	}
+	const l = item.local();
+	if (!l) return null;
+	const p = toScreen(b, l.left, l.top);
+	return new DOMRect(p.x, p.y, l.width * b.view.s, l.height * b.view.s);
+}
+/**
+* Where a link's end is now, in the drawing's space: anything drawn (a shape, a group, text, another link) by its
+* id, or a ref on the view. Read on every redraw, so a link follows what it joins as it's laid out or dragged.
+*/
+function linkEnd(name) {
+	const b = sketch;
+	if (!b) return null;
+	const item = b.items.get(name);
+	const r = item ? item.local() : (() => {
+		const v = resolveTarget$1(name);
+		return v ? fromScreen(b, v) : null;
+	})();
+	if (!r) return null;
+	return {
+		type: item && SHAPES.has(item.spec.type) ? item.spec.type : "rectangle",
+		cx: r.left + r.width / 2,
+		cy: r.top + r.height / 2,
+		w: r.width,
+		h: r.height
+	};
+}
+/** The pointer draws `path` (in the drawing's space) as a hand would: onto its start, then along it as it appears. */
+async function traceStroke(path, r, speed = 1) {
+	const b = sketch;
+	if (!b) return;
+	const total = path.getTotalLength(), s0 = path.getPointAtLength(0), p0 = toScreen(b, s0.x, s0.y);
+	await glide(p0.x, p0.y, r, 220);
+	path.classList.add("tracing");
+	const dur = Math.min(900, 200 + total * b.view.s * 1.3) / speed, t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+		path.style.setProperty("stroke-dashoffset", String(1 - k));
+		const p = path.getPointAtLength(total * k), at = toScreen(b, p.x, p.y);
+		pos.x = at.x;
+		pos.y = at.y;
+		paintPointer();
+		if (t >= 1) break;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	path.classList.add("drawn");
+}
+/** Write a label key by key, quicker than a note, the pointer moving along with the words. */
+async function typeLabel(el, text, r) {
+	el.textContent = "";
+	let prev = "\n", shown = "";
+	for (const ch of text) {
+		alive(r);
+		await sleep(keyDelay(prev, ch) * .45);
+		shown += ch;
+		el.innerHTML = inkHtml(shown);
+		prev = ch;
+		const b = el.getBoundingClientRect();
+		pos.x += (b.right - pos.x) * .5;
+		pos.y += (b.bottom - 2 - pos.y) * .5;
+		paintPointer();
+	}
+}
+var newPath = (cls, color) => {
+	const p = document.createElementNS(SVG_NS, "path");
+	p.setAttribute("pathLength", "1");
+	p.setAttribute("class", `${cls} ${inkClass(color)}`.trim());
+	return p;
+};
+var newLabel = (b, cls, ink) => {
+	const lab = Object.assign(document.createElement("div"), { className: `ai-draw-label ${cls} ${inkClass(ink)}`.replace(/\s+/g, " ").trim() });
+	b.canvas.append(lab);
+	return lab;
+};
+/** Draw a beat's drawing on the board: each element in turn, the pointer making its strokes and writing its words. */
+async function drawSketch(d, color, r) {
+	const b = sketchBoard();
+	const fresh = d.elements.filter((e) => !e.id || !b.items.has(e.id));
+	b.specs.push(...fresh);
+	if (d.layout) b.layout = d.layout;
+	for (const g of fresh) if (g.type === "group" && g.id) {
+		groupHandle(b, g);
+		const item = {
+			spec: g,
+			paths: [],
+			label: null,
+			place: () => void 0,
+			local: () => extentOf(b, g)
+		};
+		b.items.set(g.id, item);
+		b.all.push(item);
+	}
+	layoutBoard(b);
+	drawingArrow = true;
+	try {
+		for (const spec of fresh) {
+			alive(r);
+			const ink = spec.color || color;
+			if (SHAPES.has(spec.type)) {
+				const label = spec.label ?? "";
+				const jitter = [
+					Math.random() - .5,
+					Math.random() - .5,
+					Math.random() - .5,
+					Math.random() - .5
+				];
+				const path = newPath("ai-draw-stroke", ink);
+				b.svg.append(path);
+				const lab = label ? newLabel(b, "", ink) : null;
+				const local = () => boxOf(b, spec);
+				const place = () => {
+					const l = local();
+					if (!l) return;
+					path.setAttribute("d", shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
+					if (lab) {
+						lab.style.left = `${l.left + l.width / 2}px`;
+						lab.style.top = `${l.top + l.height / 2}px`;
+						lab.style.scale = String(zoomOf(b, spec));
+					}
+				};
+				const item = {
+					spec,
+					paths: [path],
+					label: lab,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(path, r);
+				if (lab) await typeLabel(lab, label, r);
+				nodeHandle(b, spec);
+				placeAll(b);
+			} else if (spec.type === "outline" && spec.around?.length) {
+				const path = newPath("ai-draw-stroke", ink);
+				b.svg.append(path);
+				const lab = spec.label ? newLabel(b, "", ink) : null;
+				const hull = () => hullAround(spec.around.map((id) => b.items.get(id)?.local()).filter((x) => !!x).map((x) => ({
+					x: x.left,
+					y: x.top,
+					w: x.width,
+					h: x.height
+				})));
+				const place = () => {
+					const h = hull();
+					if (h.length < 3) return;
+					path.setAttribute("d", smoothPath(h, true));
+					if (lab) {
+						const top = Math.min(...h.map((p) => p.y)), mid = h.reduce((a, p) => a + p.x, 0) / h.length;
+						lab.style.left = `${mid}px`;
+						lab.style.top = `${top - 12}px`;
+					}
+				};
+				const local = () => {
+					const bb = path.getBBox();
+					return bb.width ? new DOMRect(bb.x, bb.y, bb.width, bb.height) : null;
+				};
+				const item = {
+					spec,
+					paths: [path],
+					label: lab,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(path, r);
+				if (lab) await typeLabel(lab, spec.label, r);
+			} else if (LINKS.has(spec.type) && (spec.start && spec.end || (spec.points?.length ?? 0) >= 2)) {
+				const heads = spec.type === "line" ? "none" : spec.heads || "end";
+				const atEnd = heads === "end" || heads === "both", atStart = heads === "start" || heads === "both";
+				const shaft = newPath("ai-draw-stroke", ink);
+				const head = atEnd ? newPath("ai-draw-stroke", ink) : null, tail = atStart ? newPath("ai-draw-stroke", ink) : null;
+				b.svg.append(shaft);
+				if (head) b.svg.append(head);
+				if (tail) b.svg.append(tail);
+				const lab = spec.label ? newLabel(b, "", ink) : null;
+				const bow = (Math.random() - .5) * .25;
+				const free = !(spec.start && spec.end);
+				const pts = () => {
+					const f = frameOf(b, spec);
+					return spec.points.map(([x = 0, y = 0]) => ({
+						x: f.left + x / 100 * f.width,
+						y: f.top + y / 100 * f.height
+					}));
+				};
+				const place = () => {
+					let a, z, mx, my, nx, ny;
+					if (free) {
+						const ps = pts();
+						a = ps[0];
+						z = ps[ps.length - 1];
+						if (ps.length > 2) {
+							shaft.setAttribute("d", smoothPath(ps));
+							({x: mx, y: my} = ps[ps.length - 2]);
+							({x: nx, y: ny} = ps[1]);
+						} else {
+							mx = nx = (a.x + z.x) / 2;
+							my = ny = (a.y + z.y) / 2;
+							shaft.setAttribute("d", `M${a.x} ${a.y} L${z.x} ${z.y}`);
+						}
+					} else {
+						const s = linkEnd(spec.start), e = linkEnd(spec.end);
+						if (!s || !e) return;
+						a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {
+							x: e.cx,
+							y: e.cy
+						}, tail ? 5 : 3);
+						z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {
+							x: s.cx,
+							y: s.cy
+						}, head ? 5 : 3);
+						const dx = z.x - a.x, dy = z.y - a.y;
+						mx = nx = (a.x + z.x) / 2 - dy * bow;
+						my = ny = (a.y + z.y) / 2 + dx * bow;
+						shaft.setAttribute("d", `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+					}
+					const headAt = (path, tip, fx, fy) => {
+						const ex = tip.x - fx, ey = tip.y - fy, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
+						const wing = (k) => {
+							const c = Math.cos(k), si = Math.sin(k);
+							return `${tip.x - len * (ux * c - uy * si)} ${tip.y - len * (uy * c + ux * si)}`;
+						};
+						path.setAttribute("d", `M${wing(.5)} L${tip.x} ${tip.y} L${wing(-.45)}`);
+					};
+					if (head) headAt(head, z, mx, my);
+					if (tail) headAt(tail, a, nx, ny);
+					if (lab) {
+						const m = shaft.getPointAtLength(shaft.getTotalLength() / 2), dx = z.x - a.x, dy = z.y - a.y, l = Math.hypot(dx, dy) || 1;
+						lab.style.left = `${m.x + dy / l * 14}px`;
+						lab.style.top = `${m.y - dx / l * 14}px`;
+					}
+				};
+				const local = () => {
+					const bb = shaft.getBBox();
+					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
+				};
+				const item = {
+					spec,
+					paths: [
+						shaft,
+						...head ? [head] : [],
+						...tail ? [tail] : []
+					],
+					label: lab,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(shaft, r);
+				if (head) await traceStroke(head, r, 2.5);
+				if (tail) await traceStroke(tail, r, 2.5);
+				followView(b);
+				if (lab) await typeLabel(lab, spec.label, r);
+			} else if (spec.type === "path" && (spec.points?.length ?? 0) >= 2) {
+				const path = newPath("ai-draw-stroke", ink);
+				b.svg.append(path);
+				const place = () => {
+					const f = frameOf(b, spec);
+					path.setAttribute("d", smoothPath(spec.points.map(([x = 0, y = 0]) => ({
+						x: f.left + x / 100 * f.width,
+						y: f.top + y / 100 * f.height
+					})), spec.closed));
+				};
+				const local = () => {
+					const bb = path.getBBox();
+					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
+				};
+				const item = {
+					spec,
+					paths: [path],
+					label: null,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(path, r);
+			} else if (spec.type === "text" && spec.label) {
+				const lab = newLabel(b, `ai-draw-text${spec.near ? " beside" : ""}`, ink);
+				const local = () => {
+					if (!spec.near) return boxOf(b, spec);
+					const w = lab.offsetWidth, h = lab.offsetHeight;
+					return w ? new DOMRect(lab.offsetLeft, lab.offsetTop - h / 2, w, h) : null;
+				};
+				const place = () => {
+					if (!spec.near) {
+						const l = boxOf(b, spec);
+						if (l) {
+							lab.style.left = `${l.left + l.width / 2}px`;
+							lab.style.top = `${l.top + l.height / 2}px`;
+							lab.style.scale = String(zoomOf(b, spec));
+						}
+						return;
+					}
+					const n = linkEnd(spec.near);
+					lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.laid.w / 2}px`;
+					lab.style.top = `${n ? n.cy : b.laid.h - 14}px`;
+				};
+				const item = {
+					spec,
+					paths: [],
+					label: lab,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				const p0 = lab.getBoundingClientRect();
+				await glide(p0.left, p0.top + p0.height / 2, r, 260);
+				await typeLabel(lab, spec.label, r);
+				if (!spec.near) {
+					nodeHandle(b, spec);
+					placeAll(b);
+				}
+			}
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
+}
+/**
+* Rub out drawn things as with an eraser: the pointer scrubs back and forth over each while it fades. The links
+* and text joined to one go with it, and what is in a group goes with the group; what stays is laid out again.
+*/
+async function eraseSketch(ids, r) {
+	const b = sketch;
+	if (!b?.el.isConnected || !ids.length) return;
+	const gone = new Set(ids.filter((id) => b.items.has(id)));
+	if (!gone.size) return;
+	for (let grew = true; grew;) {
+		grew = false;
+		for (const e of b.specs) if (e.id && e.group && gone.has(e.group) && !gone.has(e.id)) {
+			gone.add(e.id);
+			grew = true;
+		}
+	}
+	const inGone = (e) => !!e.group && gone.has(e.group);
+	const joined = (item) => [
+		item.spec.start,
+		item.spec.end,
+		item.spec.near
+	].some((e) => e && gone.has(e));
+	const going = b.all.filter((item) => item.spec.id && gone.has(item.spec.id) || joined(item) || inGone(item.spec));
+	drawingArrow = true;
+	try {
+		for (const item of going) {
+			alive(r);
+			const l = item.local();
+			const parts = [...item.paths, ...item.label ? [item.label] : []];
+			if (l && l.width + l.height > 0 && parts.length) {
+				const tl = toScreen(b, l.left, l.top), br = toScreen(b, l.right, l.bottom), pad = 6;
+				const x0 = tl.x - pad, x1 = br.x + pad, y0 = tl.y - pad, h = br.y - tl.y + 12;
+				await glide(x0, y0, r, 220);
+				const passes = 5, dur = 650, t0 = performance.now();
+				for (;;) {
+					alive(r);
+					const t = Math.min(1, (performance.now() - t0) / dur), u = t * passes, leg = Math.floor(u), f = u - leg;
+					pos.x = leg % 2 ? x1 - (x1 - x0) * f : x0 + (x1 - x0) * f;
+					pos.y = y0 + h * Math.min(1, (leg + f) / passes);
+					paintPointer();
+					for (const el of parts) el.style.opacity = String(1 - t);
+					if (t >= 1) break;
+					await new Promise((res) => requestAnimationFrame(res));
+				}
+			}
+			for (const el of parts) el.remove();
+			b.groups.get(item.spec)?.remove();
+			b.groups.delete(item.spec);
+			b.hits.get(item.spec)?.remove();
+			b.hits.delete(item.spec);
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	b.all = b.all.filter((item) => !going.includes(item));
+	b.specs = b.specs.filter((spec) => !going.some((item) => item.spec === spec));
+	for (const item of going) if (item.spec.id && b.items.get(item.spec.id) === item) b.items.delete(item.spec.id);
+	layoutBoard(b);
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
+}
+/**
+* The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
+* note is theirs to keep in place: the presenter's later notes are placed around it.
+*/
+function makeMovable(note) {
+	note.addEventListener("pointerdown", (e) => {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		e.stopPropagation();
+		note.setPointerCapture(e.pointerId);
+		note.classList.add("dragging");
+		const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+		const move = (ev) => {
+			if (!ev.buttons) {
+				up();
+				return;
+			}
+			note.dataset.moved = "1";
+			note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
+			note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
+			for (const redraw of arrowsFrom.get(note) ?? []) redraw();
+		};
+		const up = () => {
+			note.removeEventListener("pointermove", move);
+			note.removeEventListener("pointerup", up);
+			note.removeEventListener("pointercancel", up);
+			note.removeEventListener("lostpointercapture", up);
+			note.classList.remove("dragging");
+		};
+		note.addEventListener("pointermove", move);
+		note.addEventListener("pointerup", up);
+		note.addEventListener("pointercancel", up);
+		note.addEventListener("lostpointercapture", up);
+	});
+}
+/** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
+function eraseNotes(all = false) {
+	const going = all ? [...notes, ...board] : notes;
+	if (sketch && going.includes(sketch.el)) sketch = null;
+	notes = [];
+	if (all) {
+		board = [];
+		noteByText.clear();
+	}
+	for (const n of going) {
+		n.classList.add("fading");
+		window.setTimeout(() => n.remove(), 700);
+	}
+}
+/**
+* Send a note to the board: it slides to the top left of the view, under the notes already there, and stays.
+* Arrows from it follow it there.
+*/
+/** The board's next line: the top left of the view, below its own corner buttons, under the lines already there. */
+function boardSlot() {
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	return {
+		x: view.left + 16,
+		y: board.reduce((top, n) => Math.max(top, n.getBoundingClientRect().bottom + 8), view.top + 52)
+	};
+}
+async function sendToBoard(note, r) {
+	if (board.includes(note)) return;
+	notes = notes.filter((n) => n !== note);
+	const slot = boardSlot();
+	board.push(note);
+	note.classList.add("boarded");
+	note.style.transition = "left .65s cubic-bezier(.4, 0, .2, 1), top .65s cubic-bezier(.4, 0, .2, 1), opacity .3s, transform .3s";
+	note.style.left = `${slot.x}px`;
+	note.style.top = `${slot.y}px`;
+	const t0 = performance.now();
+	while (performance.now() - t0 < 700) {
+		alive(r);
+		for (const redraw of arrowsFrom.get(note) ?? []) redraw();
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	note.style.transition = "";
+}
+/**
+* Move a parameter slider to `value` as a person would: onto its thumb, press, drag smoothly along the track while
+* the view follows, release. Off screen (its panel folded), it just takes the value.
+*/
+async function dragParamTo(id, value, r) {
+	const s = state.sceneSliders[id];
+	if (!s) return;
+	const to = Math.max(s.min, Math.min(s.max, value)), from = Number(s.value), input = paramInput(id);
+	if (!input || s.max <= s.min) {
+		setSliderValue(id, to);
+		return;
+	}
+	const thumb = 14, at = (v) => {
+		const rr = input.getBoundingClientRect(), t = (v - s.min) / (s.max - s.min);
+		return {
+			x: rr.left + thumb / 2 + t * (rr.width - thumb),
+			y: rr.top + rr.height / 2
+		};
+	};
+	const start = at(from);
+	await glide(start.x, start.y, r);
+	ensurePointer().classList.add("pressed");
+	await sleep(180);
+	const dur = Math.min(1800, 500 + Math.abs(to - from) / (s.max - s.min) * 1600), t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+		let v = from + (to - from) * e;
+		if (s.step) v = Math.round(v / s.step) * s.step;
+		setSliderValue(id, v);
+		const p = at(v);
+		pos.x = p.x;
+		pos.y = p.y;
+		paintPointer();
+		if (t >= 1) break;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	setSliderValue(id, to);
+	await sleep(160);
+	ensurePointer().classList.remove("pressed");
+	await sleep(300);
+}
+function speak$1(text, into, r) {
+	return new Promise((res) => {
+		let finished = false;
+		const end = () => {
+			if (!finished) {
+				finished = true;
+				res();
+			}
+		};
+		const words = text.split(/(\s+)/);
+		let shown = "", k = 0;
+		const follow = () => into.scrollIntoView({ block: "nearest" });
+		const reveal = () => {
+			if (r !== run || k >= words.length) return;
+			shown += words[k++];
+			into.textContent = shown;
+			follow();
+			window.setTimeout(reveal, words[k - 1].trim() ? 130 : 0);
+		};
+		reveal();
+		const speakNow = window.algebenchSpeakText;
+		if (speakNow) speakNow(text, () => {
+			into.textContent = text;
+			end();
+		}, "presenter");
+		else window.setTimeout(() => {
+			into.textContent = text;
+			end();
+		}, Math.max(1500, text.split(/\s+/).length * 260));
+	});
+}
+/** What the expert is told about the view: the lesson around it, what is on screen, and the run's states. */
+function describeView(question) {
+	const ctx = window.algebenchBuildChatContext?.();
+	const scene = sceneNow();
+	const step = scene?.steps?.[state.currentStepIndex];
+	const lesson = [
+		`Lesson: ${ctx?.lessonTitle ?? ""}`,
+		`Scene: ${scene?.title ?? ""}`,
+		step ? `Step: ${step.title ?? ""}${step.description ? ` (${step.description})` : ""}` : "",
+		(scene?.markdown ?? "").slice(0, 3500)
+	].filter(Boolean).join("\n");
+	const rt = ctx?.runtime;
+	const view = [
+		rt?.currentCaption ? `Caption: ${rt.currentCaption}` : "",
+		rt?.screenValues?.length ? `Values on screen:\n${rt.screenValues.join("\n")}` : "",
+		rt?.simulationState ? `State:\n${rt.simulationState.slice(0, 2500)}` : ""
+	].filter(Boolean).join("\n");
+	const frames = [];
+	const s = playbackSlider(), m = /dataTable\(\s*'([^']+)'\s*,\s*frame\s*,\s*'([^']+)'\s*\)/.exec(step?.descriptionExpr ?? "");
+	const rows = m ? scene?.data?.[m[1]] : void 0;
+	if (s && Array.isArray(rows)) for (let n = s.min; n <= s.max && n < rows.length; n++) frames.push({
+		n,
+		text: String(rows[n]?.[m[2]] ?? "").slice(0, 400),
+		state: frameState(rows[n], m[2])
+	});
+	return {
+		question,
+		lesson,
+		view,
+		frames,
+		frame: s && frames.length ? s.value : -1,
+		targets: presentTargets(),
+		on_view: onView()
+	};
+}
+/** What earlier walk-throughs left on the view (it stays until the presenter wipes it): notes, board lines, shapes. */
+function onView() {
+	const here = (n) => n.isConnected && !n.classList.contains("fading");
+	const texts = (list) => [...noteByText].filter(([, n]) => list.includes(n) && here(n)).map(([t]) => t.slice(0, 200)).slice(0, 40);
+	const drawn = sketch && here(sketch.el) ? sketch.all.filter((d) => d.spec.id).slice(0, 80).map(({ spec }) => ({
+		id: spec.id.slice(0, 40),
+		type: spec.type,
+		label: (spec.label ?? "").slice(0, 120),
+		joins: (spec.start && spec.end ? [spec.start, spec.end] : spec.near ? [spec.near] : spec.group ? [spec.group] : []).map((j) => j.slice(0, 120))
+	})) : [];
+	return {
+		notes: texts(notes),
+		board: texts(board),
+		drawn
+	};
+}
+/**
+* A state's values, from its row of the run's table: what the presenter needs to talk about a state it moves to,
+* as it has the values on screen for the one shown. The caption column and the view's own bookkeeping (tooltips,
+* line links, status) are left out.
+*/
+function frameState(row, caption) {
+	if (!row) return "";
+	const skip = /* @__PURE__ */ new Set([
+		caption,
+		"line",
+		"status",
+		"running",
+		"message"
+	]);
+	const parts = [];
+	for (const [k, v] of Object.entries(row)) {
+		if (skip.has(k) || /^(tip_|ln_)/.test(k) || v === "" || v === null || typeof v === "object" && !Array.isArray(v)) continue;
+		parts.push(`${k}=${Array.isArray(v) ? `[${v.map((x) => typeof x === "object" ? JSON.stringify(x) : String(x)).join(", ")}]` : String(v)}`);
+	}
+	return parts.join(", ").slice(0, 700);
+}
+var playing = false;
+var narratingRun = 0;
+var presenting = () => playing;
+/** A walk-through narrating playback is about the state it began at: the learner moving the run ends it. */
+function stopNarrating() {
+	if (playing && narratingRun === run) stopPresenting();
+}
+var playingMsg = null;
+var markPlaying = (msg) => {
+	playingMsg?.classList.remove("presenting-now");
+	playingMsg = msg;
+	msg?.classList.add("presenting-now");
+};
+/**
+* Answer `question` as a walk-through. Resolves to what was said, as far as it got when stopped: '' when there was
+* nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
+* when it asked for the walk-through).
+*/
+/**
+* What a walk-through has said so far, as the chat's history keeps it: each beat's words, with what it wrote on the
+* scratchpad or the board, so a follow-up question can refer to it.
+*/
+function transcript(body, beats) {
+	return [...body.querySelectorAll(".ai-present-line")].map((l) => l.textContent ?? "").map((l, i) => beats[i] ?? l).join(" ").replace(/\s+/g, " ").trim();
+}
+/**
+* Present `question` as a walk-through in a new chat bubble. ``onProgress`` hears the transcript after each beat, so
+* the chat's history holds what was said even while it plays (a follow-up asked mid-walk-through sees it).
+*/
+async function presentQuestion(question, { joinHistory = true, narrating = false, onProgress } = {}) {
+	if (narrating) eraseNotes(true);
+	const r = begin(!narrating);
+	narratingRun = narrating ? r : 0;
+	const start = {
+		scene: state.currentSceneIndex,
+		step: state.currentStepIndex,
+		frame: playbackSlider()?.value ?? -1
+	};
+	const add = window.addChatMessage;
+	const msg = add("assistant", "");
+	markPlaying(msg);
+	const body = msg.querySelector(".msg-body") ?? msg;
+	body.classList.add("ai-present-msg");
+	body.innerHTML = "<div class=\"chat-loading\"><span></span><span></span><span></span></div>";
+	let steps = null;
+	let heard = [];
+	try {
+		const out = await invokeExpert("scene_present", describeView(question));
+		alive(r);
+		if (!out.result) {
+			body.textContent = out.reason ?? "No walk-through came back.";
+			return "";
+		}
+		body.replaceChildren();
+		steps = narrating ? out.result.steps.map((b) => ({
+			...b,
+			frame: -1,
+			slider: ""
+		})) : out.result.steps;
+		const said = transcript(body, await playBeats(steps, body, r, (beats) => {
+			heard = beats;
+			onProgress?.(transcript(body, beats));
+		}));
+		addReplay(body, steps, start);
+		if (joinHistory) window.algebenchRecordChatTurn?.(question, said);
+		return said;
+	} catch (e) {
+		if (!(e instanceof Stopped)) {
+			body.textContent = e.message || "The walk-through failed.";
+			return "";
+		}
+		body.querySelector(".chat-loading")?.remove();
+		const spoken = transcript(body, heard);
+		if (!spoken) msg.remove();
+		else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
+		if (spoken && steps) addReplay(body, steps, start);
+		return spoken || null;
+	} finally {
+		end(r);
+	}
+}
+/** A walk-through's start: a new run, the pointer's mode on, the lesson's own playback paused (unless it narrates it). */
+function begin(pause = true) {
+	const r = ++run;
+	playing = true;
+	document.body.classList.add("ai-presenting");
+	if (pause) window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	return r;
+}
+function end(r) {
+	if (r !== run) return;
+	markPlaying(null);
+	playing = false;
+	unhover();
+	document.body.classList.remove("ai-presenting");
+	spotlightBeat = false;
+	drawRing(null);
+	pointer?.classList.remove("on", "pressed");
+}
+/** Play the beats, each line said into `body`; resolves to what was said. */
+/** Play the beats; returns each beat's words with what it wrote, and tells ``onBeat`` the same after each beat. */
+async function playBeats(steps, body, r, onBeat) {
+	const viewport = state.renderer?.domElement.getBoundingClientRect();
+	if (viewport && pos.x < 0) {
+		pos.x = viewport.left + viewport.width / 2;
+		pos.y = viewport.top + viewport.height * .4;
+		paintPointer();
+	}
+	ensurePointer().classList.add("on");
+	const said = [];
+	for (const beat of steps) {
+		alive(r);
+		if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
+		if (beat.slider?.startsWith("slider:") && typeof beat.slider_to === "number") await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
+		spotlightBeat = !!beat.spotlight && !!beat.target && beat.mark !== "point";
+		drawRing(null);
+		if (beat.erase) eraseNotes();
+		for (const t of beat.erase_notes ?? []) {
+			const n = noteByText.get(noteKey(t));
+			if (!n?.isConnected) continue;
+			const going = [n, ...arrowEls.get(n) ?? []];
+			notes = notes.filter((x) => !going.includes(x));
+			board = board.filter((x) => x !== n);
+			for (const el of going) {
+				el.classList.add("fading");
+				window.setTimeout(() => el.remove(), 700);
+			}
+		}
+		if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
+		for (const t of beat.board ?? []) {
+			const n = noteByText.get(noteKey(t));
+			if (n instanceof HTMLElement && n.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
+			else await typeNote(t, "", r, true, beat.color);
+		}
+		const line = document.createElement("p");
+		line.className = "ai-present-line";
+		body.append(line);
+		const words = speak$1(beat.say, line, r);
+		const sketched = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color, beat.write_side ?? "") : Promise.resolve(null)).then(async (note) => {
+			if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? "", r);
+			return note;
+		});
+		const writing = sketched.then(async (note) => {
+			if (beat.arrow_to) await arrowFor(note);
+		});
+		const arrowFor = async (note) => {
+			if (!beat.arrow_to) return;
+			const fromRef = beat.arrow_from || (note ? "" : beat.target);
+			if (sketch?.el.isConnected && fromRef && [beat.arrow_to, fromRef].some((x) => x.startsWith("draw:"))) {
+				const end = (x) => x.startsWith("draw:") ? x.slice(5) : x;
+				await drawSketch({ elements: [{
+					type: beat.arrow_kind === "line" ? "line" : "arrow",
+					heads: beat.arrow_kind === "both" ? "both" : "",
+					start: end(fromRef),
+					end: end(beat.arrow_to)
+				}] }, beat.color ?? "", r);
+				return;
+			}
+			const to = resolveTarget$1(beat.arrow_to);
+			const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
+			const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
+			const name = `arrow: ${beat.arrow_from || (note ? noteKey(beat.write ?? "") : beat.target)} -> ${beat.arrow_to}`;
+			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind, name);
+		};
+		const both = Promise.all([words, writing]).then(() => void 0);
+		both.catch(() => void 0);
+		if ([beat.target, ...beat.together ?? []].some((t) => t?.startsWith("draw:") && beat.draw?.elements?.some((e) => e.id === t.slice(5)))) {
+			await sketched;
+			for (let t0 = performance.now(); sketch?.glide && performance.now() - t0 < 580;) await new Promise((res) => requestAnimationFrame(res));
+		}
+		const marked = beat.together?.length ? [beat.target, ...beat.together].join("\n") : beat.target;
+		if (beat.target) await holdOn(marked, beat.mark, r, both, beat.color, beat.together?.length ? "" : beat.part);
+		else await both;
+		alive(r);
+		const wrote = [beat.write, ...beat.board ?? []].filter(Boolean);
+		const drew = (beat.draw?.elements ?? []).map((e) => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === "line" || e.heads === "none" ? "-" : e.heads === "both" ? "<->" : e.heads === "start" ? "<-" : "->"} ${e.end}` : `${e.type} "${e.label || e.id || ""}"`);
+		const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(", ")}]` : "";
+		said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(" | ")}]` : "") + (drew.length ? ` [drew: ${drew.join(", ")}]` : ""));
+		onBeat?.([...said]);
+		await sleep(250);
+	}
+	return said;
+}
+/**
+* A replay button under a walk-through, for a learner who missed it: the same beats again, from the state they
+* started at, without asking again. From another scene or step, it goes back to the one it was about first. The
+* message's speaker button replays it too (chat.ts reads `_replay`).
+*/
+function addReplay(body, steps, start) {
+	if (body.querySelector(".ai-present-replay")) return;
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "ai-present-replay";
+	btn.title = "Play this walk-through again";
+	btn.innerHTML = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 1 0 3-6.7\"/><path d=\"M3 4v5h5\"/></svg><span>Replay</span>";
+	const msg = body.closest(".chat-msg");
+	const replay = async () => {
+		const away = () => state.currentSceneIndex !== start.scene || state.currentStepIndex !== start.step;
+		if (away()) {
+			navigateTo$1(start.scene, start.step);
+			if (away()) {
+				btn.title = "The step this was about is gone from the lesson";
+				return;
+			}
+			await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+		}
+		stopPresenting();
+		eraseNotes(true);
+		const r = begin(), kept = [...body.childNodes];
+		markPlaying(msg);
+		body.replaceChildren();
+		let whole = false;
+		try {
+			if (start.frame >= 0 && playbackSlider()?.value !== start.frame) await dragSliderTo(start.frame, r);
+			await playBeats(steps, body, r);
+			whole = true;
+		} catch (e) {
+			if (!(e instanceof Stopped)) throw e;
+		} finally {
+			if (whole) body.append(btn);
+			else body.replaceChildren(...kept);
+			end(r);
+		}
+	};
+	btn.addEventListener("click", () => void replay());
+	if (msg) msg._replay = () => void replay();
+	body.append(btn);
+}
+/** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
+function stopPresenting(voiceTaken = false) {
+	if (!playing) return;
+	run++;
+	markPlaying(null);
+	playing = false;
+	unhover();
+	document.body.classList.remove("ai-presenting");
+	spotlightBeat = false;
+	drawRing(null);
+	pointer?.classList.remove("on", "pressed");
+	if (!voiceTaken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+}
+var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttribute("aria-pressed") === "true";
+function setupPresenter() {
+	const btn = document.getElementById("presenter-toggle-btn");
+	if (!btn) return;
+	let on = true;
+	try {
+		on = localStorage.getItem(PREF_KEY) !== "0";
+	} catch {}
+	const paint = () => {
+		btn.setAttribute("aria-pressed", String(on));
+		btn.classList.toggle("active", on);
+		btn.title = on ? "AI presenter is on: questions about the view are answered as a walk-through with a pointer (click to turn off)" : "AI presenter: answer questions about the view as a spoken walk-through with a laser pointer";
+	};
+	paint();
+	btn.addEventListener("click", () => {
+		on = !on;
+		paint();
+		try {
+			localStorage.setItem(PREF_KEY, on ? "1" : "0");
+		} catch {}
+		if (!on) {
+			stopPresenting();
+			eraseNotes(true);
+		}
+	});
+	document.addEventListener("keydown", (e) => {
+		if (e.key !== "Escape") return;
+		if (playing) {
+			e.preventDefault();
+			stopPresenting();
+		} else if (notes.length || board.length) eraseNotes(true);
+	});
+	window.addEventListener("algebench:navchange", () => {
+		stopPresenting();
+		eraseNotes(true);
+	});
+	window.addEventListener("algebench:voice", (e) => {
+		if (e.detail.owner !== "presenter") stopPresenting(true);
+	});
+}
+//#endregion
+//#region src/step-player.ts
+/** Generic discrete state playback. It writes a slider; views bind to its data. */
+/** The presenter's brief for narrating one state of a run. */
+var NARRATE_PRESENTING = "Narrate the execution state on screen now, in one or two short beats: point at what changes at this state and say it with the values shown, and write on the scratchpad what makes it visible (a value in binary, the arithmetic, the condition checked). Stay at this state; say only what is new here; no question.";
+/** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
+*  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
+function playbackPosition(value, min, max) {
+	const current = Math.max(min, Math.min(max, Math.round(value)));
+	return {
+		current,
+		total: max - min + 1,
+		display: `${current} / ${max}`
+	};
+}
+function setupStepPlayer() {
+	const wrapper = document.getElementById("mathbox-wrapper");
+	if (!wrapper) return;
+	const host = wrapper;
+	const bar = document.createElement("div");
+	bar.id = "state-player";
+	bar.hidden = true;
+	bar.setAttribute("role", "group");
+	bar.setAttribute("aria-label", "Execution state player");
+	const previous = document.createElement("button"), play = document.createElement("button"), next = document.createElement("button");
+	const icon = (path) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:block;margin:auto"><path d="${path}"/></svg>`;
+	const playIcon = icon("M7 4v16l13-8z");
+	const pauseIcon = icon("M6 4h4v16H6z M14 4h4v16h-4z");
+	previous.innerHTML = icon("M17 4v16L4 12z");
+	next.innerHTML = playIcon;
+	previous.setAttribute("aria-label", "Previous execution state");
+	next.setAttribute("aria-label", "Next execution state");
+	previous.dataset.tip = "Previous state";
+	next.dataset.tip = "Next state";
+	for (const button of [
+		previous,
+		play,
+		next
+	]) button.type = "button";
+	const track = document.createElement("input");
+	track.type = "range";
+	track.step = "1";
+	track.setAttribute("aria-label", "Execution state");
+	const counter = document.createElement("output");
+	counter.setAttribute("aria-label", "Execution position");
+	const speed = document.createElement("select");
+	speed.className = "state-player-speed";
+	speed.setAttribute("aria-label", "Playback speed");
+	for (const factor of [
+		.25,
+		.5,
+		1,
+		2,
+		4
+	]) {
+		const option = document.createElement("option");
+		option.value = String(factor);
+		option.textContent = factor + "×";
+		speed.append(option);
+	}
+	speed.value = "1";
+	speed.hidden = true;
+	const narrate = document.createElement("button");
+	narrate.type = "button";
+	narrate.className = "state-player-narrate";
+	narrate.innerHTML = icon("M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z");
+	const paintNarrate = () => {
+		narrate.setAttribute("aria-pressed", String(narrator.on));
+		narrate.setAttribute("aria-label", narrator.on ? "Stop narrating each state" : "Narrate each state");
+		narrate.dataset.tip = narrator.on ? "Narrating each state · click to stop" : "Narrate each state: the tutor explains it in one sentence as you move";
+	};
+	bar.append(previous, play, next, track, counter, speed, narrate);
+	host.append(bar);
+	new ResizeObserver(() => {
+		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
+	}).observe(bar);
+	let timer = null;
+	let config;
+	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
+	const narrator = createNarrator(() => {
+		const s = slider();
+		return s && !bar.hidden ? `${state.currentSceneIndex}/${state.currentStepIndex}:${playbackPosition(s.value, s.min, s.max).current}` : null;
+	}, () => {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const step = scene?.steps?.[state.currentStepIndex];
+		const s = slider();
+		return `scene "${scene?.title ?? ""}"${step?.title ? `, step "${step.title}"` : ""}${s ? `, execution state ${playbackPosition(s.value, s.min, s.max).display}` : ""}`;
+	}, () => {
+		const s = slider(), first = opening;
+		opening = false;
+		if (first && s && s.value <= s.min && sceneHasCode()) return describeProblem;
+		return presenterOn() ? () => presentQuestion(NARRATE_PRESENTING, {
+			joinHistory: false,
+			narrating: true
+		}).then(() => true) : null;
+	});
+	let opening = false;
+	narrate.onclick = () => {
+		opening = !narrator.on;
+		narrator.set(!narrator.on);
+		paintNarrate();
+		watchNarration();
+	};
+	let watching = null;
+	function watchNarration() {
+		const paint = () => {
+			const mode = !narrator.on ? "" : window.algebenchTTSActive?.() ? "speaking" : narrator.busy ? "thinking" : "";
+			if ((narrate.dataset.ai ?? "") !== mode) {
+				if (mode) narrate.dataset.ai = mode;
+				else delete narrate.dataset.ai;
+			}
+			if (!narrator.on && watching !== null) {
+				clearInterval(watching);
+				watching = null;
+			}
+		};
+		if (narrator.on && watching === null) watching = setInterval(paint, WAIT_MS);
+		paint();
+	}
+	window.algebenchNarrating = () => narrator.on;
+	paintNarrate();
+	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
+	function pause() {
+		if (timer !== null) clearTimeout(timer);
+		timer = null;
+		play.innerHTML = playIcon;
+		play.setAttribute("aria-label", "Play execution");
+		play.dataset.tip = "Play";
+	}
+	function render() {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		if (scene?.steps?.[state.currentStepIndex]?.descriptionExpr) updateStepCaption(scene, state.currentStepIndex, true);
+		const s = slider();
+		if (!s || s.kind === "tensor" || !Number.isInteger(s.min) || !Number.isInteger(s.max)) {
+			pause();
+			bar.hidden = true;
+			host.classList.remove("has-state-player");
+			return;
+		}
+		bar.hidden = false;
+		host.classList.add("has-state-player");
+		const p = playbackPosition(s.value, s.min, s.max);
+		track.min = String(s.min);
+		track.max = String(s.max);
+		track.value = String(p.current);
+		track.setAttribute("aria-valuetext", `${p.current} of ${s.max}`);
+		counter.textContent = p.display;
+		previous.disabled = p.current <= s.min;
+		next.disabled = p.current >= s.max;
+		play.disabled = p.total <= 1;
+		if (p.current >= s.max) pause();
+		const at = `${state.currentSceneIndex}/${state.currentStepIndex}:${p.current}`;
+		if (renderedAt && at !== renderedAt) stopNarrating();
+		renderedAt = at;
+		narrator.stateChanged();
+	}
+	let renderedAt = "";
+	function move(value) {
+		if (config) setSliderValue(config.slider, value);
+		render();
+	}
+	previous.onclick = () => {
+		pause();
+		const s = slider();
+		if (s) move(s.value - 1);
+	};
+	next.onclick = () => {
+		pause();
+		const s = slider();
+		if (s) move(s.value + 1);
+	};
+	track.oninput = () => {
+		pause();
+		move(Number(track.value));
+	};
+	const narrationPending = () => narrator.on && (narrator.busy || !!window.algebenchTTSActive?.());
+	const WAIT_MS = 150;
+	function advance() {
+		timer = null;
+		if (narrationPending()) {
+			timer = setTimeout(advance, WAIT_MS);
+			return;
+		}
+		const current = slider();
+		if (!current) {
+			pause();
+			return;
+		}
+		move(current.value + 1);
+		if (play.getAttribute("aria-label") === "Pause execution" && slider() && slider().value < slider().max) timer = setTimeout(advance, interval());
+	}
+	function start() {
+		play.innerHTML = pauseIcon;
+		play.setAttribute("aria-label", "Pause execution");
+		play.dataset.tip = "Pause";
+		timer = setTimeout(advance, interval());
+	}
+	play.onclick = () => {
+		if (timer !== null) {
+			pause();
+			return;
+		}
+		const s = slider();
+		if (!s) return;
+		if (s.value >= s.max) move(s.min);
+		start();
+	};
+	speed.onchange = () => {
+		if (timer !== null) {
+			clearTimeout(timer);
+			timer = null;
+			start();
+		}
+	};
+	let shownAt = "";
+	function refresh() {
+		const at = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		if (at !== shownAt || timer === null) pause();
+		if (shownAt && at.split("/")[0] !== shownAt.split("/")[0] && narrator.on) {
+			narrator.set(false);
+			paintNarrate();
+			watchNarration();
+		}
+		shownAt = at;
+		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
+		speed.hidden = !config?.speedControl;
+		render();
+		document.querySelectorAll(".slider-range").forEach((input) => {
+			const row = input.closest(".slider-row");
+			if (row) row.hidden = input.dataset.sliderId === config?.slider;
+		});
+	}
+	window.addEventListener("algebench:playbackpause", pause);
+	window.addEventListener("algebench:narrationoff", () => {
+		if (narrator.on) {
+			narrator.set(false);
+			paintNarrate();
+			watchNarration();
+		}
+	});
+	window.addEventListener("algebench:navchange", refresh);
+	window.addEventListener("algebench:sliderchange", render);
+	document.addEventListener("visibilitychange", () => {
+		if (document.hidden) pause();
+	});
+	pause();
+	refresh();
+}
+//#endregion
+//#region src/code-annotations.ts
+var span = (e) => (e.endLine ?? e.line ?? 0) - (e.line ?? 0);
+var holds = (e, line) => e.line !== void 0 && line >= e.line && line <= (e.endLine ?? e.line);
+/**
+* The entry documenting the first of `names` that has one at `line` (`g[cell]` before `g`): the narrowest range
+* holding the line, else the file-wide entry. Null when none does.
+*/
+function annotationFor(entries, names, line) {
+	for (const name of names) {
+		const own = entries.filter((e) => e.name === name);
+		const found = own.filter((e) => holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? own.find((e) => e.line === void 0);
+		if (found) return found;
+	}
+	return null;
+}
+/** Unnamed entries over a column range: expressions, wrapped in the line's code. */
+var annotatedExpressions = (entries) => entries.filter((e) => !e.name && e.line !== void 0 && e.col !== void 0 && e.endCol !== void 0 && e.endCol > e.col);
+/** The narrowest unnamed whole-line entry (a block) holding `line`, or null. */
+function annotatedBlockAt(entries, line) {
+	return entries.filter((e) => !e.name && e.col === void 0 && holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? null;
+}
+//#endregion
 //#region src/exec-tree.ts
 var indent = (line) => line.length - line.trimStart().length;
 /** The last line of the block a header line opens (by indentation), 1-based. */
@@ -35591,9 +35595,13 @@ function createCodeCanvas(o) {
 //#endregion
 //#region src/code-compare.ts
 /**
-* Compare: the learner's code beside the original, each side in its own order, the logical parts the code_compare expert
-* matched joined across the middle. A connector that crosses another is a part out of order. The agent points with
-* the laser and draws on either side (two code canvases) as it talks. Read only.
+* Compare: two pieces of code side by side, each in its own order, the logical parts an expert matched joined across the
+* middle. A connector that crosses another is a part out of order. The agent points with the laser and draws on either
+* side (two code canvases) as it talks. Read only.
+*
+* The view only draws. What the two sides are, and what a part's verdict says, is its `CompareKind`: by default the
+* learner's code against the original (code_compare); code-alternatives.ts sets two alternative solutions side by side.
+* Internally the left side is "original" and the right "yours", whatever the kind calls them.
 */
 var SVG = "http://www.w3.org/2000/svg";
 var LABELS = {
@@ -35604,25 +35612,36 @@ var LABELS = {
 	missing: "missing",
 	extra: "extra"
 };
-function el$1(tag, cls) {
+/** The learner's code against the original it was typed from. */
+var ORIGINAL_KIND = {
+	titles: () => ["Original", "Your code"],
+	sides: () => ["original", "your code"],
+	label: (verdict) => LABELS[verdict] ?? verdict,
+	tone: (verdict) => verdict,
+	gap: (m) => m.verdict === "missing" ? "not in your code yet" : null,
+	askTitle: (m) => m.yours_from ? "Explain this difference" : "Help with this part"
+};
+function el$2(tag, cls) {
 	const e = document.createElement(tag);
 	e.className = cls;
 	return e;
 }
 /** A part as the learner and the model read it: which lines on each side. */
-function describePart(m) {
+function describePart(m, kind = ORIGINAL_KIND) {
 	const run = (name, a, b) => a ? `${name} ${a === b ? `line ${a}` : `lines ${a}-${b}`}` : "";
-	return [run("original", m.original_from, m.original_to), run("your code", m.yours_from, m.yours_to)].filter(Boolean).join(", ");
+	const [left, right] = kind.sides();
+	return [run(left, m.original_from, m.original_to), run(right, m.yours_from, m.yours_to)].filter(Boolean).join(", ");
 }
 function createCompareView(o) {
-	const grid = el$1("div", "cmp-grid");
-	const leftCol = el$1("div", "cmp-side"), mid = el$1("div", "cmp-mid"), rightCol = el$1("div", "cmp-side");
+	const kind = o.kind ?? ORIGINAL_KIND;
+	const grid = el$2("div", "cmp-grid");
+	const leftCol = el$2("div", "cmp-side"), mid = el$2("div", "cmp-mid"), rightCol = el$2("div", "cmp-side");
 	const links = document.createElementNS(SVG, "svg");
 	links.classList.add("cmp-links");
 	mid.append(links);
 	grid.append(leftCol, mid, rightCol);
 	o.host.append(grid);
-	const laser = el$1("div", "cp-ai-selection");
+	const laser = el$2("div", "cp-ai-selection");
 	let left = [], right = [], leftRows = [], rightRows = [], matches = [];
 	let pointing = null;
 	let pinned = null;
@@ -35638,10 +35657,10 @@ function createCompareView(o) {
 	const leftInk = canvasOn(() => left, () => leftRows), rightInk = canvasOn(() => right, () => rightRows);
 	grid.append(laser);
 	function askButton(m) {
-		const ai = el$1("button", "cmp-ask");
+		const ai = el$2("button", "cmp-ask");
 		ai.type = "button";
 		ai.textContent = "✦";
-		ai.title = `${m.yours_from ? "Explain this difference" : "Help with this part"} (${describePart(m)}). ⌘-click to ask your own question`;
+		ai.title = `${kind.askTitle(m)} (${describePart(m, kind)}). ⌘-click to ask your own question`;
 		ai.setAttribute("aria-label", ai.title);
 		ai.addEventListener("click", (e) => {
 			pinned = String(matches.indexOf(m));
@@ -35651,22 +35670,22 @@ function createCompareView(o) {
 		return ai;
 	}
 	function noteOf(m) {
-		const note = el$1("div", "cmp-note"), chip = el$1("span", "cmp-chip");
-		chip.textContent = LABELS[m.verdict] ?? m.verdict;
+		const note = el$2("div", "cmp-note"), chip = el$2("span", "cmp-chip");
+		chip.textContent = kind.label(m.verdict);
 		note.append(chip, document.createTextNode(m.comment ? ` ${m.comment}` : ""));
 		return note;
 	}
 	/** One side: its lines in their own order, each part's lines together with its verdict and comment under them. */
 	function paintSide(col, title, lines, part, rows, noted) {
-		const head = el$1("div", "cmp-head");
+		const head = el$2("div", "cmp-head");
 		head.textContent = title;
 		const parts = matches.filter((m) => part(m)[0]).sort((a, b) => part(a)[0] - part(b)[0]);
 		col.replaceChildren(head, ...parts.map((m) => {
-			const group = el$1("div", `cmp-part cmp-${m.verdict}`);
+			const group = el$2("div", `cmp-part cmp-${kind.tone(m.verdict)}`);
 			group.dataset.match = String(matches.indexOf(m));
 			const [from, to] = part(m);
 			for (let k = from; k <= to; k++) {
-				const line = el$1("div", "cmp-line"), n = el$1("span", "cmp-n"), code = el$1("span", "cmp-code");
+				const line = el$2("div", "cmp-line"), n = el$2("span", "cmp-n"), code = el$2("span", "cmp-code");
 				n.textContent = String(k);
 				code.textContent = lines[k - 1] || " ";
 				rows[k - 1] = code;
@@ -35674,7 +35693,7 @@ function createCompareView(o) {
 				group.append(line);
 				if (k === from && noted && lines.slice(from - 1, to).some((text) => text.trim())) line.append(askButton(m));
 			}
-			if (m.verdict !== "exact" || m.comment) {
+			if (kind.tone(m.verdict) !== "exact" || m.comment) {
 				if (noted || !m.yours_from) group.append(noteOf(m));
 			}
 			return group;
@@ -35690,9 +35709,10 @@ function createCompareView(o) {
 				anchor = rightRows[m.yours_to - 1]?.closest(".cmp-part") ?? anchor;
 				continue;
 			}
-			if (m.verdict !== "missing") continue;
-			const gap = el$1("div", "cmp-part cmp-missing cmp-gap");
-			gap.textContent = "not in your code yet";
+			const words = kind.gap(m);
+			if (words == null) continue;
+			const gap = el$2("div", `cmp-part cmp-${kind.tone(m.verdict)} cmp-gap`);
+			gap.textContent = words;
 			gap.dataset.match = String(matches.indexOf(m));
 			gap.append(askButton(m));
 			anchor.after(gap);
@@ -35761,7 +35781,7 @@ function createCompareView(o) {
 			const y0 = a.offsetTop, y1 = b.offsetTop + b.offsetHeight, y2 = c.offsetTop, y3 = d.offsetTop + d.offsetHeight, h = width / 2;
 			const path = document.createElementNS(SVG, "path");
 			path.setAttribute("d", `M0 ${y0} C${h} ${y0} ${h} ${y2} ${width} ${y2} L${width} ${y3} C${h} ${y3} ${h} ${y1} 0 ${y1} Z`);
-			path.classList.add(`cmp-${m.verdict}`);
+			path.classList.add(`cmp-${kind.tone(m.verdict)}`);
 			path.dataset.match = String(matches.indexOf(m));
 			links.append(path);
 		}
@@ -35784,7 +35804,7 @@ function createCompareView(o) {
 		const span = resolveSpan(lines, pointing.line, 0, pointing.text);
 		const box = span && spanBox(span, lines, metrics);
 		if (!box) return null;
-		const mark = el$1("div", "cp-ai-sel");
+		const mark = el$2("div", "cp-ai-sel");
 		Object.assign(mark.style, {
 			left: `${box.left}px`,
 			top: `${box.top}px`,
@@ -35823,8 +35843,9 @@ function createCompareView(o) {
 			leftInk.clear();
 			rightInk.clear();
 			laser.replaceChildren();
-			paintSide(leftCol, "Original", left, (m) => [m.original_from, m.original_to], leftRows, false);
-			paintSide(rightCol, "Your code", right, (m) => [m.yours_from, m.yours_to], rightRows, true);
+			const [leftTitle, rightTitle] = kind.titles();
+			paintSide(leftCol, leftTitle, left, (m) => [m.original_from, m.original_to], leftRows, false);
+			paintSide(rightCol, rightTitle, right, (m) => [m.yours_from, m.yours_to], rightRows, true);
 			paintGaps();
 			align();
 			o.host.scrollTop = 0;
@@ -35863,11 +35884,12 @@ function createCompareView(o) {
 		},
 		/** What the agent drew inside this box (client pixels), on either side. */
 		within(box) {
-			return [...leftInk.within(box).map((m) => `on the original: ${m}`), ...rightInk.within(box).map((m) => `on your code: ${m}`)];
+			const [leftName, rightName] = kind.sides();
+			return [...leftInk.within(box).map((m) => `on ${leftName === "original" ? "the original" : leftName}: ${m}`), ...rightInk.within(box).map((m) => `on ${rightName}: ${m}`)];
 		},
 		/** The comparison as the model is told it, for a question about it. */
 		describe() {
-			return matches.map((m) => `${describePart(m)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ""}`).join("\n");
+			return matches.map((m) => `${describePart(m, kind)}: ${m.verdict}${m.comment ? `: ${m.comment}` : ""}`).join("\n");
 		},
 		unpin() {
 			pinned = null;
@@ -36237,6 +36259,291 @@ function createQuestionLayer(o) {
 		cancel,
 		answered,
 		redraw: paint
+	};
+}
+//#endregion
+//#region src/code-alternatives.ts
+/**
+* Alternatives: two solutions to the same problem side by side, picked from the lesson's alternatives group for the code
+* in hand (`codeFiles[].alternatives`, known at once, no search), the learner's own code among them. It draws in Compare's split view (code-compare.ts)
+* with its own kind, and has its own picker bar, its own wire shape and its own expert: comparing alternatives is not
+* checking the learner's code against the original, and the two are kept apart so each can grow on its own.
+*/
+var DEF = /^(?:async\s+)?(?:def|function|class)\s+([A-Za-z_]\w*)/;
+/** The top-level functions of a source: each from its header to the last code line before the next top-level line. */
+function topLevelFunctions(source) {
+	const lines = source.split("\n"), out = [];
+	let open = null;
+	lines.forEach((text, k) => {
+		if (!text.trim() || /^\s/.test(text) || /^[@#)\]}]/.test(text)) {
+			if (open && text.trim()) open.to = k + 1;
+			return;
+		}
+		if (open) out.push(open);
+		const def = DEF.exec(text);
+		open = def ? {
+			name: def[1],
+			from: k + 1,
+			to: k + 1
+		} : null;
+	});
+	if (open) out.push(open);
+	return out;
+}
+/**
+* The alternatives group the code in hand belongs to: a group (declared on any file) with a member whose function, in
+* `at`'s file, overlaps its lines. Members whose function can't be found are left out; null when nothing is left to compare.
+*/
+function blockAlternatives(files, at) {
+	const byId = new Map(files.map((f) => [f.id, f]));
+	const find = (fileId, name) => {
+		const file = byId.get(fileId), fn = file && topLevelFunctions(file.source).find((f) => f.name === name);
+		return fn ? {
+			...fn,
+			code: file.source.split("\n").slice(fn.from - 1, fn.to).join("\n").replace(/\s+$/, "")
+		} : null;
+	};
+	for (const file of files) for (const group of file.alternatives ?? []) {
+		const members = group.members.map((m) => ({
+			m,
+			fileId: m.file ?? file.id,
+			fn: find(m.file ?? file.id, m.function)
+		})).filter((x) => !!x.fn);
+		const here = members.find((x) => x.fileId === at.file && x.fn.from <= at.to && x.fn.to >= at.from);
+		if (!here || members.length < 2) continue;
+		const source = (x) => ({
+			id: `alt:${x.fileId}:${x.m.function}`,
+			name: x.m.function,
+			label: x.m.label,
+			code: x.fn.code,
+			...x.m.approach ? { approach: x.m.approach } : {},
+			...x.m.when ? { when: x.m.when } : {}
+		});
+		return {
+			title: group.title,
+			prompt: group.prompt ?? "",
+			here: source(here),
+			others: members.filter((x) => x !== here).map(source)
+		};
+	}
+	return null;
+}
+/** What the comparer is told of the two from the lesson: the problem, what to bring out, and each side's approach. */
+function alternativesFocus(group, left, right) {
+	const side = (where, s) => [
+		`${where}, ${s.name}: ${s.label}.`,
+		s.approach,
+		s.when ? `When to choose it: ${s.when}` : ""
+	].filter(Boolean).join(" ");
+	return [
+		`The problem both solve: ${group.title}.`,
+		group.prompt,
+		side("Left", left),
+		side("Right", right)
+	].filter(Boolean).join("\n").slice(0, 2e3);
+}
+var TONES = {
+	same: "exact",
+	equivalent: "equivalent",
+	different: "alternate",
+	only_left: "missing",
+	only_right: "extra"
+};
+/** The expert's answer in the split view's terms: its left is the view's "original", its right the view's "yours". */
+function toView(r) {
+	return {
+		summary: r.summary,
+		same_behaviour: false,
+		debrief: r.takeaways ?? [],
+		closing: r.closing,
+		steps: (r.steps ?? []).map(viewStep),
+		matches: (r.matches ?? []).map((m) => ({
+			original_from: m.left_from,
+			original_to: m.left_to,
+			yours_from: m.right_from,
+			yours_to: m.right_to,
+			verdict: m.verdict,
+			comment: m.comment
+		}))
+	};
+}
+function viewStep(s) {
+	return {
+		say: s.say,
+		draw: s.draw ?? [],
+		draw_original: s.draw_left ?? [],
+		...s.point ? { point: {
+			side: s.point.side === "left" ? "original" : "yours",
+			line: s.point.line,
+			text: s.point.text
+		} } : {}
+	};
+}
+function el$1(tag, cls) {
+	const e = document.createElement(tag);
+	e.className = cls;
+	return e;
+}
+/**
+* The picker bar over the split view: the left side (what to compare against) and the right (by default the code in
+* hand), with a swap between them. A change of either side is a new comparison (`choose`). The caller places `root`.
+*/
+function createAlternativesView(o) {
+	const root = el$1("div", "cp-alt");
+	const bar = el$1("div", "cp-alt-bar");
+	const pick = (side) => {
+		const s = el$1("select", "cp-alt-pick");
+		s.setAttribute("aria-label", `${side} side`);
+		s.addEventListener("change", () => {
+			paintAbout();
+			o.choose();
+		});
+		return s;
+	};
+	const leftPick = pick("Left"), rightPick = pick("Right");
+	const swap = el$1("button", "cp-alt-swap");
+	swap.type = "button";
+	swap.textContent = "⇄";
+	swap.title = "Swap the sides";
+	swap.setAttribute("aria-label", swap.title);
+	swap.addEventListener("click", () => {
+		const l = leftPick.value;
+		leftPick.value = rightPick.value;
+		rightPick.value = l;
+		paintAbout();
+		o.choose();
+	});
+	const status = el$1("span", "cp-alt-status");
+	status.setAttribute("role", "status");
+	bar.append(leftPick, swap, rightPick, status);
+	const info = el$1("div", "cp-alt-info");
+	const INFO_KEY = "algebench-alt-info-open";
+	let infoOpen = true;
+	try {
+		infoOpen = localStorage.getItem(INFO_KEY) !== "0";
+	} catch {}
+	info.hidden = !infoOpen;
+	const title = el$1("span", "cp-alt-heading");
+	const about = el$1("div", "cp-alt-about");
+	info.append(about);
+	const scroll = el$1("div", "cp-compare cp-alt-view");
+	root.append(bar, scroll);
+	let sources = [];
+	const chosen = (s) => sources.find((x) => x.id === s.value) ?? null;
+	let names = ["left", "right"];
+	const kind = {
+		titles: () => names,
+		sides: () => names,
+		label: (verdict) => ({
+			same: "same",
+			equivalent: "equivalent",
+			different: "different approach",
+			only_left: `only in ${names[0]}`,
+			only_right: `only in ${names[1]}`
+		})[verdict] ?? verdict,
+		tone: (verdict) => TONES[verdict] ?? "alternate",
+		gap: (m) => m.verdict === "only_left" ? `not in ${names[1]}` : null,
+		askTitle: () => "Explain this part"
+	};
+	const view = createCompareView({
+		host: scroll,
+		charWidth: o.charWidth,
+		hand: o.hand,
+		ask: o.ask,
+		kind
+	});
+	function card(source, other) {
+		const c = el$1("div", "cp-alt-card");
+		if (!source) return c;
+		const head = el$1("div", "cp-alt-card-head");
+		const name = el$1("code", "cp-alt-card-name");
+		name.textContent = source.name;
+		const label = el$1("span", "cp-alt-card-label");
+		label.textContent = source.label;
+		head.append(name, label);
+		c.append(head);
+		if (source.id === "scene") {
+			const tag = el$1("span", "cp-alt-card-tag");
+			tag.textContent = "this scene";
+			head.append(tag);
+		}
+		if (other) {
+			const ai = el$1("button", "cp-alt-card-ask");
+			ai.type = "button";
+			ai.textContent = "✦";
+			ai.title = `Explain ${source.name}: how it works, and when to choose it over ${other.name}`;
+			ai.setAttribute("aria-label", ai.title);
+			ai.addEventListener("click", () => o.explain(source, other));
+			head.append(ai);
+		}
+		if (source.approach) c.append(Object.assign(el$1("div", "cp-alt-card-approach"), { textContent: source.approach }));
+		if (source.when) {
+			const when = el$1("div", "cp-alt-card-when"), key = el$1("span", "cp-alt-card-key");
+			key.textContent = "When: ";
+			when.append(key, document.createTextNode(source.when));
+			c.append(when);
+		}
+		return c;
+	}
+	function paintAbout() {
+		const l = chosen(leftPick), r = chosen(rightPick);
+		about.replaceChildren(card(l, r), card(r, l));
+	}
+	return {
+		root,
+		info,
+		heading: title,
+		view,
+		scroll,
+		kind,
+		infoOpen: () => infoOpen,
+		setInfoOpen(on) {
+			infoOpen = on;
+			info.hidden = !on;
+			try {
+				localStorage.setItem(INFO_KEY, on ? "1" : "0");
+			} catch {}
+		},
+		/** The sources to choose from, and which goes on each side. */
+		setSources(heading, list, left, right) {
+			sources = list;
+			title.textContent = heading;
+			for (const s of [leftPick, rightPick]) s.replaceChildren(...list.map((x) => {
+				const opt = el$1("option", "");
+				opt.value = x.id;
+				opt.textContent = `${x.id === "scene" ? "This scene: " : ""}${x.name} — ${x.label}`;
+				if (x.approach) opt.title = x.approach;
+				return opt;
+			}));
+			leftPick.value = left;
+			rightPick.value = right;
+			paintAbout();
+		},
+		/** What is on each side now (null when the list is empty). */
+		picked() {
+			const left = chosen(leftPick), right = chosen(rightPick);
+			return left && right ? {
+				left,
+				right
+			} : null;
+		},
+		/** The sides as the comparison on screen names them, set as it is shown. */
+		name(left, right) {
+			names = [left.name, right.name];
+		},
+		sideName: (side) => side === "original" ? names[0] : names[1],
+		setBusy(on) {
+			leftPick.disabled = rightPick.disabled = swap.disabled = on;
+		},
+		setStatus(text) {
+			status.textContent = text;
+		},
+		clear() {
+			view.clear();
+			status.textContent = "";
+			title.textContent = "";
+			about.replaceChildren();
+		}
 	};
 }
 //#endregion
@@ -36866,12 +37173,14 @@ function setupCodePractice() {
 		if (!v) {
 			if (current && left) hushCoach();
 			current = null;
+			paintAltTool();
 			return;
 		}
 		const text = v.file.source.split("\n").slice(v.from - 1, v.to).join("\n").replace(/\s+$/, "");
 		const next = `${v.file.id}:${v.from}:${hash(text)}`;
 		current = v;
 		showTarget(v);
+		paintAltTool();
 		if (next === key) return;
 		if (key) hushCoach();
 		key = next;
@@ -36907,6 +37216,7 @@ function setupCodePractice() {
 		render(false);
 		canvas.clear();
 		clearQuestion();
+		closeAlternatives(false);
 		closeCompare(false);
 		const wanted = key;
 		loadAttempt(lessonId(), v.file.path, wanted).then((found) => {
@@ -37441,8 +37751,103 @@ function setupCodePractice() {
 		if (comparing) closeCompare();
 		else compare();
 	});
+	const alt = createAlternativesView({
+		charWidth: () => {
+			measure();
+			return charWidth;
+		},
+		hand: {
+			trace: pointerTrace,
+			moveTo: pointerTo,
+			done: pointerDone
+		},
+		ask: askAboutAltPart,
+		choose: () => void compareAlternatives(),
+		explain: (side, other) => {
+			altAbout = null;
+			askAlternatives(`Explain ${side.name} — ${side.label}: how it works, what it costs, and when to choose it over ${other.name}.`);
+		}
+	});
+	compareHost.after(alt.root);
+	codeHead.before(alt.info);
+	title.after(alt.heading);
+	const altFold = foldButton();
+	altFold.classList.add("cp-alt-fold");
+	altFold.hidden = true;
+	head.insertBefore(altFold, toggle);
+	const paintAltFold = () => paintFold(altFold, !alt.infoOpen(), alt.infoOpen() ? "Hide the approaches" : "Show the approaches: how each works and when to choose it");
+	const flipAltInfo = () => {
+		alt.setInfoOpen(!alt.infoOpen());
+		paintAltFold();
+	};
+	altFold.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipAltInfo();
+	});
+	head.addEventListener("click", (e) => {
+		if (alternating && !e.target.closest("button, select")) flipAltInfo();
+	});
+	const altTool = tool("⇋ Alternatives", "");
+	altTool.classList.add("cp-alt-keep");
+	takeBack.classList.add("cp-alt-keep");
+	speak.classList.add("cp-alt-keep");
+	tools.insertBefore(altTool, helpTool);
+	let altTurns = [];
+	let altFrom = {
+		focused: false,
+		open: true
+	};
+	let alternating = false, altShown = null, altAbout = null;
+	const altGroup = () => current ? blockAlternatives(state.lessonSpec?.codeFiles ?? [], {
+		file: current.file.id,
+		from: current.from,
+		to: current.to
+	}) : null;
+	/** Offered only on code the lesson gives alternatives for, with how many. */
+	function paintAltTool() {
+		const group = alternating ? null : altGroup();
+		altTool.hidden = !alternating && !group;
+		altTool.textContent = alternating ? "✕ Close alternatives" : `⇋ Alternatives · ${group?.others.length ?? 0}`;
+		altTool.setAttribute("aria-pressed", String(alternating));
+		altTool.title = alternating ? "Back to your code (Esc)" : `${group?.title ?? ""}: compare ${group?.here.name ?? ""} (${group?.here.label ?? ""}) side by side with\n${group?.others.map((o) => `• ${o.name} (${o.label})`).join("\n") ?? ""}`;
+	}
+	paintAltTool();
+	function closeAlternatives(goOn = true) {
+		if (!alternating) return;
+		alternating = false;
+		altShown = null;
+		altAbout = null;
+		altTurns = [];
+		altFold.hidden = true;
+		head.classList.remove("cp-alt-foldable");
+		altQuestion.stop();
+		root.classList.remove("cp-alt-comparing");
+		title.textContent = "Type along";
+		codeTitle.textContent = "Your code";
+		reportTitle.textContent = "Coach review";
+		alt.clear();
+		paintAltTool();
+		if (goOn && pairAfterCompare) {
+			pairing = true;
+			pairWait();
+		}
+		pairAfterCompare = false;
+		if (assisting) stopAssist();
+		else {
+			const asked = report.querySelector(".cp-help")?.closest(".chat-msg");
+			if (asked) offerHelp(asked);
+		}
+		if (!altFrom.focused && focused) setFocus(false);
+		if (!altFrom.open && root.classList.contains("open")) flipOpen();
+		if (!root.hidden) input.focus();
+	}
+	altTool.addEventListener("click", () => {
+		if (alternating) closeAlternatives();
+		else openAlternatives();
+	});
 	const questionTool = tool("? Question", "Ask about a piece of code: click a line (shift-click for more lines) or drag a box round any part, then type beside it: a question, an issue you see, or a change to make (Esc to cancel)");
 	tools.insertBefore(questionTool, compareTool);
+	questionTool.classList.add("cp-alt-keep");
 	const paintQuestion = (on) => questionTool.setAttribute("aria-pressed", String(on));
 	paintQuestion(false);
 	const QUESTION_HINT = "Ask, point out an issue, or ask for a change…";
@@ -37490,16 +37895,36 @@ function setupCodePractice() {
 			await askCompare(questionRequest(pick, words, 600, (side) => side === "original" ? "the original" : "my code"));
 		}
 	});
-	const questionLayer = () => comparing ? compareQuestion : editorQuestion;
+	const altQuestion = createQuestionLayer({
+		host: alt.view.grid,
+		view: alt.scroll,
+		charWidth: () => {
+			measure();
+			return charWidth;
+		},
+		rows: () => alt.view.rows(),
+		marksWithin: (box) => alt.view.within(box),
+		placeholder: QUESTION_HINT,
+		maxLength: 380,
+		cancelled: () => paintQuestion(false),
+		send: async (pick, words) => {
+			paintQuestion(false);
+			altAbout = null;
+			await askAlternatives(questionRequest(pick, words, 600, alt.sideName));
+		}
+	});
+	const questionLayer = () => comparing ? compareQuestion : alternating ? altQuestion : editorQuestion;
 	function stopQuestion() {
 		editorQuestion.stop();
 		compareQuestion.stop();
+		altQuestion.stop();
 		paintQuestion(false);
 	}
 	clearQuestion = stopQuestion;
 	questionAnswered = () => {
 		editorQuestion.answered();
 		compareQuestion.answered();
+		altQuestion.answered();
 	};
 	questionTool.addEventListener("click", () => {
 		if (questionTool.getAttribute("aria-pressed") === "true") {
@@ -37640,28 +38065,46 @@ function setupCodePractice() {
 	/** What the learner can ask for: the next step, the rest of the section they are on, or the rest of the block. */
 	/** While comparing, Help me is one box: a question about what is on screen. Everything else is back at the editor. */
 	function compareAsk() {
+		return askBox(askAbout ? `Ask about ${describePart(askAbout)}:` : "Ask about this comparison:", "e.g. \"why does the order matter here?\"", (q) => void askCompare(q));
+	}
+	/** The same box over two alternatives. */
+	function alternativesAsk() {
+		return askBox(altAbout ? `Ask about ${describePart(altAbout, alt.kind)}:` : "Ask about these two:", "e.g. \"when is the left one better?\"", (q) => void askAlternatives(q));
+	}
+	function askBox(title, example, send) {
 		const row = el("div", "cp-help");
 		const label = el("span", "cp-help-label");
-		label.textContent = askAbout ? `Ask about ${describePart(askAbout)}:` : "Ask about this comparison:";
+		label.textContent = title;
 		const ask = el("form", "cp-help-ask");
 		const words = el("input", "cp-help-input cmp-ask-input");
 		words.type = "text";
 		words.maxLength = 600;
-		words.placeholder = "e.g. \"why does the order matter here?\"";
+		words.placeholder = example;
 		words.setAttribute("aria-label", "Your question about the comparison");
-		const send = el("button", "cp-help-send");
-		send.type = "submit";
-		send.textContent = "➤";
-		send.title = "Ask (Enter)";
-		ask.append(words, send);
+		const go = el("button", "cp-help-send");
+		go.type = "submit";
+		go.textContent = "➤";
+		go.title = "Ask (Enter)";
+		ask.append(words, go);
 		ask.addEventListener("submit", (e) => {
 			e.preventDefault();
-			if (words.value.trim()) askCompare(words.value.trim());
+			if (words.value.trim()) send(words.value.trim());
 		});
 		row.append(label, ask);
 		return row;
 	}
 	/** The AI button on a part: the expert explains what it found there; with Cmd/Ctrl, the learner's own question. */
+	function askAboutAltPart(m, ownWords) {
+		if (assisting) return;
+		altAbout = m;
+		if (!ownWords) {
+			askAlternatives("Explain this part: how the two differ here, and why.");
+			return;
+		}
+		const msg = report.lastElementChild;
+		if (msg) offerHelp(msg);
+		report.querySelector(".cmp-ask-input")?.focus();
+	}
 	function askAboutPart(m, ownWords) {
 		if (assisting) return;
 		askAbout = m;
@@ -37675,6 +38118,7 @@ function setupCodePractice() {
 	}
 	function helpChoices() {
 		if (comparing) return compareAsk();
+		if (alternating) return alternativesAsk();
 		const row = el("div", "cp-help");
 		const compareChoice = () => {
 			const b = el("button", "cp-help-btn");
@@ -38013,7 +38457,10 @@ function setupCodePractice() {
 		return canvas.play(step.draw ?? []);
 	};
 	/** A turn in Compare: the keyboard held read only while `work` talks; whatever comes of it, handed back after. */
-	async function compareTurn(asked, work) {
+	async function compareTurn(asked, work, done = () => {
+		askAbout = null;
+		compareView.unpin();
+	}) {
 		if (!current || !score) return;
 		if (pairing) pairAfterCompare = true;
 		pairing = false;
@@ -38053,19 +38500,27 @@ function setupCodePractice() {
 			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
 		} finally {
 			waiting.remove();
-			askAbout = null;
-			compareView.unpin();
+			done();
 			if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked}\nYou: ${turnWords.join(" ")}`);
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
 		}
 	}
-	const walk = async (steps, run, bubble) => {
-		for (const step of steps) await Promise.all([say(step.say, bubble("cp-assist-step"), run), compareView.step(step, canvasOn())]);
-		compareView.endPointing();
+	const walk = async (steps, run, bubble, view = compareView) => {
+		for (const step of steps) await Promise.all([say(step.say, bubble("cp-assist-step"), run), view.step(step, canvasOn())]);
+		view.endPointing();
 	};
+	/** Their block's code is on screen: what isn't right yet counts as seen, as correcting it from there would. */
+	function markSeen() {
+		const reference = block.split("\n"), start = current.from;
+		const seen = score.lines.filter((l) => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? "")).map((l) => l.line);
+		attempt.peeked = [.../* @__PURE__ */ new Set([...attempt.peeked, ...seen])];
+		persist();
+		render(false);
+	}
 	/** Compare takes the turn: the original opens beside their code, read only, and the agent walks through what matters. */
 	async function compare(announce = true) {
 		if (!current || !score || assisting) return;
+		closeAlternatives();
 		setFocus(true);
 		const typed = input.value.trimEnd();
 		if (!typed.trim()) {
@@ -38083,13 +38538,8 @@ function setupCodePractice() {
 			});
 			if (assisting !== run) throw new Stopped();
 			if (!out.result) throw new Error(out.reason ?? "No comparison came back.");
-			const reference = block.split("\n"), start = current.from, blurred = current.hidden();
-			if (!blurred) {
-				const seen = score.lines.filter((l) => l.similarity !== 1 && !isNeutral(reference[l.line - start] ?? "")).map((l) => l.line);
-				attempt.peeked = [.../* @__PURE__ */ new Set([...attempt.peeked, ...seen])];
-				persist();
-				render(false);
-			}
+			const reference = block.split("\n"), blurred = current.hidden();
+			if (!blurred) markSeen();
 			comparing = true;
 			comparedText = typed;
 			root.classList.add("cp-comparing");
@@ -38143,8 +38593,185 @@ function setupCodePractice() {
 			await say(out.result.closing, bubble("cp-assist-close"), run);
 		});
 	}
+	const altFocus = (left, right) => {
+		const group = altGroup();
+		return group ? alternativesFocus(group, left, right) : "";
+	};
+	/**
+	* A turn in Alternatives: the agent talks over the split while `work` runs, and the box to ask more comes back after.
+	* Unlike Compare's turn it leaves the attempt alone (no scoring, nothing marked reviewed, the editor untouched) and
+	* keeps its own recent turns.
+	*/
+	async function alternativesTurn(asked, work, done) {
+		if (!current || assisting) {
+			done();
+			return;
+		}
+		if (pairing) pairAfterCompare = true;
+		pairing = false;
+		clearTimeout(pairIdle);
+		series = null;
+		quiz?.card.querySelector(".cp-quiz-controls")?.remove();
+		quiz = null;
+		fixProposed = "";
+		const run = ++assistSeq, blockKey = key;
+		assisting = run;
+		clearTimeout(idle);
+		reviewSeq++;
+		if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+		report.querySelectorAll(".cp-help").forEach((h) => h.remove());
+		if (report.hidden) foldReport(false);
+		if (asked) message("user", Object.assign(el("div", ""), { textContent: asked }));
+		root.classList.add("cp-assisting");
+		takeBack.hidden = false;
+		helpTool.hidden = true;
+		reportSummary.textContent = "comparing…";
+		const waiting = message("assistant", el("div", "chat-loading"));
+		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
+		turnWords = [];
+		let ended = false;
+		const bubble = (cls) => {
+			waiting.remove();
+			return message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
+		};
+		try {
+			await work(run, bubble);
+			ended = true;
+		} catch (e) {
+			waiting.remove();
+			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
+		} finally {
+			waiting.remove();
+			done();
+			if (turnWords.length && key === blockKey && alternating) altTurns.push(`Learner: ${asked}\nYou: ${turnWords.join(" ")}`);
+			if (assisting === run) assisting = 0;
+			root.classList.remove("cp-assisting");
+			takeBack.hidden = true;
+			helpTool.hidden = false;
+			aiCaret.hidden = true;
+			questionAnswered();
+			reportSummary.textContent = "";
+			if (key === blockKey && alternating) offerHelp(ended ? report.lastElementChild : message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: "OK. Ask me about them any time." })));
+		}
+	}
+	/** Alternatives opens on the lesson's group: the first other way on the left, the code in hand on the right, compared at once. */
+	function openAlternatives() {
+		const group = altGroup();
+		if (!current || !score || assisting || !group) return;
+		altFrom = {
+			focused,
+			open: root.classList.contains("open")
+		};
+		closeCompare();
+		stopQuestion();
+		setFocus(true);
+		head.append(altFold);
+		alternating = true;
+		altTurns = [];
+		altFold.hidden = false;
+		paintAltFold();
+		head.classList.add("cp-alt-foldable");
+		root.classList.add("cp-alt-comparing");
+		title.textContent = "Compare alternatives";
+		codeTitle.textContent = "Code";
+		reportTitle.textContent = "Discussion";
+		paintAltTool();
+		alt.clear();
+		const here = {
+			...group.here,
+			id: "scene"
+		};
+		alt.setSources(group.title, [here, ...group.others], group.others[0].id, "scene");
+		compareAlternatives();
+	}
+	/** The two picked, compared: the split view shows them, and the agent talks through how the approaches differ. */
+	async function compareAlternatives() {
+		const sides = alt.picked();
+		if (!current || !score || assisting || !alternating || !sides) return;
+		if (sides.left.id === sides.right.id) {
+			alt.view.clear();
+			altShown = null;
+			alt.setStatus("Pick two different ones.");
+			return;
+		}
+		alt.setStatus("");
+		alt.setBusy(true);
+		const { left, right } = sides;
+		await alternativesTurn(`Compare ${left.name} with ${right.name}.`, async (run, bubble) => {
+			const out = await invokeExpert("code_alternatives", {
+				action: "compare",
+				language: current.file.language ?? "",
+				focus: altFocus(left, right),
+				left: left.code,
+				left_name: left.name,
+				right: right.code,
+				right_name: right.name,
+				recent_turns: altTurns.slice(-4).join("\n\n").slice(-3e3),
+				canvas: canvasOn()
+			});
+			if (assisting !== run) throw new Stopped();
+			if (!out.result) throw new Error(out.reason ?? "No comparison came back.");
+			if ((left.id === "scene" || right.id === "scene") && score) markSeen();
+			altShown = sides;
+			alt.name(left, right);
+			const result = toView(out.result);
+			alt.view.show(result, left.code.split("\n"), right.code.split("\n"), current.file.language ?? "");
+			alt.view.setVisible(canvasOn());
+			reportSummary.textContent = "✦ comparing alternatives";
+			await say(result.summary, bubble("cp-assist-plan"), run);
+			await walk(result.steps, run, bubble, alt.view);
+			if (result.debrief.length) {
+				const body = bubble("cp-assist-step cmp-debrief");
+				const head = el("div", "cp-assist-head");
+				head.textContent = "When to use which";
+				body.append(head);
+				for (const point of result.debrief) {
+					const line = el("div", "cp-assist-say");
+					body.append(line);
+					await say(point, line, run);
+				}
+			}
+			await say(result.closing || "Ask me about them.", bubble("cp-assist-close"), run);
+		}, () => {
+			altAbout = null;
+			alt.view.unpin();
+			alt.setBusy(false);
+		});
+	}
+	/** A question about the two on screen: answered there, pointing and drawing, with the split left open. */
+	async function askAlternatives(question) {
+		const sides = altShown ?? alt.picked();
+		if (!current || assisting || !alternating || !sides) return;
+		const about = altAbout, { left, right } = sides;
+		await alternativesTurn(about ? `About ${describePart(about, alt.kind)}: ${question}` : question, async (run, bubble) => {
+			const out = await invokeExpert("code_alternatives", {
+				action: "ask",
+				language: current.file.language ?? "",
+				focus: altFocus(left, right),
+				left: left.code,
+				left_name: left.name,
+				right: right.code,
+				right_name: right.name,
+				recent_turns: altTurns.slice(-4).join("\n\n").slice(-3e3),
+				canvas: canvasOn(),
+				question,
+				comparison: alt.view.describe().slice(0, 8e3),
+				about: about ? `${describePart(about, alt.kind)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ""}`.slice(0, 600) : ""
+			});
+			if (assisting !== run) throw new Stopped();
+			if (!out.result) throw new Error(out.reason ?? "No answer came back.");
+			reportSummary.textContent = "✦ comparing alternatives";
+			const result = toView(out.result);
+			await walk(result.steps, run, bubble, alt.view);
+			await say(result.closing, bubble("cp-assist-close"), run);
+		}, () => {
+			altAbout = null;
+			alt.view.unpin();
+		});
+	}
 	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
+		closeAlternatives();
 		closeCompare();
 		if (scope === "grade" && !quiz) return;
 		const complexity = scope === "complexity";
@@ -38820,6 +39447,7 @@ function setupCodePractice() {
 		render(false);
 		canvas.clear();
 		clearQuestion();
+		closeAlternatives(false);
 		closeCompare(false);
 		turns = [];
 		input.focus();
@@ -38838,6 +39466,7 @@ function setupCodePractice() {
 		charWidth = 0;
 		redrawMarks();
 		if (comparing) compareView.redraw();
+		if (alternating) alt.view.redraw();
 	}
 	function setFont(size) {
 		const next = size === void 0 ? void 0 : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
@@ -38860,7 +39489,10 @@ function setupCodePractice() {
 	}
 	setFocus = (on) => {
 		if (on === focused) return;
-		if (!on) closeCompare();
+		if (!on) {
+			closeAlternatives();
+			closeCompare();
+		}
 		focused = on;
 		if (on && !root.classList.contains("open")) flipOpen();
 		root.classList.toggle("cp-focus", on);
@@ -38883,7 +39515,7 @@ function setupCodePractice() {
 	const presenterSwitch = document.getElementById("presenter-toggle-btn");
 	if (presenterSwitch) {
 		const present = tool("", "");
-		present.classList.add("cp-present-tool");
+		present.classList.add("cp-present-tool", "cp-alt-keep");
 		present.innerHTML = presenterSwitch.innerHTML;
 		tools.insertBefore(present, reset);
 		const mirror = () => {
@@ -38894,6 +39526,7 @@ function setupCodePractice() {
 			present.setAttribute("aria-label", presenterSwitch.getAttribute("aria-label") ?? "AI presenter");
 			canvas.setVisible(canvasOn());
 			compareView.setVisible(canvasOn());
+			alt.view.setVisible(canvasOn());
 		};
 		present.addEventListener("click", () => presenterSwitch.click());
 		new MutationObserver(mirror).observe(presenterSwitch, {
@@ -38909,7 +39542,7 @@ function setupCodePractice() {
 		setFocus(!focused);
 	}, true);
 	window.addEventListener("keydown", (e) => {
-		if (e.key !== "Escape" || questionTool.getAttribute("aria-pressed") !== "true" && !editorQuestion.picking && !compareQuestion.picking) return;
+		if (e.key !== "Escape" || questionTool.getAttribute("aria-pressed") !== "true" && !editorQuestion.picking && !compareQuestion.picking && !altQuestion.picking) return;
 		e.preventDefault();
 		e.stopPropagation();
 		stopQuestion();
@@ -38918,6 +39551,12 @@ function setupCodePractice() {
 		if (e.key === "Escape" && comparing && !e.defaultPrevented) {
 			e.preventDefault();
 			closeCompare();
+		}
+	});
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && alternating && !e.defaultPrevented) {
+			e.preventDefault();
+			closeAlternatives();
 		}
 	});
 	document.addEventListener("keydown", (e) => {
