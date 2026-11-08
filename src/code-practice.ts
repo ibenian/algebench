@@ -859,6 +859,8 @@ export function setupCodePractice(): void {
     compareTool.classList.add('cp-coach-only');
     tools.insertBefore(compareTool, reset);
     // Pairing rests while the split is open, and goes on when it closes.
+    // The comparison on screen, to show again for a replay of a turn about it.
+    let compareShown: {result: CompareResult; reference: string[]; typed: string; language: string; blurred: boolean; blockKey: string} | null = null;
     let comparing = false, comparedText = '', askAbout: CompareMatch | null = null, pairAfterCompare = false;
     function paintCompareTool() {
         compareTool.textContent = comparing ? '✕ Close compare' : '⇄ Compare';compareTool.setAttribute('aria-pressed', String(comparing));
@@ -867,7 +869,7 @@ export function setupCodePractice(): void {
     paintCompareTool();
     function closeCompare(goOn = true) {
         if (!comparing) { pairAfterCompare = false;return; }
-        comparing = false;askAbout = null;compareQuestion.stop();root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
+        comparing = false;askAbout = null;compareShown = null;compareQuestion.stop();root.classList.remove('cp-comparing');compareView.clear();paintCompareTool();
         if (goOn && pairAfterCompare) { pairing = true;pairWait(); }
         pairAfterCompare = false;
         if (assisting) stopAssist();
@@ -915,7 +917,7 @@ export function setupCodePractice(): void {
     paintAltTool();
     function closeAlternatives(goOn = true) {
         if (!alternating) return;
-        alternating = false;altShown = null;altAbout = null;altTurns = [];altFold.hidden = true;head.classList.remove('cp-alt-foldable');altQuestion.stop();root.classList.remove('cp-alt-comparing');title.textContent = 'Type along';codeTitle.textContent = 'Your code';reportTitle.textContent = 'Coach review';alt.clear();paintAltTool();
+        alternating = false;altShown = null;altShownResult = null;altAbout = null;altTurns = [];altFold.hidden = true;head.classList.remove('cp-alt-foldable');altQuestion.stop();root.classList.remove('cp-alt-comparing');title.textContent = 'Type along';codeTitle.textContent = 'Your code';reportTitle.textContent = 'Coach review';alt.clear();paintAltTool();
         if (goOn && pairAfterCompare) { pairing = true;pairWait(); }
         pairAfterCompare = false;
         if (assisting) stopAssist();
@@ -1184,9 +1186,67 @@ export function setupCodePractice(): void {
         (msg.classList.contains('msg-body') ? msg : msg.querySelector('.msg-body'))?.append(helpChoices());
         report.scrollTop = report.scrollHeight;
     }
+    /**
+     * Replay: a turn's words as it said them, each with the bubble it was said into and what went with it (a mark on
+     * the code, a selection, the laser and marks on a comparison), recorded while it plays. Played again, the same
+     * words are said in the same bubbles and the same things pointed at and drawn; nothing is typed again. `prepare`
+     * puts the view back as the turn had it (the comparison it was about), or says it can't (another block).
+     */
+    interface Said { text: string; into: HTMLElement; act?: () => unknown }
+    interface Recorded { said: Said[]; prepare: (() => boolean) | null }
+    let recording: Recorded | null = null, recordAct: (() => unknown) | null = null, replaying = false;
+    function startRecording(prepare: (() => boolean) | null) { recording = {said: [], prepare};recordAct = null; }
+    /** What puts the view back for this turn's replay, once it is known (a comparison, after it is shown). */
+    function setRecordPrepare(prepare: () => boolean) { if (recording) recording.prepare = prepare; }
+    function endRecording() { recording = null;recordAct = null; }
+    /**
+     * The turn's Replay button, on its first message as soon as its first words are there: stopped partway, the turn
+     * still has it, and it plays the turn from the start (as far as it got).
+     */
+    function addReplayButton(turn: Recorded, into: HTMLElement) {
+        const body = into.closest('.chat-msg')?.querySelector<HTMLElement>('.msg-body');
+        if (!body) return;
+        const btn = el('button', 'ai-present-replay cp-replay');btn.type = 'button';
+        btn.title = 'Play this again from the start: what was said, and what was pointed at and drawn';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Replay</span>';
+        btn.addEventListener('click', () => void replayTurn(turn.said, turn.prepare));
+        body.append(btn);
+    }
+    async function replayTurn(said: Said[], prepare: (() => boolean) | null) {
+        if (!current || assisting) return;
+        if (prepare && !prepare()) return;
+        if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+        const run = ++assistSeq;assisting = run;replaying = true;
+        root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
+        reportSummary.textContent = '↻ replaying';
+        // A bubble said into may since hold more than its words (Help me, this button, a note): kept aside while its
+        // words are said again, then put back.
+        const kept = new Map(said.map(s => [s, [...s.into.children].filter(c => c.matches('.cp-help, .cp-replay, .cp-assist-note'))]));
+        try {
+            for (const s of said) {
+                if (!s.into.isConnected) continue;
+                s.into.scrollIntoView({block: 'nearest'});
+                await Promise.all([say(s.text, s.into, run), s.act?.()]);
+                s.into.append(...kept.get(s)!);
+            }
+            compareView.endPointing();alt.view.endPointing();
+        } catch (e) {
+            if (!(e instanceof Stopped)) throw e;
+        } finally {
+            // Stopped partway, every bubble has its words back in full.
+            for (const s of said) if (s.into.isConnected) { s.into.classList.remove('speaking');s.into.innerHTML = renderMarkdown(s.text, {untrusted: true, glossary: false});s.into.append(...kept.get(s)!); }
+            replaying = false;turnWords = [];
+            if (assisting === run) assisting = 0;
+            root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();questionAnswered();
+            reportSummary.textContent = '';
+        }
+    }
     /** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
     async function say(text: string, into: HTMLElement, run: number) {
+        const act = recordAct;recordAct = null;
         if (!text) return;
+        const turn = !replaying ? recording : null;
+        turn?.said.push({text, into, ...(act ? {act} : {})});
         turnWords.push(text);
         into.classList.add('speaking');
         const plain = text.replace(/[`*_]/g, '');
@@ -1202,10 +1262,12 @@ export function setupCodePractice(): void {
         let shown = '';
         for (const part of text.split(/(\s+)/)) {
             if (assisting !== run) break;
-            shown += part;into.textContent = shown;report.scrollTop = report.scrollHeight;
+            shown += part;into.textContent = shown;if (!replaying) report.scrollTop = report.scrollHeight;
             if (part.trim()) await sleep(140);
         }
         into.innerHTML = renderMarkdown(text, {untrusted: true, glossary: false});
+        // The turn's first words are there: its Replay button goes beside them.
+        if (turn && turn.said.length === 1 && turn.said[0]!.into === into) addReplayButton(turn, into);
         await speech;
         into.classList.remove('speaking');
         if (assisting !== run) throw new Stopped();
@@ -1347,6 +1409,7 @@ export function setupCodePractice(): void {
         if (asked) message('user', Object.assign(el('div', ''), {textContent: asked}));
         root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
         reportSummary.textContent = 'comparing…';
+        startRecording(null);
         const exactBefore = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line));
         const assistedBefore = new Set(attempt.assisted);
         const waiting = message('assistant', el('div', 'chat-loading'));
@@ -1368,10 +1431,15 @@ export function setupCodePractice(): void {
             done();
             if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked}\nYou: ${turnWords.join(' ')}`);
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
+            endRecording();
         }
     }
     const walk = async (steps: CompareResult['steps'], run: number, bubble: (cls: string) => HTMLElement, view = compareView) => {
-        for (const step of steps) await Promise.all([say(step.say, bubble('cp-assist-step'), run), view.step(step, canvasOn())]);
+        for (const step of steps) {
+            const into = bubble('cp-assist-step');
+            recordAct = () => view.step(step, canvasOn());
+            await Promise.all([say(step.say, into, run), view.step(step, canvasOn())]);
+        }
         view.endPointing();
     };
     /** Their block's code is on screen: what isn't right yet counts as seen, as correcting it from there would. */
@@ -1395,9 +1463,8 @@ export function setupCodePractice(): void {
             // With Hide code on, what isn't done yet stays blurred: nothing they still have to write has been seen.
             const reference = block.split('\n'), blurred = current!.hidden();
             if (!blurred) markSeen();
-            comparing = true;comparedText = typed;root.classList.add('cp-comparing');paintCompareTool();
-            compareView.show(out.result, reference, typed.split('\n'), current!.file.language ?? '', blurred);
-            compareView.setVisible(canvasOn());
+            const shown = {result: out.result, reference, typed, language: current!.file.language ?? '', blurred, blockKey: key};
+            showCompare(shown);setRecordPrepare(() => showCompare(shown));
             reportSummary.textContent = '✦ comparing with the original';
             const opening = bubble('cp-assist-plan');
             if (out.result.same_behaviour) { opening.closest('.chat-msg')?.classList.add('cp-msg-perfect');const badge = el('span', 'cp-verdict cp-verdict-correct');badge.textContent = '✓ Same behaviour';opening.append(badge, el('div', '')); }
@@ -1412,11 +1479,21 @@ export function setupCodePractice(): void {
             await say(out.result.closing || 'Over to you.', bubble('cp-assist-close'), run);
         });
     }
+    /** A comparison shown in the split (again, for a replay); false when it is about another block than the one here. */
+    function showCompare(s: NonNullable<typeof compareShown>): boolean {
+        if (s.blockKey !== key) return false;
+        closeAlternatives();setFocus(true);
+        comparing = true;comparedText = s.typed;compareShown = s;root.classList.add('cp-comparing');paintCompareTool();
+        compareView.show(s.result, s.reference, s.typed.split('\n'), s.language, s.blurred);
+        compareView.setVisible(canvasOn());
+        return true;
+    }
     /** A question about the comparison on screen: answered there, pointing and drawing, with the split left open. */
     async function askCompare(question: string) {
         if (!current || !score || assisting || !comparing) return;
-        const about = askAbout;
+        const about = askAbout, shownNow = compareShown;
         await compareTurn(about ? `About ${describePart(about)}: ${question}` : question, async (run, bubble) => {
+            if (shownNow) setRecordPrepare(() => showCompare(shownNow));
             const out = await invokeExpert('code_compare', {language: current!.file.language ?? '', expected: block, typed: comparedText, recent_turns: recentTurns(), canvas: canvasOn(), question, hint_level: hintLevel(),
                 comparison: compareView.describe().slice(0, 8000), about: about ? `${describePart(about)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ''}`.slice(0, 600) : ''}) as {result?: CompareResult; reason?: string};
             if (assisting !== run) throw new Stopped();
@@ -1444,6 +1521,7 @@ export function setupCodePractice(): void {
         if (asked) message('user', Object.assign(el('div', ''), {textContent: asked}));
         root.classList.add('cp-assisting');takeBack.hidden = false;helpTool.hidden = true;
         reportSummary.textContent = 'comparing…';
+        startRecording(null);
         const waiting = message('assistant', el('div', 'chat-loading'));
         waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
         turnWords = [];
@@ -1465,20 +1543,39 @@ export function setupCodePractice(): void {
             root.classList.remove('cp-assisting');takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;questionAnswered();
             reportSummary.textContent = '';
             if (key === blockKey && alternating) offerHelp(ended ? report.lastElementChild as HTMLElement : message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: 'OK. Ask me about them any time.'})));
+            endRecording();
         }
     }
     /** Alternatives opens on the lesson's group: the first other way on the left, the code in hand on the right, compared at once. */
     function openAlternatives() {
         const group = altGroup();
         if (!current || !score || assisting || !group) return;
-        altFrom = {focused, open: root.classList.contains('open')};
-        closeCompare();stopQuestion();setFocus(true);
-        // The fold chevron goes last on the bar, after the focus switch: the far right.
-        head.append(altFold);
-        alternating = true;altTurns = [];altFold.hidden = false;paintAltFold();head.classList.add('cp-alt-foldable');root.classList.add('cp-alt-comparing');title.textContent = 'Compare alternatives';codeTitle.textContent = 'Code';reportTitle.textContent = 'Discussion';paintAltTool();alt.clear();
-        const here = {...group.here, id: 'scene'};
-        alt.setSources(group.title, [here, ...group.others], group.others[0]!.id, 'scene');
+        enterAlternatives(group, group.others[0]!.id, 'scene');
         void compareAlternatives();
+    }
+    /** Into Compare alternatives on the lesson's group, `left` and `right` picked (ids among its sources). */
+    function enterAlternatives(group: AltGroup, left: string, right: string) {
+        if (!alternating) {
+            altFrom = {focused, open: root.classList.contains('open')};
+            closeCompare();stopQuestion();setFocus(true);
+            // The fold chevron goes last on the bar, after the focus switch: the far right.
+            head.append(altFold);
+            alternating = true;altTurns = [];altFold.hidden = false;paintAltFold();head.classList.add('cp-alt-foldable');root.classList.add('cp-alt-comparing');title.textContent = 'Compare alternatives';codeTitle.textContent = 'Code';reportTitle.textContent = 'Discussion';paintAltTool();
+        }
+        alt.clear();
+        const here = {...group.here, id: 'scene'};
+        alt.setSources(group.title, [here, ...group.others], left, right);
+    }
+    /** Two alternatives and their comparison, as shown: for a replay to show them again. */
+    let altShownResult: {left: AltSource; right: AltSource; result: CompareResult; blockKey: string} | null = null;
+    function showAlternatives(s: NonNullable<typeof altShownResult>): boolean {
+        const group = altGroup();
+        if (s.blockKey !== key || !group) return false;
+        enterAlternatives(group, s.left.id, s.right.id);
+        altShown = {left: s.left, right: s.right};altShownResult = s;alt.name(s.left, s.right);
+        alt.view.show(s.result, s.left.code.split('\n'), s.right.code.split('\n'), current!.file.language ?? '');
+        alt.view.setVisible(canvasOn());
+        return true;
     }
     /** The two picked, compared: the split view shows them, and the agent talks through how the approaches differ. */
     async function compareAlternatives() {
@@ -1494,10 +1591,9 @@ export function setupCodePractice(): void {
             if (!out.result) throw new Error(out.reason ?? 'No comparison came back.');
             // This scene's code on screen: what isn't typed exactly yet counts as seen, as in Compare.
             if ((left.id === 'scene' || right.id === 'scene') && score) markSeen();
-            altShown = sides;alt.name(left, right);
             const result = toView(out.result);
-            alt.view.show(result, left.code.split('\n'), right.code.split('\n'), current!.file.language ?? '');
-            alt.view.setVisible(canvasOn());
+            const shown = {left, right, result, blockKey: key};
+            showAlternatives(shown);setRecordPrepare(() => showAlternatives(shown));
             reportSummary.textContent = '✦ comparing alternatives';
             await say(result.summary, bubble('cp-assist-plan'), run);
             await walk(result.steps, run, bubble, alt.view);
@@ -1514,8 +1610,9 @@ export function setupCodePractice(): void {
         // About the two on screen, or, before a comparison has come back, the two picked.
         const sides = altShown ?? alt.picked();
         if (!current || assisting || !alternating || !sides) return;
-        const about = altAbout, {left, right} = sides;
+        const about = altAbout, {left, right} = sides, shownNow = altShownResult;
         await alternativesTurn(about ? `About ${describePart(about, alt.kind)}: ${question}` : question, async (run, bubble) => {
+            if (shownNow) setRecordPrepare(() => showAlternatives(shownNow));
             const out = await invokeExpert('code_alternatives', {action: 'ask', language: current!.file.language ?? '', focus: altFocus(left, right), left: left.code, left_name: left.name, right: right.code, right_name: right.name,
                 recent_turns: altTurns.slice(-4).join('\n\n').slice(-3000), canvas: canvasOn(), question, comparison: alt.view.describe().slice(0, 8000),
                 about: about ? `${describePart(about, alt.kind)}: ${about.verdict}${about.comment ? `: ${about.comment}` : ''}`.slice(0, 600) : ''}) as {result?: AltResult; reason?: string};
@@ -1607,6 +1704,13 @@ export function setupCodePractice(): void {
         const waiting = message('assistant', el('div', 'chat-loading'));
         waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
         turnWords = [];
+        // Replayable: the walk-throughs and help that talk; pairing's small turns and a quiz's aren't worth one each.
+        const blockAt = key;
+        if (['narrate', 'next', 'section', 'all', 'fix', 'ask'].includes(scope)) startRecording(() => {
+            if (key !== blockAt) return false;
+            closeAlternatives();closeCompare();canvas.clear();
+            return true;
+        });
         let ended = false, nextAfter = false, compareNext = false, pointed: [number, number] | null = null, leaveOn = 0, proposal = '';
         const hintWas = asked === 'Give me a hint.';
         try {
@@ -1688,6 +1792,7 @@ export function setupCodePractice(): void {
                     // Pointing at what it means, else at the end of what it typed: either way there is now code to see.
                     if (!step.select || !selectText(step.select, step.select_line)) placeCaret(input.value.length);
                     head.hidden = false;thought.hidden = false;
+                    recordAct = () => { if (step.select) selectText(step.select, step.select_line); };
                     await say(step.say, thought, run);
                     if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
                     continue;
@@ -1696,6 +1801,8 @@ export function setupCodePractice(): void {
                 // "Look here" only when there is something to look at: a step pointing at nothing is talk.
                 head.hidden = scope === 'grade' && !shown;
                 // What it draws goes with what it says, as at a board; what is about to be typed isn't there to draw on yet.
+                // Replayed, the code is already there: what it points at and draws goes with the words.
+                recordAct = () => { if (step.select) selectText(step.select, step.select_line);return drawOnCode(step); };
                 await Promise.all([say(step.say, thought, run), types ? null : drawOnCode(step)]);
                 if (!types) {
                     if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
@@ -1742,6 +1849,7 @@ export function setupCodePractice(): void {
         } finally {
             if (turnWords.length && key === blockKey) turns.push(`Learner: ${asked && own ? `${own}` : asked ?? ''}\nYou: ${turnWords.join(' ')}`);
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
+            endRecording();
             if (compareNext && key === blockKey) { void compare(false);return; }
             if (ended && pairing && key === blockKey) { leavePointing(pointed, leaveOn);trimPairTail();fixProposed = proposal; }
             // In a quiz, a judged answer leads to the next question; pairing, a finished line to the next line.
