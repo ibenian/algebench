@@ -35700,6 +35700,46 @@ function createCompareView(o) {
 			gaps.set(m, gap);
 		}
 	}
+	/**
+	* Matched parts side by side: each part's first line level with its other side's, the side that is ahead waiting
+	* with space above, as a diff does. Only parts in the same order on both sides can all be level (the longest run of
+	* them, by each side's order); a part moved out of order keeps its place, its ribbon crossing the others.
+	*/
+	function align() {
+		[...leftCol.querySelectorAll(".cmp-part"), ...rightCol.querySelectorAll(".cmp-part")].forEach((p) => {
+			p.style.marginTop = "";
+		});
+		const rightOrder = [...rightCol.children];
+		const pairs = matches.filter((m) => m.original_from).map((m) => {
+			const a = leftRows[m.original_from - 1]?.closest(".cmp-part");
+			const b = m.yours_from ? rightRows[m.yours_from - 1]?.closest(".cmp-part") : gaps.get(m);
+			return a && b ? {
+				a,
+				b,
+				at: rightOrder.indexOf(b),
+				from: m.original_from
+			} : null;
+		}).filter((p) => !!p).sort((x, y) => x.from - y.from);
+		const tails = [], back = [];
+		pairs.forEach((p, k) => {
+			let lo = 0, hi = tails.length;
+			while (lo < hi) {
+				const mid = lo + hi >> 1;
+				if (pairs[tails[mid]].at < p.at) lo = mid + 1;
+				else hi = mid;
+			}
+			back[k] = lo ? tails[lo - 1] : -1;
+			tails[lo] = k;
+		});
+		const run = [];
+		for (let k = tails.length ? tails[tails.length - 1] : -1; k >= 0; k = back[k]) run.unshift(pairs[k]);
+		const base = (e) => parseFloat(getComputedStyle(e).marginTop) || 0;
+		for (const { a, b } of run) {
+			const gap = a.offsetTop - b.offsetTop;
+			if (gap > .5) b.style.marginTop = `${base(b) + gap}px`;
+			else if (gap < -.5) a.style.marginTop = `${base(a) - gap}px`;
+		}
+	}
 	/** Pointed at, a part stands out with its other side and the ribbon between them; the rest step back. */
 	function hover(match) {
 		grid.classList.toggle("cmp-hovering", match != null);
@@ -35786,6 +35826,7 @@ function createCompareView(o) {
 			paintSide(leftCol, "Original", left, (m) => [m.original_from, m.original_to], leftRows, false);
 			paintSide(rightCol, "Your code", right, (m) => [m.yours_from, m.yours_to], rightRows, true);
 			paintGaps();
+			align();
 			o.host.scrollTop = 0;
 			paintLinks();
 			highlight(left, leftRows, language);
@@ -35838,6 +35879,7 @@ function createCompareView(o) {
 			laser.replaceChildren();
 		},
 		redraw() {
+			align();
 			paintLinks();
 			leftInk.redraw();
 			rightInk.redraw();

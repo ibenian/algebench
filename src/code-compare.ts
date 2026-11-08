@@ -91,6 +91,36 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             anchor.after(gap);anchor = gap;gaps.set(m, gap);
         }
     }
+    /**
+     * Matched parts side by side: each part's first line level with its other side's, the side that is ahead waiting
+     * with space above, as a diff does. Only parts in the same order on both sides can all be level (the longest run of
+     * them, by each side's order); a part moved out of order keeps its place, its ribbon crossing the others.
+     */
+    function align() {
+        const parts = [...leftCol.querySelectorAll<HTMLElement>('.cmp-part'), ...rightCol.querySelectorAll<HTMLElement>('.cmp-part')];
+        parts.forEach(p => { p.style.marginTop = ''; });
+        const rightOrder = [...rightCol.children];
+        const pairs = matches.filter(m => m.original_from).map(m => {
+            const a = leftRows[m.original_from - 1]?.closest<HTMLElement>('.cmp-part');
+            const b = m.yours_from ? rightRows[m.yours_from - 1]?.closest<HTMLElement>('.cmp-part') : gaps.get(m);
+            return a && b ? {a, b, at: rightOrder.indexOf(b), from: m.original_from} : null;
+        }).filter((p): p is {a: HTMLElement; b: HTMLElement; at: number; from: number} => !!p).sort((x, y) => x.from - y.from);
+        // The longest run in the same order on both sides (longest increasing subsequence of the right side's order).
+        const tails: number[] = [], back: number[] = [];
+        pairs.forEach((p, k) => {
+            let lo = 0, hi = tails.length;
+            while (lo < hi) { const mid = (lo + hi) >> 1;if (pairs[tails[mid]!]!.at < p.at) lo = mid + 1;else hi = mid; }
+            back[k] = lo ? tails[lo - 1]! : -1;tails[lo] = k;
+        });
+        const run: typeof pairs = [];
+        for (let k = tails.length ? tails[tails.length - 1]! : -1; k >= 0; k = back[k]!) run.unshift(pairs[k]!);
+        const base = (e: HTMLElement) => parseFloat(getComputedStyle(e).marginTop) || 0;
+        for (const {a, b} of run) {
+            const gap = a.offsetTop - b.offsetTop;
+            if (gap > 0.5) b.style.marginTop = `${base(b) + gap}px`;
+            else if (gap < -0.5) a.style.marginTop = `${base(a) - gap}px`;
+        }
+    }
     /** Pointed at, a part stands out with its other side and the ribbon between them; the rest step back. */
     function hover(match: string | null) {
         grid.classList.toggle('cmp-hovering', match != null);
@@ -144,6 +174,7 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             paintSide(leftCol, 'Original', left, m => [m.original_from, m.original_to], leftRows, false);
             paintSide(rightCol, 'Your code', right, m => [m.yours_from, m.yours_to], rightRows, true);
             paintGaps();
+            align();
             o.host.scrollTop = 0;
             paintLinks();
             void highlight(left, leftRows, language);void highlight(right, rightRows, language);
@@ -179,7 +210,7 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
         unpin() { pinned = null;hover(null); },
         /** The walk is over: the laser goes, the last marks stay. */
         endPointing() { pointing = null;laser.replaceChildren(); },
-        redraw() { paintLinks();leftInk.redraw();rightInk.redraw();paintLaser(); },
+        redraw() { align();paintLinks();leftInk.redraw();rightInk.redraw();paintLaser(); },
         setVisible(on: boolean) { leftInk.setVisible(on);rightInk.setVisible(on); },
         clear() { leftInk.clear();rightInk.clear();pointing = null;pinned = null;laser.replaceChildren();leftCol.replaceChildren();rightCol.replaceChildren();links.replaceChildren(); },
     };
