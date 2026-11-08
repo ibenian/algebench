@@ -35853,11 +35853,25 @@ var FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘⇧Enter" : "C
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
+/** Help me's choices kept behind "…": the everyday ones (fix, next step, compare, pair) show at once. */
+var MORE_CHOICES = /* @__PURE__ */ new Set([
+	"narrate",
+	"dryrun",
+	"complexity",
+	"section",
+	"all",
+	"quiz",
+	"series",
+	"funfact"
+]);
 /** What the Fun fact preset asks of the assistant, and what the chat shows as the learner's message. */
 var FUN_FACT_ASKED = "Tell me a fun fact about this algorithm.";
 var FUN_FACT_REQUEST = `${FUN_FACT_ASKED} One fact: where it came from, a surprising place it is used, or a quirk of how it works. Only what you are sure is true: no dates, names or numbers you are unsure of, and don't overstate (the idea behind something is not its exact code). Explain it on the code where it fits, and type nothing in my editor.`;
 /** What the Reason through complexity preset asks of the assistant. */
 var COMPLEXITY_REQUEST = "Reason through the runtime and space complexity, and explain it on the code.";
+/** What the Dry run preset asks: executing the code by hand, as a coder debugging it in their head. */
+var DRY_RUN_ASKED = "Dry-run my code: execute it step by step.";
+var DRY_RUN_REQUEST = `Dry-run my code in your head, typing nothing. Pick one small input that reaches every branch and first note the call with it beside the function header (\`bfs(3, adj, 0)\`). Then run the code in execution order, a step per line or decision, noting the values it changes beside the line (\`i = 2\`), replacing stale ones. Evaluate each condition on the real values. In a loop trace the first passes, skip the repeats, trace the last pass and the exit. Sketch the stack or data structure beside the code. Stop at a bug without fixing it. End with the result, checked.`;
 var HINT_LEVELS = [
 	{
 		level: "direct",
@@ -37246,6 +37260,11 @@ function setupCodePractice() {
 					"I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some"
 				],
 				[
+					"dryrun",
+					"Dry run",
+					"I execute your code by hand on a small input, step by step, noting the values on the lines as they change, typing nothing: only what you selected, if you selected some"
+				],
+				[
 					"complexity",
 					"Reason through complexity",
 					"I work out the runtime and space complexity on your code, pointing at what sets each cost, typing nothing: only what you selected, if you selected some"
@@ -37287,12 +37306,30 @@ function setupCodePractice() {
 				"You type, and I help as much as the Hints level says: from starting each line, down to only saying what may break"
 			]
 		];
+		const extra = [];
+		const more = el("button", "cp-help-btn cp-help-more");
+		more.type = "button";
+		more.textContent = "…";
+		more.title = "More: walk through, dry run, complexity, finish or write it all, questions, quiz, fun fact";
+		more.addEventListener("click", () => {
+			extra.forEach((b) => {
+				b.hidden = false;
+			});
+			more.remove();
+		});
 		for (const [scope, text, title] of choices) {
-			if (scope === "pairing" && input.value.trim()) row.append(compareChoice());
+			if (scope === "pairing") {
+				row.append(more);
+				if (input.value.trim()) row.append(compareChoice());
+			}
 			const b = el("button", "cp-help-btn");
 			b.type = "button";
 			b.textContent = text;
 			b.title = title;
+			if (MORE_CHOICES.has(scope)) {
+				b.hidden = true;
+				extra.push(b);
+			}
 			b.addEventListener("click", () => void assist(scope, words.value.trim()));
 			row.append(b);
 		}
@@ -37628,6 +37665,8 @@ function setupCodePractice() {
 		if (scope === "grade" && !quiz) return;
 		const complexity = scope === "complexity";
 		if (complexity) scope = "narrate";
+		const dryRun = scope === "dryrun";
+		if (dryRun) scope = "narrate";
 		const funFact = scope === "funfact";
 		if (funFact) {
 			scope = "ask";
@@ -37695,6 +37734,7 @@ function setupCodePractice() {
 		let span = "";
 		const own = request;
 		if (complexity) request = [COMPLEXITY_REQUEST, request].filter(Boolean).join("\n");
+		if (dryRun) request = [DRY_RUN_REQUEST, request].filter(Boolean).join("\n");
 		if (picked) {
 			const first = input.value.slice(0, a).split("\n").length, last = input.value.slice(0, b).replace(/\n$/, "").split("\n").length;
 			span = first === last ? `line ${first}` : `lines ${first}–${last}`;
@@ -37706,13 +37746,14 @@ function setupCodePractice() {
 		}
 		const asked = funFact ? FUN_FACT_ASKED : {
 			fix: "Fix the errors in what I typed, without writing ahead.",
-			narrate: complexity ? picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST : picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
+			narrate: complexity ? picked ? `${COMPLEXITY_REQUEST} Only the selected ${span}.` : COMPLEXITY_REQUEST : dryRun ? picked ? `${DRY_RUN_ASKED} Only the selected ${span}.` : DRY_RUN_ASKED : picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
 			next: "Help me with the next step.",
 			section: `Help me finish “${focus?.title ?? "this section"}”.`,
 			all: "Write it all for me, and talk me through it.",
 			ask: request,
 			quiz: starting ? own ? `Quiz me on this: ${own}` : "Quiz me." : own ? `Ask me a question about this: ${own}` : "Ask me a question.",
 			complexity: "",
+			dryrun: "",
 			funfact: "",
 			series: "",
 			grade: pending?.kind === "answer" ? own : "Check my answer.",

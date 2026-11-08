@@ -6288,6 +6288,8 @@ body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context ho
   background: color-mix(in srgb, var(--ai-tone) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ai-tone) 50%, transparent); }
 .cp-help-level { display: inline-flex; align-items: center; gap: 4px; order: 3; font-size: 11px; color: var(--muted-color); }
 .cp-help-level-pick { font: inherit; color: var(--text-color); background: transparent; border: 1px solid color-mix(in srgb, var(--ai-tone) 50%, transparent); border-radius: 999px; padding: 1px 6px; cursor: pointer; }
+.cp-help-btn[hidden] { display: none; }
+.cp-help-more { font-weight: 700; letter-spacing: 1px; }
 .cp-help-btn:hover { background: color-mix(in srgb, var(--ai-tone) 28%, transparent); }
 .code-practice.cp-assisting .cp-editor { border-color: var(--ai-tone); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-tone) 28%, transparent); }
 .code-practice.cp-assisting .cp-input { caret-color: transparent; cursor: default; }
