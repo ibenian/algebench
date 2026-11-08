@@ -857,7 +857,7 @@ export function setupCodePractice(): void {
     const compareView = createCompareView({host: compareHost, charWidth: () => { measure();return charWidth; }, hand: {trace: pointerTrace, moveTo: pointerTo, done: pointerDone}, ask: askAboutPart});
     const compareTool = tool('⇄ Compare', '');
     compareTool.classList.add('cp-coach-only');
-    tools.insertBefore(compareTool, helpTool);
+    tools.insertBefore(compareTool, reset);
     // Pairing rests while the split is open, and goes on when it closes.
     let comparing = false, comparedText = '', askAbout: CompareMatch | null = null, pairAfterCompare = false;
     function paintCompareTool() {
@@ -896,7 +896,7 @@ export function setupCodePractice(): void {
     altFold.addEventListener('click', e => { e.stopPropagation();flipAltInfo(); });
     head.addEventListener('click', e => { if (alternating && !(e.target as HTMLElement).closest('button, select')) flipAltInfo(); });
     const altTool = tool('⇋ Alternatives', '');altTool.classList.add('cp-alt-keep');takeBack.classList.add('cp-alt-keep');speak.classList.add('cp-alt-keep');
-    tools.insertBefore(altTool, helpTool);
+    tools.insertBefore(altTool, reset);
     // The lesson's alternatives group for the code in hand; what is on screen; the part asked about.
     // Its talk is its own context: kept apart from Type along's turns, and gone when it closes.
     let altTurns: string[] = [];
@@ -931,7 +931,8 @@ export function setupCodePractice(): void {
     altTool.addEventListener('click', () => { if (alternating) closeAlternatives();else openAlternatives(); });
     // Question: point at code (a line, more lines, or a box round any part) and ask about it beside it.
     const questionTool = tool('? Question', 'Ask about a piece of code: click a line (shift-click for more lines) or drag a box round any part, then type beside it: a question, an issue you see, or a change to make (Esc to cancel)');
-    tools.insertBefore(questionTool, compareTool);questionTool.classList.add('cp-alt-keep');
+    // Question, then Help me (Take back in its place on the assistant's turn), then the comparisons.
+    tools.insertBefore(questionTool, helpTool);questionTool.classList.add('cp-alt-keep');
     const paintQuestion = (on: boolean) => questionTool.setAttribute('aria-pressed', String(on));
     paintQuestion(false);
     const QUESTION_HINT = 'Ask, point out an issue, or ask for a change…';
