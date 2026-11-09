@@ -246,6 +246,29 @@ def doc_expr(source, line_text, snippet, text):
     return {'line': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
 
 
+class Ann:
+    """Annotations for a source of several top-level functions that reuse names: a name or an expression is placed within
+    one function (named by its header text), so the same name can mean something else in another."""
+
+    def __init__(self, source, *headers):
+        self.S, self.lines = source, source.split('\n')
+        starts = [line_of(source, h) for h in headers]
+        self.span = dict(zip(headers, zip(starts, [k - 1 for k in starts[1:]] + [len(self.lines)])))
+
+    def name(self, fn, name, text):
+        a, b = self.span[fn]
+        return {'name': name, 'line': a, 'endLine': b, 'text': text}
+
+    def expr(self, fn, line_text, snippet, text):
+        line = line_of(self.S, line_text, fn)
+        col = self.lines[line - 1].index(snippet)
+        return {'line': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
+
+    def block(self, fn, start, end, text):
+        a = line_of(self.S, start, fn)
+        return {'line': a, 'endLine': next(i + 1 for i in range(a - 1, len(self.lines)) if end in self.lines[i]), 'text': text}
+
+
 def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None,
               first=None, more=(), sections=(), annotations=()):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
@@ -1999,6 +2022,35 @@ def shortest_odd_cycle(adj, u, v):
     return path   # u … v; the edge v – u closes it
 
 
+def bipartite_annotations():
+    """The Code panel's hover docs for bipartite.py: two-colouring by BFS, then by DFS."""
+    A = Ann(BIP_SOURCE, 'def is_bipartite(', 'def is_bipartite_dfs(')
+    B, D = 'def is_bipartite(', 'def is_bipartite_dfs('
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        doc('is_bipartite', 'Whether the nodes split into two teams with every edge between the teams, by colouring with BFS. '
+            'True exactly when the graph has no odd cycle. $O(V + E)$ time.'),
+        doc('is_bipartite_dfs', 'The same test, colouring along DFS paths instead of in rings. $O(V + E)$ time, recursion up to $O(V)$ deep.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` lists the neighbours of `u`, each edge listed under both ends.'),
+        doc('color', 'Each node\'s team: `0` or `1`, or `-1` while it has none. Having a team is also the visited mark.'),
+        doc('s', 'A node to start colouring from: one per piece of the graph, since the graph may be in pieces.'),
+        doc('queue', 'Coloured nodes whose neighbours are still to be checked, oldest first.'),
+        A.name(B, 'u', 'The node just taken from the queue: its neighbours get the other team.'),
+        A.name(D, 'u', 'The node being coloured now.'),
+        doc('v', 'A neighbour of `u`: it must end up on the other team.'),
+        doc('c', 'The team `u` gets: `0` or `1`.'),
+        doc('dfs', 'Colours `u` with `c` and everything reachable from it, alternating teams; `False` as soon as two neighbours clash.'),
+        A.expr(B, 'if color[s] != -1', 'color[s] != -1', 'Already coloured from an earlier start: its piece is done.'),
+        A.expr(B, 'color[s] = 0', 'color[s] = 0', 'A new piece: its first node can go on either team. Team 0 is as good as 1.'),
+        A.expr(B, 'color[v] = 1 - color[u]', '1 - color[u]', 'The other team: `1 - 0` is `1`, `1 - 1` is `0`.'),
+        A.expr(B, 'elif color[v] == color[u]', 'color[v] == color[u]', 'Both ends of the edge on the same team: they can\'t be split, so the graph has an odd cycle.'),
+        A.expr(D, 'if not dfs(v, 1 - c)', 'not dfs(v, 1 - c)', 'Colour `v` the other team, all the way down; a clash anywhere below comes back as `False` and is passed up.'),
+        A.expr(D, 'elif color[v] == c', 'color[v] == c', 'A neighbour already on `u`\'s own team: a clash.'),
+        A.expr(D, 'if color[s] == -1 and not dfs(s, 0)', 'color[s] == -1 and not dfs(s, 0)', 'Each uncoloured piece is coloured from its own start; `and` skips `dfs` for a node already done.'),
+    ]
+
+
 def bipartite_sections():
     S = lambda *a, **k: section(BIP_SOURCE, *a, **k)
     return [
@@ -2132,7 +2184,7 @@ The rule doesn't care about order, so DFS works as well as BFS. The recursive ca
 **Practice:** Is Graph Bipartite?, Possible Bipartition.""",
         'Explain why the first team choice forces every other node, and why an odd cycle makes a clash unavoidable. Ask the learner to predict each new node\'s team, and on the second graph, which edge will clash.',
         'bipartite.py', BIP_SOURCE, btrace, elements(tr, 'bipNodes'),
-        sections=bipartite_sections(),
+        sections=bipartite_sections(), annotations=bipartite_annotations(),
         data={'bipNodes': pos(btrace, badj), 'oddNodes': pos(otrace, oadj), 'dfsNodes': pos(dtrace, dadj)},
         first={'title': 'Colour by BFS', 'description': 'Every neighbour goes on the other team.'},
         more=[{'id': 'odd', 'title': 'An odd cycle: a clash', 'description': 'A cycle of three cannot alternate two teams.',
@@ -2316,6 +2368,38 @@ def topo_dfs_trace():
     return trace, adj
 
 
+def topo_annotations():
+    """The Code panel's hover docs for topo.py: topological order by DFS finishing times, then by Kahn's algorithm."""
+    F, K = 'def topo_dfs(', 'def topo_kahn('
+    A = Ann(TOPO_SOURCE, F, K)
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        doc('topo_dfs', 'An order of the nodes with every edge pointing forward, from DFS finishing times; `[]` if there is a cycle. $O(V + E)$.'),
+        doc('topo_kahn', 'The same kind of order by peeling off nodes that wait for nothing (Kahn\'s algorithm); `[]` if there is a cycle. $O(V + E)$.'),
+        doc('n', 'How many nodes the graph has, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` lists the nodes `u` points to, the ones that must come after it.'),
+        doc('state', 'One state per node: `0` new, `1` on the current path, `2` done. Reaching a node still on the path means a cycle.'),
+        doc('indeg', 'Each node\'s indegree: how many nodes still to be placed point at it.'),
+        doc('queue', 'Nodes with nothing left to wait for, ready to be placed, oldest first.'),
+        A.name(F, 'order', 'Nodes as they finish: each after everything it points to. Reversed at the end, it is the order.'),
+        A.name(K, 'order', 'Nodes in the order they are placed: each only once all that points at it is placed.'),
+        A.name(F, 'dfs', 'Finishes everything after `u`, then `u` itself; `False` if it runs into a cycle.'),
+        A.name(F, 'u', 'The node being explored, or in the loop at the bottom, a node to start from.'),
+        A.name(K, 'u', 'While counting, each node in turn; in the main loop, the node just placed.'),
+        doc('v', 'A node `u` points to: it must come after `u`.'),
+        A.expr(F, 'if state[v] == 1', 'state[v] == 1', '`v` is still on the path that led here: the path loops, and no order exists.'),
+        A.expr(F, 'if state[v] == 0 and not dfs(v)', 'state[v] == 0 and not dfs(v)', 'Goes deeper into a new node only; a cycle found below is passed straight up.'),
+        A.expr(F, 'order.append(u)', 'order.append(u)', '`u` finishes after everything it points to, so it goes in after them: the list is the order backwards.'),
+        A.expr(F, 'return order[::-1]', 'order[::-1]', 'Reversed: the last to finish comes first. A node always finishes after everything it points to.'),
+        A.expr(F, 'return []', '[]', 'A cycle: no order can put every edge forward.'),
+        A.block(K, 'for u in range(n)', 'indeg[v] += 1', 'Each edge `u → v` adds one to what `v` waits for.'),
+        A.expr(K, 'queue = deque(', 'u for u in range(n) if indeg[u] == 0', 'The nodes nothing points at: free to go first.'),
+        A.expr(K, 'indeg[v] -= 1', 'indeg[v] -= 1', '`u` is placed, so `v` waits for one fewer.'),
+        A.expr(K, 'if indeg[v] == 0', 'indeg[v] == 0', 'Everything before `v` is placed: it can be queued.'),
+        A.expr(K, 'return order if len(order) == n else []', 'len(order) == n', 'Every node placed. If not, the rest wait on each other around a cycle.'),
+    ]
+
+
 def topo_sections():
     S = lambda *a, **k: section(TOPO_SOURCE, *a, **k)
     K, D = 'def topo_kahn(', 'def topo_dfs('
@@ -2428,7 +2512,7 @@ DFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have ev
 **Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.""",
         'Explain what a topological order is and why it exists exactly when there is no cycle. Ask the learner to predict which task finishes next in DFS, and which task is ready next in Kahn.',
         'topo.py', TOPO_SOURCE, dtrace, dfs,
-        sections=topo_sections(), call_entry=topo_line('topo_dfs', 'def dfs(u)'),
+        sections=topo_sections(), annotations=topo_annotations(), call_entry=topo_line('topo_dfs', 'def dfs(u)'),
         data={'topoNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(TOPO_POS, adj)]},
         first={'title': 'DFS: finish order, reversed', 'description': 'A task finishes after everything that depends on it.'},
         more=[{'id': 'kahn', 'title': "Kahn: take what waits for nothing", 'description': 'Indegrees, a queue of ready tasks, and the order they leave in.',
@@ -2565,6 +2649,33 @@ def uf_trace():
     return trace
 
 
+def uf_annotations():
+    """The Code panel's hover docs for union_find.py."""
+    S = UF_SOURCE
+    return [
+        doc('count_groups', 'How many connected groups `n` nodes form once `edges` join them, by union-find. Nearly $O(1)$ per edge.'),
+        doc('n', 'How many nodes there are, numbered `0` to `n - 1`.'),
+        doc('edges', 'The connections, as `(a, b)` pairs.'),
+        doc('parent', 'Each node\'s parent in its group\'s tree; a root is its own parent. Two nodes are in one group when they share a root.'),
+        doc('rank', 'An upper bound on each root\'s tree height, so the shorter tree goes under the taller and trees stay flat.'),
+        doc('find', 'The root of `x`\'s group, flattening the path on the way so the next `find` is quicker.'),
+        doc('union', 'Joins the groups of `a` and `b`; `False` if they were already one group.'),
+        doc('x', 'The node whose root is wanted.'),
+        doc('a', 'One end of an edge.'),
+        doc('b', 'The other end of the edge.'),
+        doc('ra', 'The root of `a`\'s group: after the swap, the taller tree\'s root.'),
+        doc('rb', 'The root of `b`\'s group: after the swap, the shorter tree\'s root.'),
+        doc('groups', 'How many groups there are so far: `n` at first, one fewer for each edge that joins two.'),
+        doc_expr(S, 'parent = list(range(n))', 'list(range(n))', 'Every node its own root: `n` groups of one.'),
+        doc_expr(S, 'parent[x] = find(parent[x])', 'parent[x] = find(parent[x])', 'Path compression: `x` points straight at its root from now on, and so does every node on the way.'),
+        doc_expr(S, 'if ra == rb', 'ra == rb', 'Same root: `a` and `b` are already connected, so this edge closes a cycle.'),
+        doc_expr(S, 'if rank[ra] < rank[rb]', 'rank[ra] < rank[rb]', 'Union by rank: `ra` should be the taller tree, so swap if it isn\'t.'),
+        doc_expr(S, 'parent[rb] = ra', 'parent[rb] = ra', 'One root under the other: the two groups are one.'),
+        doc_expr(S, 'if rank[ra] == rank[rb]', 'rank[ra] == rank[rb]', 'Equal heights: the joined tree is one taller.'),
+        doc_expr(S, 'if union(a, b)', 'union(a, b)', '`True` only when the edge joined two groups, so the count drops.'),
+    ]
+
+
 def uf_sections():
     S = lambda *a, **k: section(UF_SOURCE, *a, **k)
     return [
@@ -2654,7 +2765,7 @@ Counting is free: start with n groups and subtract one per successful union. Her
 **Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.""",
         'Explain how parent pointers represent groups, why path compression and union by rank keep the trees flat, and how an edge whose ends share a root closes a cycle. Ask the learner to predict each find\'s root and which edge will be redundant.',
         'union_find.py', UF_SOURCE, trace, elements,
-        sections=uf_sections(), call_entry=line_of(UF_SOURCE, 'def find(x)'),
+        sections=uf_sections(), annotations=uf_annotations(), call_entry=line_of(UF_SOURCE, 'def find(x)'),
         data={'ufNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(UF_POS, adj)],
               'ufEdges': [{'name': f'{a}–{b}', 'pair': [a, b]} for a, b in UF_EDGES],
               'ufPalette': [{'c': col} for col in UF_PALETTE]},
@@ -2800,6 +2911,44 @@ def prim_trace(adj):
     return trace
 
 
+def mst_annotations():
+    """The Code panel's hover docs for mst.py: Kruskal's cheapest-edges-first, then Prim's growing tree."""
+    K, P = 'def kruskal(', 'def prim('
+    A = Ann(MST_SOURCE, K, P)
+    return [
+        doc('heapq', 'Python\'s binary heap: the smallest item comes off first; push and pop are $O(\\log n)$.'),
+        doc('kruskal', 'A minimum spanning tree from the cheapest edges first, skipping any that closes a cycle. $O(E \\log E)$ for the sort.'),
+        doc('prim', 'A minimum spanning tree grown from node `0`, always adding the cheapest edge leaving it. $O(E \\log V)$.'),
+        doc('n', 'How many nodes there are, numbered `0` to `n - 1`.'),
+        doc('edges', 'Every edge as `(weight, a, b)`, so sorting puts the cheapest first.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds `(v, weight)` for each edge at `u`.'),
+        doc('tree', 'The edges chosen so far.'),
+        doc('cost', 'The total weight of the edges chosen so far.'),
+        doc('parent', 'Union-find parents: two nodes are already connected by the tree when they share a root.'),
+        doc('find', 'The root of `x`\'s group, halving the path as it goes.'),
+        doc('x', 'The node whose root is wanted.'),
+        doc('seen', 'Whether each node is in the tree yet.'),
+        doc('heap', 'Edges leaving the tree, as `(weight, node, reached from)`, cheapest on top.'),
+        A.name(K, 'w', 'This edge\'s weight.'),
+        A.name(P, 'w', 'The weight of the edge that reached `u`.'),
+        doc('a', 'One end of the edge.'),
+        doc('b', 'The other end of the edge.'),
+        doc('ra', 'The root of `a`\'s group.'),
+        doc('rb', 'The root of `b`\'s group.'),
+        doc('u', 'The node just taken off the heap: the cheapest to reach from the tree.'),
+        doc('p', 'The tree node `u` was reached from; `-1` for the start.'),
+        doc('v', 'A neighbour of `u`.'),
+        doc('wv', 'The weight of the edge from `u` to `v`.'),
+        A.expr(K, 'parent[x] = parent[parent[x]]', 'parent[x] = parent[parent[x]]', 'Path halving: each node on the way skips to its grandparent, so later finds are shorter.'),
+        A.expr(K, 'for w, a, b in sorted(edges)', 'sorted(edges)', 'Cheapest first: a cheap edge is never passed over for a dearer one doing the same job.'),
+        A.expr(K, 'if ra == rb', 'ra == rb', 'Already connected through the tree: this edge would close a cycle.'),
+        A.expr(K, 'if len(tree) == n - 1', 'len(tree) == n - 1', 'A tree on `n` nodes has `n - 1` edges: done, the rest need not be looked at.'),
+        A.expr(P, 'heap = [(0, 0, -1)]', '(0, 0, -1)', 'Node `0` reached for free from nowhere: the tree\'s first node.'),
+        A.expr(P, 'if seen[u]', 'seen[u]', 'Already in the tree, reached by a cheaper edge earlier: this one is stale.'),
+        A.expr(P, 'heapq.heappush(heap, (wv, v, u))', '(wv, v, u)', 'Every edge out of the tree goes on the heap; the cheapest comes off next.'),
+    ]
+
+
 def mst_sections():
     S = lambda *a, **k: section(MST_SOURCE, *a, **k)
     K, P = 'def kruskal(', 'def prim('
@@ -2934,7 +3083,7 @@ Both find the same total, **22**, here even the same tree: with distinct weights
 
 **Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.""",
         'Explain the cut property and why each greedy choice is safe. Ask the learner to predict which edge Kruskal takes or skips next, and which edge Prim pops next.',
-        'mst.py', MST_SOURCE, ktrace, kruskal, sections=mst_sections(),
+        'mst.py', MST_SOURCE, ktrace, kruskal, sections=mst_sections(), annotations=mst_annotations(),
         data={'mstNodes': nodes, 'mstSorted': [{'name': f'{w}:{a}–{b}', 'pair': [a, b]} for w, a, b in sorted_edges],
               'mstEdges': [{'name': f'{w}:{a}–{b}', 'pair': [a, b]} for a, b, w in MST_EDGES],
               'ufPalette': [{'c': col} for col in UF_PALETTE]},
@@ -3031,6 +3180,31 @@ def dijkstra_trace():
     return trace, adj
 
 
+def dijkstra_annotations():
+    """The Code panel's hover docs for dijkstra.py."""
+    S = DIJ_SOURCE
+    return [
+        doc('heapq', 'Python\'s binary heap: the smallest item comes off first; push and pop are $O(\\log n)$.'),
+        doc('dijkstra', 'The shortest distance from `src` to every node, with no negative weights, and each node\'s previous node on that path. $O(E \\log V)$.'),
+        doc('n', 'How many nodes there are, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds `(v, weight)` for each edge out of `u`.'),
+        doc('src', 'The node distances are measured from.'),
+        doc('dist', 'The shortest distance found so far to each node; final once the node comes off the heap.'),
+        doc('prev', 'The node before each node on its shortest path; follow it back to `src` to get the path.'),
+        doc('heap', 'Nodes to visit as `(distance, node)`, nearest on top. A node may be in it more than once.'),
+        doc('d', 'The distance `u` had when it was pushed.'),
+        doc('u', 'The nearest node not finished yet: its distance is final.'),
+        doc('v', 'A neighbour of `u`.'),
+        doc('w', 'The weight of the edge from `u` to `v`.'),
+        doc_expr(S, "dist = [float('inf')] * n", "[float('inf')] * n", 'Every node unreached: infinitely far.'),
+        doc_expr(S, 'if d > dist[u]', 'd > dist[u]', 'A stale entry: `u` was pushed again with a shorter distance, which came off first.'),
+        doc_expr(S, 'if d + w < dist[v]', 'd + w < dist[v]', 'Through `u` is shorter than the best way to `v` so far.'),
+        doc_expr(S, 'dist[v] = d + w', 'dist[v] = d + w', 'Relax: the shorter way is kept.'),
+        doc_expr(S, 'heapq.heappush(heap, (dist[v], v))', '(dist[v], v)', 'Pushed again with its new distance; the old entry stays and is skipped as stale.'),
+        doc_block(S, 'while heap', 'heapq.heappush(heap, (dist[v], v))', 'Each node is finished once and each edge relaxed at most once per finish: $O(E \\log V)$ with the heap.'),
+    ]
+
+
 def dijkstra_sections():
     S = lambda *a, **k: section(DIJ_SOURCE, *a, **k)
     return [
@@ -3112,7 +3286,7 @@ Here the direct edge 0 → 1 costs 7, but 0 → 2 → 1 costs 2 + 3 = **5**, so 
 
 **Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water.""",
         'Explain why the popped node\'s distance is final when no edge is negative, what relaxation does, and why stale heap entries appear. Ask the learner to predict which node pops next and whether a relaxation improves the distance.',
-        'dijkstra.py', DIJ_SOURCE, trace, elements, sections=dijkstra_sections(),
+        'dijkstra.py', DIJ_SOURCE, trace, elements, sections=dijkstra_sections(), annotations=dijkstra_annotations(),
         data={'dijNodes': nodes},
         first={'title': 'Settle the closest, relax its edges', 'description': 'A min-heap pops the closest unsettled node.'})
 
@@ -3194,6 +3368,27 @@ def zero_one_trace():
     return trace, adj
 
 
+def zero_one_annotations():
+    """The Code panel's hover docs for zero_one_bfs.py."""
+    S = ZOB_SOURCE
+    return [
+        doc('deque', 'A double-ended queue: adding and removing at either end are $O(1)$.'),
+        doc('zero_one_bfs', 'Shortest distances from `src` when every edge weighs 0 or 1, with a deque instead of a heap. $O(V + E)$.'),
+        doc('n', 'How many nodes there are, numbered `0` to `n - 1`.'),
+        doc('adj', 'The adjacency list: `adj[u]` holds `(v, weight)`, each weight 0 or 1.'),
+        doc('src', 'The node distances are measured from.'),
+        doc('dist', 'The shortest distance found so far to each node.'),
+        doc('dq', 'Nodes in order of distance: the front is never further than the back, and the two differ by at most 1.'),
+        doc('u', 'The nearest node in the deque.'),
+        doc('v', 'A neighbour of `u`.'),
+        doc('w', 'The edge\'s weight: `0` or `1`.'),
+        doc_expr(S, "dist = [float('inf')] * n", "[float('inf')] * n", 'Every node unreached: infinitely far.'),
+        doc_expr(S, 'if dist[u] + w < dist[v]', 'dist[u] + w < dist[v]', 'Through `u` is shorter than the best way to `v` so far.'),
+        doc_expr(S, 'dq.appendleft(v)', 'dq.appendleft(v)', 'A 0-edge: `v` is as close as `u`, so it goes in front, where the nearest nodes are.'),
+        doc_expr(S, '                    dq.append(v)', 'dq.append(v)', 'A 1-edge: `v` is one further, so it goes at the back. The deque stays in order of distance, as a heap would keep it.'),
+    ]
+
+
 def zero_one_sections():
     S = lambda *a, **k: section(ZOB_SOURCE, *a, **k)
     return [
@@ -3269,7 +3464,7 @@ With every weight 1, this is plain BFS; with weights larger than 1, use Dijkstra
 
 **Practice:** Minimum Cost to Make at Least One Valid Path in a Grid, Minimum Obstacle Removal to Reach Corner.""",
         'Explain why a free edge goes to the front and a paid edge to the back, and why that keeps the deque sorted like Dijkstra\'s heap. Ask the learner to predict where each push goes and which node is taken next.',
-        'zero_one_bfs.py', ZOB_SOURCE, trace, elements, sections=zero_one_sections(),
+        'zero_one_bfs.py', ZOB_SOURCE, trace, elements, sections=zero_one_sections(), annotations=zero_one_annotations(),
         data={'zobNodes': nodes},
         first={'title': 'Free edges to the front, paid to the back', 'description': 'A deque that stays sorted by distance.'})
 
