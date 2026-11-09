@@ -219,6 +219,10 @@ export function createCompareView(o: {host: HTMLElement; charWidth: () => number
             if (mark) {
                 const top = mark.offsetTop;
                 if (top < o.host.scrollTop + 30 || top > o.host.scrollTop + o.host.clientHeight - 60) o.host.scrollTop = Math.max(0, top - 80);
+                // Sideways too: the two columns are often wider than the panel, and what it points at must be seen.
+                const left = mark.offsetLeft, right = left + mark.offsetWidth;
+                if (left < o.host.scrollLeft + 20 || right > o.host.scrollLeft + o.host.clientWidth - 20)
+                    o.host.scrollLeft = Math.max(0, Math.min(left - 40, right - o.host.clientWidth + 40));
                 const b = mark.getBoundingClientRect();
                 await o.hand.moveTo(b.left + b.width / 2, b.top + b.height);
                 o.hand.done();

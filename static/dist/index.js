@@ -2559,6 +2559,14 @@ function paintCellLinks() {
 			set.svg = newLayer(container);
 			set.drawn = "";
 		}
+		const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		if (set.place !== void 0 && set.place !== place) {
+			for (const parts of set.dying.values()) parts.forEach((el) => el.remove());
+			set.dying.clear();
+			set.born.clear();
+			set.last = /* @__PURE__ */ new Map();
+		}
+		set.place = place;
 		if (drawn === set.drawn) continue;
 		set.drawn = drawn;
 		const live = new Set(set.groups.flatMap((g) => g.pairs.map(([i, j]) => linkKey(g, i, j))));
@@ -35539,6 +35547,11 @@ function createCodeCanvas(o) {
 				if (k === 0 && at?.firstTop != null) {
 					const view = o.editor, top = at.firstTop;
 					if (top < view.scrollTop || top > view.scrollTop + view.clientHeight - 60) view.scrollTop = Math.max(0, top - 40);
+					const first = at.strokes[0]?.getBoundingClientRect(), box = view.getBoundingClientRect();
+					if (first && first.width) {
+						if (first.left < box.left + 20) view.scrollLeft -= box.left + 40 - first.left;
+						else if (first.right > box.right - 20) view.scrollLeft += Math.min(first.right - box.right + 40, first.left - box.left - 40);
+					}
 				}
 				const live = () => mine === run;
 				for (const stroke of at?.strokes ?? []) {
@@ -35877,6 +35890,8 @@ function createCompareView(o) {
 			if (mark) {
 				const top = mark.offsetTop;
 				if (top < o.host.scrollTop + 30 || top > o.host.scrollTop + o.host.clientHeight - 60) o.host.scrollTop = Math.max(0, top - 80);
+				const left = mark.offsetLeft, right = left + mark.offsetWidth;
+				if (left < o.host.scrollLeft + 20 || right > o.host.scrollLeft + o.host.clientWidth - 20) o.host.scrollLeft = Math.max(0, Math.min(left - 40, right - o.host.clientWidth + 40));
 				const b = mark.getBoundingClientRect();
 				await o.hand.moveTo(b.left + b.width / 2, b.top + b.height);
 				o.hand.done();

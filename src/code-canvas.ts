@@ -88,6 +88,12 @@ export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) =
                 if (k === 0 && at?.firstTop != null) {
                     const view = o.editor, top = at.firstTop;
                     if (top < view.scrollTop || top > view.scrollTop + view.clientHeight - 60) view.scrollTop = Math.max(0, top - 40);
+                    // And sideways: a mark on a long line, or on the far column of a comparison, is brought into view.
+                    const first = at.strokes[0]?.getBoundingClientRect(), box = view.getBoundingClientRect();
+                    if (first && first.width) {
+                        if (first.left < box.left + 20) view.scrollLeft -= box.left + 40 - first.left;
+                        else if (first.right > box.right - 20) view.scrollLeft += Math.min(first.right - box.right + 40, first.left - box.left - 40);
+                    }
                 }
                 // One hand: every stroke of the mark, then its words.
                 const live = () => mine === run;
