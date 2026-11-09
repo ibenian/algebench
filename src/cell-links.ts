@@ -31,7 +31,9 @@ interface LinkSet { groups: CellLinkGroup[]; svg: SVGSVGElement | null; drawn: s
     /** What was last drawn by link, and the links on their way out, flickering in a layer of their own. */
     last: Map<string, Painted>; dying: Map<string, SVGElement[]>; ghosts: SVGSVGElement | null;
     /** When each link still fading in appeared: a redraw mid-fade (the camera turning) carries on from there. */
-    born: Map<string, number> }
+    born: Map<string, number>;
+    /** The scene and step it was last painted on: links come and go with an animation only between states of one step. */
+    place?: string }
 const sets = new Map<string, LinkSet>();
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** How long a new link takes to fade in. */
@@ -175,6 +177,10 @@ export function paintCellLinks(): void {
         const shown = set.pinned || set.hovered;
         const drawn = JSON.stringify(shown ? paths : []);
         if (!set.svg?.isConnected) { set.svg = newLayer(container); set.drawn = ''; }
+        // Another scene or step is a new view, not a change of state: its links just show, and the old ones just go.
+        const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+        if (set.place !== undefined && set.place !== place) { for (const parts of set.dying.values()) parts.forEach(el => el.remove());set.dying.clear();set.born.clear();set.last = new Map(); }
+        set.place = place;
         if (drawn === set.drawn) continue;
         set.drawn = drawn;
         // Gone from the state, not just turned out of view or unpinned: a link back again stops flickering.
