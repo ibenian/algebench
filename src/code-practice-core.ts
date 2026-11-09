@@ -271,3 +271,45 @@ export function trimTrailingBlanks(text: string, caret: number): {from: number; 
     return {from, to, insert, caret: from + (first ? 1 : 0) + column};
 }
 
+
+/**
+ * Tab and Shift+Tab as in a code editor (indent unit `unit` spaces). Shift+Tab takes every line the selection touches
+ * back to the previous tab stop; Tab does the same forward when the selection spans lines, and otherwise fills to the
+ * next tab stop at the cursor. A selection ending at the very start of a line leaves that line alone. Returns the
+ * range to replace, what goes there and the selection after, or null when nothing changes.
+ */
+export function indentEdit(text: string, start: number, end: number, out: boolean, unit = 4): {from: number; to: number; insert: string; start: number; end: number} | null {
+    const from = text.lastIndexOf('\n', start - 1) + 1;
+    const spans = end > start && text.slice(start, end).includes('\n');
+    if (!out && !spans) {
+        const fill = ' '.repeat(unit - ((start - from) % unit));
+        return {from: start, to: end, insert: fill, start: start + fill.length, end: start + fill.length};
+    }
+    const last = end > start && text[end - 1] === '\n' ? end - 1 : end;
+    const lineEnd = text.indexOf('\n', last);
+    const to = lineEnd < 0 ? text.length : lineEnd;
+    const lines = text.slice(from, to).split('\n');
+    // Each line's change, at its own start: negative when spaces go.
+    const changes = lines.map(line => {
+        if (out) {
+            if (line.startsWith('\t')) return -1;
+            const lead = /^ */.exec(line)![0].length;
+            return -Math.min(lead, lead % unit || unit);
+        }
+        if (!line.trim()) return 0;
+        return unit - (/^ */.exec(line)![0].length % unit);
+    });
+    if (changes.every(c => !c)) return null;
+    const insert = lines.map((line, k) => changes[k]! < 0 ? line.slice(-changes[k]!) : ' '.repeat(changes[k]!) + line).join('\n');
+    // A position moves with the change of its own line (a removal only as far as the line start) and of the lines before.
+    const move = (pos: number) => {
+        let at = from, shift = 0;
+        for (let k = 0; k < lines.length; k++) {
+            const c = changes[k]!, lineTo = at + lines[k]!.length;
+            if (pos <= lineTo) return pos + shift + (c < 0 ? -Math.min(-c, pos - at) : (pos > at ? c : 0));
+            shift += c;at = lineTo + 1;
+        }
+        return pos + shift;
+    };
+    return {from, to, insert, start: move(start), end: move(end)};
+}

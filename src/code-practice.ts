@@ -10,7 +10,7 @@ import { codeView, HIDE_CODE_ICON } from '/code-panel.js';
 import type { CodeView } from '/code-panel.js';
 import { codeSections } from '/code-sections.js';
 import type { CodeSection } from '/code-sections.js';
-import { scorePractice, focusSection, finishLine, isNeutral, trimTrailingBlanks, PEEK_FACTOR, ASSIST_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
+import { scorePractice, focusSection, finishLine, isNeutral, trimTrailingBlanks, indentEdit, PEEK_FACTOR, ASSIST_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
 import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
@@ -162,6 +162,17 @@ export function setupCodePractice(): void {
     const paint = el('pre', 'cp-paint');paint.setAttribute('aria-hidden', 'true');
     const input = el('textarea', 'cp-input');
     input.spellcheck = false;input.wrap = 'off';input.setAttribute('autocapitalize', 'off');input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    // Code, not prose: the system's "double space adds a period" (macOS) would turn two spaces into ". ". Its
+    // replacement is refused, and the second space typed is put in as typed.
+    input.addEventListener('beforeinput', e => {
+        if (e.inputType !== 'insertText' && e.inputType !== 'insertReplacementText') return;
+        const text = e.data ?? e.dataTransfer?.getData('text/plain') ?? '';
+        const at = input.selectionStart;
+        if (text !== '. ' || at !== input.selectionEnd || input.value[at - 1] !== ' ') return;
+        e.preventDefault();
+        document.execCommand('insertText', false, ' ');
+    });
     input.setAttribute('aria-label', 'Type the code');input.placeholder = 'Type the code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.';
     stack.append(paint, input);editor.append(gutter, stack);
     const cheer = el('div', 'cp-cheer');cheer.hidden = true;cheer.setAttribute('role', 'status');
@@ -2005,10 +2016,10 @@ export function setupCodePractice(): void {
     input.addEventListener('keydown', e => {
         if (e.key === 'Tab') {
             e.preventDefault();
-            if (!e.shiftKey) { insert(INDENT);return; }
-            const start = input.value.lastIndexOf('\n', input.selectionStart - 1) + 1;
-            const lead = /^ {1,4}/.exec(input.value.slice(start))?.[0].length ?? 0;
-            if (lead) { input.setSelectionRange(start, start + lead);insert(''); }
+            const edit = indentEdit(input.value, input.selectionStart, input.selectionEnd, e.shiftKey, INDENT.length);
+            if (!edit) return;
+            input.setSelectionRange(edit.from, edit.to);insert(edit.insert);
+            input.setSelectionRange(edit.start, edit.end);
         } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !pairing) {
             e.preventDefault();void review(true);
         } else if (e.key === 'Enter' && !e.isComposing) {

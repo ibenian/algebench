@@ -32521,6 +32521,58 @@ function trimTrailingBlanks(text, caret) {
 		caret: from + (first ? 1 : 0) + column
 	};
 }
+/**
+* Tab and Shift+Tab as in a code editor (indent unit `unit` spaces). Shift+Tab takes every line the selection touches
+* back to the previous tab stop; Tab does the same forward when the selection spans lines, and otherwise fills to the
+* next tab stop at the cursor. A selection ending at the very start of a line leaves that line alone. Returns the
+* range to replace, what goes there and the selection after, or null when nothing changes.
+*/
+function indentEdit(text, start, end, out, unit = 4) {
+	const from = text.lastIndexOf("\n", start - 1) + 1;
+	const spans = end > start && text.slice(start, end).includes("\n");
+	if (!out && !spans) {
+		const fill = " ".repeat(unit - (start - from) % unit);
+		return {
+			from: start,
+			to: end,
+			insert: fill,
+			start: start + fill.length,
+			end: start + fill.length
+		};
+	}
+	const last = end > start && text[end - 1] === "\n" ? end - 1 : end;
+	const lineEnd = text.indexOf("\n", last);
+	const to = lineEnd < 0 ? text.length : lineEnd;
+	const lines = text.slice(from, to).split("\n");
+	const changes = lines.map((line) => {
+		if (out) {
+			if (line.startsWith("	")) return -1;
+			const lead = /^ */.exec(line)[0].length;
+			return -Math.min(lead, lead % unit || unit);
+		}
+		if (!line.trim()) return 0;
+		return unit - /^ */.exec(line)[0].length % unit;
+	});
+	if (changes.every((c) => !c)) return null;
+	const insert = lines.map((line, k) => changes[k] < 0 ? line.slice(-changes[k]) : " ".repeat(changes[k]) + line).join("\n");
+	const move = (pos) => {
+		let at = from, shift = 0;
+		for (let k = 0; k < lines.length; k++) {
+			const c = changes[k], lineTo = at + lines[k].length;
+			if (pos <= lineTo) return pos + shift + (c < 0 ? -Math.min(-c, pos - at) : pos > at ? c : 0);
+			shift += c;
+			at = lineTo + 1;
+		}
+		return pos + shift;
+	};
+	return {
+		from,
+		to,
+		insert,
+		start: move(start),
+		end: move(end)
+	};
+}
 //#endregion
 //#region src/speech-text.ts
 /**
@@ -36759,6 +36811,15 @@ function setupCodePractice() {
 	input.wrap = "off";
 	input.setAttribute("autocapitalize", "off");
 	input.setAttribute("autocomplete", "off");
+	input.setAttribute("autocorrect", "off");
+	input.addEventListener("beforeinput", (e) => {
+		if (e.inputType !== "insertText" && e.inputType !== "insertReplacementText") return;
+		const text = e.data ?? e.dataTransfer?.getData("text/plain") ?? "";
+		const at = input.selectionStart;
+		if (text !== ". " || at !== input.selectionEnd || input.value[at - 1] !== " ") return;
+		e.preventDefault();
+		document.execCommand("insertText", false, " ");
+	});
 	input.setAttribute("aria-label", "Type the code");
 	input.placeholder = "Type the code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.";
 	stack.append(paint, input);
@@ -39518,16 +39579,11 @@ function setupCodePractice() {
 	input.addEventListener("keydown", (e) => {
 		if (e.key === "Tab") {
 			e.preventDefault();
-			if (!e.shiftKey) {
-				insert(INDENT);
-				return;
-			}
-			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
-			const lead = /^ {1,4}/.exec(input.value.slice(start))?.[0].length ?? 0;
-			if (lead) {
-				input.setSelectionRange(start, start + lead);
-				insert("");
-			}
+			const edit = indentEdit(input.value, input.selectionStart, input.selectionEnd, e.shiftKey, 4);
+			if (!edit) return;
+			input.setSelectionRange(edit.from, edit.to);
+			insert(edit.insert);
+			input.setSelectionRange(edit.start, edit.end);
 		} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !pairing) {
 			e.preventDefault();
 			review(true);

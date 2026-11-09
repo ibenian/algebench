@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { similarity, alignLines, scorePractice, focusSection, finishLine, ownNames, isNeutral, trimTrailingBlanks, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
+import { similarity, alignLines, scorePractice, focusSection, finishLine, ownNames, isNeutral, trimTrailingBlanks, indentEdit, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
 
 const REF = ['def f(n):', '    # sum it', '    total = 0', '    for i in range(n):', '        total += i', '', '    return total'].join('\n');
 const sections = [{id: 'init', title: 'Start at zero', from: 11, to: 12}, {id: 'loop', title: 'Add each', from: 13, to: 14}, {id: 'ret', title: 'Answer', from: 16, to: 16}];
@@ -137,3 +137,33 @@ test('pairing keeps one empty line at the end: the one the cursor is on', () => 
     assert.deepEqual(trimTrailingBlanks('\n  \n', 3), {from: 0, to: 4, insert: '  ', caret: 2}, 'nothing typed yet');
 });
 
+
+/** The editor after an indent edit, with the selection marked by [ and ]. */
+function tab(marked: string, out: boolean): string {
+    const start = marked.indexOf('['), end = marked.indexOf(']') - 1, text = marked.replace(/[[\]]/g, '');
+    const e = indentEdit(text, start, end, out);
+    if (!e) return marked;
+    const after = text.slice(0, e.from) + e.insert + text.slice(e.to);
+    return after.slice(0, e.start) + '[' + after.slice(e.start, e.end) + ']' + after.slice(e.end);
+}
+
+test('Tab fills to the next tab stop at the cursor, replacing a selection on one line', () => {
+    assert.equal(tab('x[]', false), 'x   []');
+    assert.equal(tab('    [x]', false), '        []');
+    assert.equal(tab('[]', false), '    []');
+});
+
+test('Shift+Tab takes the cursor line back to the previous tab stop, the cursor with it', () => {
+    assert.equal(tab('        re[]turn x', true), '    re[]turn x');
+    assert.equal(tab('      x[]', true), '    x[]', 'off a tab stop: back to the one before');
+    assert.equal(tab('  [] x', true), '[]x', 'a cursor inside the indentation stops at the line start');
+    assert.equal(tab('x = 1[]', true), 'x = 1[]', 'nothing to take away');
+    assert.equal(tab('\tx[]', true), 'x[]');
+});
+
+test('with lines selected both ways work on every line touched, and the selection stays on them', () => {
+    assert.equal(tab('def f():\n    [a = 1\n    b = 2]\nc', true), 'def f():\n[a = 1\nb = 2]\nc');
+    assert.equal(tab('[a = 1\n\nb = 2]', false), '[    a = 1\n\n    b = 2]', 'empty lines are left empty');
+    assert.equal(tab('a = 1\n[b = 2\nc = 3\n]d = 4', false), 'a = 1\n[    b = 2\n    c = 3\n]d = 4', 'a selection ending at a line start leaves that line');
+    assert.equal(tab('    a[ = 1\n  b] = 2', true), 'a[ = 1\nb] = 2');
+});
