@@ -2564,4 +2564,61 @@ const ORDER = ['overview',
     'recursion', 'backtracking', 'dynamic-programming', 'dp-2d'];                                                              // searching over choices                                                // searching over choices
 scenes.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
 codeFiles.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
+
+// Alternatives: functions in the lesson that solve the same problem another way, for Type along's Alternatives view.
+// Each group is declared on the file of its first member; a member names its file when it lives elsewhere.
+const member = (fn: string, label: string, approach: string, when: string, file?: string): Json =>
+    ({ ...(file ? { file } : {}), function: fn, label, approach, when });
+const ALTERNATIVES: Record<string, Json[]> = {
+    'hash-map': [{
+        id: 'two-sum', title: 'Find two numbers that add up to a target',
+        prompt: 'Compare the hash map with the two pointers: what each needs of the input (any order against sorted), what each returns (original indices against sorted positions), the time and space each costs, and why the pointers may move inward.',
+        members: [
+            member('two_sum', 'Hash map: look up the complement', 'One pass, remembering each number\'s index; for each number, looks up target minus it among those seen. O(n) time, O(n) space.',
+                'Unsorted input, or when the original indices are wanted.'),
+            member('two_sum_sorted', 'Two pointers on a sorted array', 'A pointer at each end: too small moves the left one in, too big the right one. O(n) time, O(1) space, but the input must be sorted.',
+                'The input is already sorted, or extra space must be avoided.', 'two-pointers'),
+        ],
+    }],
+    'tree-traversal': [{
+        id: 'traverse-tree', title: 'Visit every node of a binary tree',
+        prompt: 'Compare the orders: where each visits a node relative to its children (before, between, after, or level by level), what each order is good for (copying a tree, sorted order of a search tree, freeing or evaluating a tree, shortest depth), and recursion against a queue.',
+        members: [
+            member('preorder', 'Preorder: node, left, right', 'Visits a node before its subtrees, recursively. O(n) time, O(height) stack.', 'Copying or serialising a tree: a parent comes before its children.'),
+            member('inorder', 'Inorder: left, node, right', 'Visits a node between its subtrees. On a binary search tree that is sorted order. O(n), O(height) stack.', 'Sorted output from a binary search tree, or checking that it is one.'),
+            member('postorder', 'Postorder: left, right, node', 'Visits a node after both subtrees. O(n), O(height) stack.', 'When a node needs its children\'s results first: sizes, heights, deleting a tree.'),
+            member('level_order', 'Level order (BFS queue)', 'Visits level by level with a queue, no recursion. O(n) time, O(width) space.', 'Anything by depth: the levels themselves, the nearest node, the shallowest leaf.'),
+        ],
+    }],
+    'topological-sort': [{
+        id: 'course-order', title: 'Order courses before the ones that need them',
+        prompt: 'Compare the DFS finishing order with Kahn\'s peeling: why reversing finish times gives an order, how each notices a cycle, and which one gives an order level by level.',
+        members: [
+            member('find_order_dfs', 'DFS finishing order', 'Adds a course once everything after it is done, then reverses the list; reaching a course still on the path is a cycle. O(V + E).',
+                'When you already have DFS, or want the cycle found on the path.'),
+            member('find_order', 'Kahn: count indegrees', 'Repeatedly takes a course with no prerequisites left; courses that never free up sit on a cycle. No recursion. O(V + E).',
+                'When you want cycle detection built in, a level-by-level order, or no recursion.'),
+        ],
+    }],
+    'recursion': [
+        {
+            id: 'power', title: 'Raise x to the power n',
+            prompt: 'Compare plain fast exponentiation with the memoized one: whether any subproblem is ever solved twice here, and so whether the memo saves anything. Contrast this with Fibonacci, where it does.',
+            members: [
+                member('power', 'Halving, plain recursion', 'Squares the result for n // 2, times x when n is odd. One call per level: O(log n) time and stack.', 'Always: each subproblem is solved only once anyway.'),
+                member('power_memo', 'Halving, with a memo', 'The same halving, storing each power in a memo. One call per level, so no power is ever asked for twice: the memo adds O(log n) space and saves nothing.',
+                    'Never needed here: it shows what memoization cannot help with.'),
+            ],
+        },
+        {
+            id: 'fib', title: 'The nth Fibonacci number',
+            prompt: 'Compare plain recursion with the memoized one: how many times each subproblem is solved, why the plain one is exponential, and what the memo changes in time and space.',
+            members: [
+                member('fib', 'Plain recursion', 'Calls itself on n - 1 and n - 2, which repeat the same smaller cases again and again: about 1.6^n calls.', 'Only to see the problem: it is far too slow beyond n of about 35.'),
+                member('fib_memo', 'Recursion with a memo', 'The same recursion, storing each answer the first time: every n is solved once. O(n) time and space.', 'When subproblems repeat: this is top-down dynamic programming.'),
+            ],
+        },
+    ],
+};
+for (const f of codeFiles) if (ALTERNATIVES[f.id as string]) f.alternatives = ALTERNATIVES[f.id as string];
 process.stdout.write(JSON.stringify({ title: 'Common algorithm patterns', codeFiles, scenes }));
