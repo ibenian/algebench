@@ -53,3 +53,13 @@ test('the line the model names picks among several occurrences, and a wrong line
     assert.deepEqual(findSelection(text, 'total', 0, 2), [0, 5], 'not on line 2: the first');
     assert.deepEqual(findSelection(text, 'for x in xs:\ntotal += x', 0, 2), [10, 37], 're-indented, from its line');
 });
+
+test('a name is found whole, not inside a longer name', () => {
+    const text = 'from collections import deque\n\ndef topo_kahn(n, adj):\n    indeg = [0] * n';
+    const [a, b] = findSelection(text, 'n', 0, 3)!;
+    assert.equal(text.slice(a - 1, b + 1), '(n,', 'the parameter, not the n of topo_kahn');
+    assert.equal(text.slice(...findSelection(text, 'n')!), 'n');
+    assert.equal(findSelection(text, 'n')![0], text.indexOf('(n') + 1, 'with no line given, still the first whole one');
+    assert.deepEqual(findSelection(text, 'kahn', 0, 3), [text.indexOf('kahn'), text.indexOf('kahn') + 4], 'inside a name when that is all there is');
+    assert.equal(text.slice(...findSelection(text, '[0] * n')!), '[0] * n', 'punctuation at an edge needs no boundary');
+});

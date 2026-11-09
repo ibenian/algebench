@@ -25541,10 +25541,26 @@ function keyDelay(prev, key, random = Math.random) {
 	if (prev === " " && r < .12) return 220 + r * 260;
 	return 28 + r * 52;
 }
+var WORD = /[A-Za-z0-9_]/;
+/**
+* Where `want` first starts in `text` at `from` or after (and no later than `until`), as a whole name: a snippet that
+* begins or ends with a name character isn't taken from inside a longer name (`n` in `topo_kahn(n, adj)` is the
+* parameter). Only when it is nowhere whole is the first occurrence taken (never, when `strict`). -1 when it isn't there.
+*/
+function findWhole(text, want, from, until = text.length, strict = false) {
+	const headWord = WORD.test(want[0]), tailWord = WORD.test(want[want.length - 1]);
+	let first = -1;
+	for (let at = text.indexOf(want, from); at >= 0 && at <= until; at = text.indexOf(want, at + 1)) {
+		if (first < 0) first = at;
+		const end = at + want.length;
+		if ((!headWord || !WORD.test(text[at - 1] ?? "")) && (!tailWord || !WORD.test(text[end] ?? ""))) return at;
+	}
+	return strict ? -1 : first;
+}
 /**
 * Where `snippet` (a step's `select`) is in `text`, as [start, end). With `line` (1-based, the line the model says it
 * starts on), an occurrence starting on that line wins, so a name used on many lines is taken where it was meant.
-* Otherwise the first occurrence from `from` on (after the last selection), else from the top; failing that, the
+* Otherwise the first occurrence from `from` on (a whole name first) (after the last selection), else from the top; failing that, the
 * lines it spans compared without their indentation (the model may re-indent what it quotes). Null when it isn't there.
 */
 function findSelection(text, snippet, from = 0, line = 0) {
@@ -25558,12 +25574,17 @@ function findSelection(text, snippet, from = 0, line = 0) {
 		return [offset(k) + lines[k].length - lines[k].trimStart().length, offset(last) + lines[last].trimEnd().length];
 	};
 	if (line >= 1 && line <= lines.length) {
-		const at = text.indexOf(want, offset(line - 1));
-		if (at >= 0 && at <= offset(line - 1) + lines[line - 1].length) return [at, at + want.length];
+		const at = findWhole(text, want, offset(line - 1), offset(line - 1) + lines[line - 1].length);
+		if (at >= 0) return [at, at + want.length];
 		const there = byLines(line - 1);
 		if (there) return there;
 	}
-	for (const start of [text.indexOf(want, from), text.indexOf(want)]) if (start >= 0) return [start, start + want.length];
+	for (const start of [
+		findWhole(text, want, from, text.length, true),
+		findWhole(text, want, 0, text.length, true),
+		text.indexOf(want, from),
+		text.indexOf(want)
+	]) if (start >= 0) return [start, start + want.length];
 	for (let k = 0; k + parts.length <= lines.length; k++) {
 		const found = byLines(k);
 		if (found) return found;
