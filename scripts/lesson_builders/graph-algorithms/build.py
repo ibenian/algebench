@@ -4247,7 +4247,66 @@ for f in codeFiles:
     if f['id'] in ALTERNATIVES:
         f['alternatives'] = ALTERNATIVES[f['id']]
 
-lesson = {'title': 'Graph algorithms', 'codeFiles': codeFiles, 'scenes': scenes}
+
+
+def _g(markdown, aliases=None, term=None):
+    return {**({'term': term} if term else {}), **({'aliases': aliases} if aliases else {}), 'markdown': markdown}
+
+
+# Hoverable terms in the scene text: each linked at its first appearance in a paragraph (automatic matching).
+GLOSSARY = {
+    'adjacency list': _g('For each node, the list of its neighbours. Space $O(V + E)$, and visiting a node\'s edges costs its degree: the usual choice for sparse graphs.', ['adjacency lists']),
+    'adjacency matrix': _g('A $V \\times V$ table where cell $(u, v)$ says whether (or how heavily) $u$ links to $v$. $O(1)$ edge lookup, but $O(V^2)$ space and $O(V)$ to list a node\'s neighbours.', ['adjacency matrices']),
+    'edge list': _g('Just the list of edges $(u, v)$, or $(u, v, w)$ with weights. Compact, and what Kruskal and Bellman-Ford iterate over.', ['edge lists']),
+    'directed': _g('Edges have a direction: $u \\to v$ does not imply $v \\to u$.', ['directed graph']),
+    'undirected': _g('Edges go both ways: an edge $u - v$ is stored in both adjacency lists.', ['undirected graph']),
+    'degree': _g('The number of edges at a node. In a directed graph, in-degree counts edges coming in and out-degree edges going out.', ['degrees', 'out-degree']),
+    'in-degree': _g("The number of edges coming into a node: how many prerequisites it still waits on. Kahn's algorithm starts from the nodes with in-degree 0.", ['in-degrees', 'indegree']),
+    'DFS': _g('Depth-first search: follow one path as deep as it goes before backing up, by recursion or an explicit stack. $O(V + E)$.', ['depth-first search', 'depth-first']),
+    'BFS': _g('Breadth-first search: visit everything one edge away, then two, and so on, using a queue. In an unweighted graph it finds shortest paths in $O(V + E)$.', ['breadth-first search', 'breadth-first']),
+    'visited': _g('The set (or array) of nodes already reached. Checking it before entering a node keeps a traversal from going round a cycle forever and visits each node once.', ['visited set']),
+    'connected component': _g('A largest group of nodes all reachable from each other in an undirected graph. One traversal from an unvisited node marks a whole component.', ['connected components', 'component', 'components']),
+    'flood fill': _g('Marking every cell reachable from a start cell through matching neighbours, by DFS or BFS on the grid: counting islands is a flood fill from each unvisited land cell.'),
+    'multi-source BFS': _g('BFS started from many nodes at once, all in the queue at distance 0. It gives each node its distance to the nearest source in one pass.', ['multi-source']),
+    'cycle': _g('A path that returns to where it started. In a directed graph, DFS finds one as an edge to a node still on the current path (a back edge).', ['cycles']),
+    'back edge': _g('In a DFS, an edge to an ancestor still on the current path (a "gray" node). In a directed graph it is exactly a cycle.', ['back edges']),
+    'bipartite': _g('A graph whose nodes split into two sides with every edge going across. Equivalently, it can be 2-coloured, and it has no odd cycle.', ['bipartite graph', 'two-coloring', '2-coloring']),
+    'odd cycle': _g('A cycle with an odd number of edges. Colours must alternate around a cycle, so an odd one forces two neighbours to share a colour: exactly what makes a graph not bipartite.', ['odd cycles']),
+    'DAG': _g('Directed acyclic graph: a directed graph with no cycle. Exactly the graphs that have a topological order.', ['directed acyclic graph']),
+    'topological sort': _g('An ordering of a DAG where every edge points forward: each node comes after everything it depends on.', ['topological order', 'topological sorting']),
+    "Kahn's algorithm": _g('Topological sort by repeatedly taking a node with in-degree 0 and removing its outgoing edges. If nodes remain that never reach 0, the graph has a cycle.', ['Kahn'], "Kahn's algorithm"),
+    'union-find': _g('A structure for grouping items into disjoint sets: `find` returns a set\'s representative (root) and `union` merges two sets. With path compression and union by rank each operation is nearly $O(1)$.', ['disjoint set union', 'disjoint-set', 'DSU']),
+    'path compression': _g('During `find`, pointing every node on the path straight at the root, so later finds on those nodes take one step.'),
+    'union by rank': _g('When merging two trees, hanging the shorter under the taller, so trees stay shallow ($O(\\log n)$ height even without path compression).', ['union by size']),
+    'minimum spanning tree': _g('A set of edges connecting every node of a weighted undirected graph with the smallest total weight. It has $V - 1$ edges and no cycle.', ['MST', 'spanning tree']),
+    "Kruskal's algorithm": _g('MST by taking edges from lightest to heaviest and keeping each one that joins two different components (checked with union-find). $O(E \\log E)$.', ['Kruskal'], "Kruskal's algorithm"),
+    "Prim's algorithm": _g('MST grown from one node: repeatedly add the lightest edge leaving the tree, kept in a heap. $O(E \\log V)$.', ['Prim'], "Prim's algorithm"),
+    'cut property': _g('For any split of the nodes into two sides, the lightest edge crossing it belongs to some minimum spanning tree. It is why the greedy choices of Kruskal and Prim are safe.'),
+    'heap': _g('A priority queue: the smallest item is always on top, and push and pop cost $O(\\log n)$ (Python `heapq`). Dijkstra and Prim pop the closest or cheapest next item from it.', ['heaps', 'priority queue', 'min-heap']),
+    'deque': _g('A double-ended queue: push and pop at both ends in $O(1)$ (Python `collections.deque`). 0-1 BFS pushes 0-weight edges to the front and 1-weight edges to the back.', ['deques']),
+    'shortest path': _g('A path between two nodes with the least total weight (or the fewest edges, when unweighted).', ['shortest paths']),
+    'relax': _g('Trying an edge $u \\to v$ as a shortcut: if $d[u] + w < d[v]$, lower $d[v]$ to $d[u] + w$ (and record $u$ as its parent). Every shortest-path algorithm is a schedule of relaxations.', ['relaxation', 'relaxes', 'relaxed', 'relaxing']),
+    "Dijkstra's algorithm": _g('Shortest paths from one source with non-negative weights: repeatedly pop the closest unsettled node from a heap and relax its edges. Once popped, a node\'s distance is final. $O(E \\log V)$.', ['Dijkstra'], "Dijkstra's algorithm"),
+    '0-1 BFS': _g('Shortest paths when every weight is 0 or 1: a deque keeps nodes in distance order, 0-edges to the front and 1-edges to the back, in $O(V + E)$ with no heap.'),
+    'A*': _g('Dijkstra guided by a heuristic: nodes are popped by $g + h$, the distance so far plus an estimate of the distance left. With an admissible heuristic it still finds a shortest path, usually exploring far less.', ['A-star', 'A star']),
+    'heuristic': _g('An estimate $h(v)$ of the remaining distance to the goal, such as straight-line or Manhattan distance on a grid.', ['heuristics']),
+    'admissible': _g('A heuristic is admissible when it never overestimates the true remaining distance. That is what keeps A* correct.', ['admissible heuristic']),
+    'Bellman-Ford': _g('Shortest paths that allow negative weights: relax every edge $V - 1$ times. If an edge can still be relaxed after that, a negative cycle is reachable. $O(VE)$.'),
+    'negative cycle': _g('A cycle whose weights sum below zero: going round it again makes any path cheaper, so shortest paths through it are undefined.', ['negative cycles']),
+    'Floyd-Warshall': _g('All-pairs shortest paths by dynamic programming: for each node $k$, allow it as a stop on every path, $d[i][j] = \\min(d[i][j],\\, d[i][k] + d[k][j])$. $O(V^3)$.'),
+    'bridge': _g('An edge whose removal disconnects the graph. In a DFS, a tree edge $u - v$ is a bridge when nothing in $v$\'s subtree reaches back above $v$: $\\text{low}[v] > \\text{disc}[u]$.', ['bridges']),
+    'articulation point': _g('A node whose removal disconnects the graph (a cut vertex). Found in the same DFS as bridges, from discovery times and low-links.', ['articulation points', 'cut vertex']),
+    'low-link': _g('For a node in a DFS, the earliest discovery time reachable from its subtree using at most one back edge. Comparing it with discovery times finds bridges, articulation points and SCCs.', ['low link', 'low value', 'low-links']),
+    'strongly connected component': _g('In a directed graph, a largest group of nodes each reachable from every other. Collapsing each one to a node leaves a DAG. Tarjan or Kosaraju find them in $O(V + E)$.', ['strongly connected components', 'SCC', 'SCCs']),
+    'Euler path': _g('A path that uses every edge exactly once. It exists when the graph is connected and 0 or 2 nodes have odd degree (directed: in- and out-degree balance except at the ends).', ['Eulerian path', 'Euler circuit', 'Eulerian circuit']),
+    "Hierholzer's algorithm": _g('Builds an Euler path by walking unused edges until stuck, then splicing in detours from earlier nodes; in practice a DFS that appends each node once its edges run out, reversed at the end. $O(E)$.', ['Hierholzer'], "Hierholzer's algorithm"),
+    'max flow': _g('The most that can be sent from a source to a sink when each edge carries at most its capacity. It equals the capacity of the smallest cut separating them (max-flow min-cut).', ['maximum flow', 'max-flow']),
+    'augmenting path': _g('A source-to-sink path in the residual graph with spare capacity on every edge. Pushing flow along it raises the total; when none is left, the flow is maximum.', ['augmenting paths']),
+    'residual graph': _g('What can still change: each edge\'s unused capacity forward, plus a reverse edge for the flow already sent, so a later path can undo an earlier choice.', ['residual capacity', 'residual']),
+    'bipartite matching': _g('Pairing nodes across the two sides of a bipartite graph, each used at most once. Maximum matching is a max flow with unit capacities.', ['matching']),
+}
+
+lesson = {'title': 'Graph algorithms', 'glossary': GLOSSARY, 'codeFiles': codeFiles, 'scenes': scenes}
 out = ROOT / 'scenes/draft/graph-algorithms.json'
 out.write_text(dumps_compact_leaves(lesson) + '\n')
 print('wrote', out, len(scenes), 'scenes')
