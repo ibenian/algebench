@@ -1,5 +1,160 @@
 {
   "title": "Common algorithm patterns",
+  "glossary": {
+    "prefix sum": {
+      "aliases": ["prefix sums", "running total", "running totals"],
+      "markdown": "A running total: $P[i]$ is the sum of the first $i$ items, with $P[0] = 0$. Any range sum is then a difference, $\\text{sum}(a..b) = P[b+1] - P[a]$, in $O(1)$ after one $O(n)$ pass."
+    },
+    "hash map": {
+      "aliases": ["hash maps", "hash table", "hash set"],
+      "markdown": "A table from keys to values (a Python `dict`) with $O(1)$ average lookup and insert. It turns \"have I seen this before?\" from a scan into a single lookup."
+    },
+    "two pointers": {
+      "aliases": ["two-pointer"],
+      "markdown": "Two indices moving through the data, often from both ends of a sorted array toward each other. Each step moves one pointer and rules out a whole row of pairs, so all pairs are covered in $O(n)$."
+    },
+    "sliding window": {
+      "aliases": ["sliding windows"],
+      "markdown": "A contiguous range `[left, right]` that grows on the right and shrinks on the left, keeping its state (a sum, counts) up to date as it moves. Each index enters and leaves once: $O(n)$."
+    },
+    "Kadane's algorithm": {
+      "term": "Kadane's algorithm",
+      "aliases": ["Kadane"],
+      "markdown": "Maximum subarray sum in one pass: at each item, either extend the best run ending just before it or start fresh, $\\text{cur} = \\max(x, \\text{cur} + x)$, keeping the best seen."
+    },
+    "binary search": {"markdown": "Searching a sorted range by checking the middle and discarding the half that cannot hold the answer. Halving each time gives $O(\\log n)$ steps."},
+    "greedy": {
+      "aliases": ["greedy algorithm", "greedy choice"],
+      "markdown": "Taking the choice that looks best right now and never revisiting it. It is correct only when an exchange argument shows some optimal answer agrees with that choice."
+    },
+    "XOR": {"markdown": "Exclusive or, `^`: a bit is 1 when exactly one input bit is 1. Since $a \\oplus a = 0$ and $a \\oplus 0 = a$, XOR-ing everything cancels pairs and leaves the odd one out."},
+    "bitmask": {
+      "aliases": ["bitmasks"],
+      "markdown": "An integer whose bits mark which items are in a set: bit $i$ set means item $i$ is in. Sets become numbers, and union, intersection and membership become `|`, `&` and shifts."
+    },
+    "KMP": {
+      "aliases": ["Knuth-Morris-Pratt"],
+      "markdown": "Knuth–Morris–Pratt string search. A precomputed table says, for each prefix of the pattern, how much of it is also a suffix, so on a mismatch the pattern shifts without re-reading the text: $O(n + m)$."
+    },
+    "trie": {
+      "aliases": ["tries", "prefix tree"],
+      "markdown": "A prefix tree: each edge is a character and each path from the root spells a prefix. Words sharing a prefix share its nodes, so a prefix lookup costs its length, not the dictionary size."
+    },
+    "monotonic stack": {"markdown": "A stack kept in sorted order: before pushing, pop everything the new item beats. Each popped item has just met its next greater (or smaller) value. Every item is pushed and popped once: $O(n)$."},
+    "monotonic queue": {
+      "aliases": ["monotonic deque"],
+      "markdown": "A deque kept in decreasing order, with the front the current window maximum. New items pop smaller ones off the back; the front leaves when it slides out of the window."
+    },
+    "deque": {
+      "aliases": ["deques"],
+      "markdown": "A double-ended queue: push and pop at both ends in $O(1)$ (Python `collections.deque`)."
+    },
+    "heap": {
+      "aliases": ["heaps", "priority queue"],
+      "markdown": "A binary tree in an array where each parent is no larger than its children (a min-heap), so the smallest item is always at the top. Push and pop cost $O(\\log n)$ (Python `heapq`)."
+    },
+    "min-heap": {
+      "aliases": ["max-heap"],
+      "markdown": "A heap with the smallest item on top. To keep the $k$ largest items, a min-heap of size $k$ puts the weakest of them on top, ready to be pushed out."
+    },
+    "linked list": {
+      "aliases": ["linked lists"],
+      "markdown": "Nodes each holding a value and a pointer to the next node. Inserting or relinking is $O(1)$ once you are at the node, but reaching the $i$-th node takes $i$ steps."
+    },
+    "tortoise and hare": {
+      "aliases": ["fast and slow pointers", "fast & slow pointers", "Floyd's algorithm"],
+      "markdown": "Floyd's cycle detection: one pointer moves one step, the other two. If there is a cycle the fast one laps the slow one and they meet; otherwise the fast one reaches the end."
+    },
+    "preorder": {
+      "aliases": ["pre-order"],
+      "markdown": "Tree traversal that visits a node before its subtrees: node, left, right. Useful for copying or serializing a tree."
+    },
+    "inorder": {
+      "aliases": ["in-order"],
+      "markdown": "Tree traversal that visits the left subtree, then the node, then the right subtree. On a binary search tree it lists the keys in sorted order."
+    },
+    "postorder": {
+      "aliases": ["post-order"],
+      "markdown": "Tree traversal that visits both subtrees before the node: left, right, node. Useful when a node needs its children's results first (sizes, heights, deleting)."
+    },
+    "level order": {
+      "aliases": ["level-order"],
+      "markdown": "Tree traversal level by level from the root, using a queue: breadth-first search on a tree."
+    },
+    "DFS": {
+      "aliases": ["depth-first search", "depth-first"],
+      "markdown": "Depth-first search: follow one path as deep as it goes before backing up, by recursion or an explicit stack."
+    },
+    "BFS": {
+      "aliases": ["breadth-first search", "breadth-first"],
+      "markdown": "Breadth-first search: visit everything one step away, then two steps, and so on, using a queue. In an unweighted graph it finds shortest paths."
+    },
+    "topological sort": {
+      "aliases": ["topological order", "topological sorting"],
+      "markdown": "An ordering of a directed acyclic graph where every edge points forward: each task comes after everything it depends on. It exists exactly when there is no cycle."
+    },
+    "in-degree": {
+      "aliases": ["in-degrees", "indegree"],
+      "markdown": "The number of edges coming into a node: how many prerequisites it still waits on. Kahn's algorithm starts from the nodes with in-degree 0."
+    },
+    "Kahn's algorithm": {
+      "term": "Kahn's algorithm",
+      "aliases": ["Kahn"],
+      "markdown": "Topological sort by repeatedly taking a node with in-degree 0 and removing its outgoing edges. If nodes remain that never reach 0, the graph has a cycle."
+    },
+    "union-find": {
+      "aliases": ["disjoint set union", "disjoint-set", "DSU"],
+      "markdown": "A structure for grouping items into disjoint sets: `find` returns a set's representative (root) and `union` merges two sets. With path compression and union by rank each operation is nearly $O(1)$."
+    },
+    "path compression": {"markdown": "During `find`, pointing every node on the path straight at the root, so later finds on those nodes take one step."},
+    "union by rank": {
+      "aliases": ["union by size"],
+      "markdown": "When merging two trees, hanging the shorter under the taller, so trees stay shallow ($O(\\log n)$ height even without path compression)."
+    },
+    "recursion": {
+      "aliases": ["recursive"],
+      "markdown": "A function solving a problem by calling itself on smaller copies of it, until a base case is small enough to answer directly."
+    },
+    "base case": {
+      "aliases": ["base cases"],
+      "markdown": "The input small enough to answer without recursing. Every recursive call must move toward it, or the recursion never ends."
+    },
+    "call stack": {"markdown": "The stack of active function calls: each call pushes a frame with its arguments and locals, and returning pops it. Deep recursion is limited by its size."},
+    "memoization": {
+      "aliases": ["memoize", "memoized", "memo"],
+      "markdown": "Caching a function's result for each input so repeated calls return at once. It turns an exponential recursion with overlapping subproblems into a polynomial one: top-down dynamic programming."
+    },
+    "backtracking": {"markdown": "Building a solution one choice at a time and undoing the last choice when it leads nowhere (or after recording a solution), so the same partial state is reused for every branch."},
+    "pruning": {"markdown": "Abandoning a branch of a search as soon as it is clear it cannot lead to a valid or better answer."},
+    "dynamic programming": {
+      "aliases": ["DP"],
+      "markdown": "Solving a problem from the answers to its smaller subproblems, each computed once and stored (in a table or a memo). It applies when subproblems overlap and an optimal answer is built from optimal sub-answers."
+    },
+    "subproblem": {
+      "aliases": ["subproblems"],
+      "markdown": "A smaller instance of the same problem, such as the first $i$ houses or the first $i$ and $j$ characters, whose answer helps build the full one."
+    },
+    "recurrence": {
+      "aliases": ["recurrence relation"],
+      "markdown": "The rule giving a subproblem's answer from smaller ones, such as $dp[i] = \\max(dp[i-1],\\, dp[i-2] + x_i)$. It, together with the base cases, defines the whole table."
+    },
+    "longest common subsequence": {
+      "aliases": ["LCS"],
+      "markdown": "The longest sequence appearing in both strings in order, not necessarily contiguously. A 2D table where $dp[i][j]$ covers the first $i$ and $j$ characters solves it in $O(nm)$."
+    },
+    "subarray": {
+      "aliases": ["subarrays"],
+      "markdown": "A contiguous run of an array, `a[i..j]`. Unlike a subsequence, no items may be skipped."
+    },
+    "subsequence": {
+      "aliases": ["subsequences"],
+      "markdown": "Items taken from a sequence in their original order, possibly skipping some. Every subarray is a subsequence, but not the other way round."
+    },
+    "amortized": {
+      "aliases": ["amortized cost"],
+      "markdown": "Averaged over a whole run of operations: a step may occasionally be expensive, but the total over $n$ steps is bounded, such as each item being pushed and popped once, for $O(n)$ overall."
+    }
+  },
   "codeFiles": [
     {
       "id": "prefix-sum",

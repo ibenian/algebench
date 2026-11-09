@@ -2621,4 +2621,52 @@ const ALTERNATIVES: Record<string, Json[]> = {
     ],
 };
 for (const f of codeFiles) if (ALTERNATIVES[f.id as string]) f.alternatives = ALTERNATIVES[f.id as string];
-process.stdout.write(JSON.stringify({ title: 'Common algorithm patterns', codeFiles, scenes }));
+
+/** Hoverable terms in the scene text: each linked at its first appearance in a paragraph (automatic matching). */
+const g = (markdown: string, aliases?: string[], term?: string): Json => ({ ...(term ? { term } : {}), ...(aliases ? { aliases } : {}), markdown });
+const GLOSSARY: Record<string, Json> = {
+    'prefix sum': g('A running total: $P[i]$ is the sum of the first $i$ items, with $P[0] = 0$. Any range sum is then a difference, $\\text{sum}(a..b) = P[b+1] - P[a]$, in $O(1)$ after one $O(n)$ pass.', ['prefix sums', 'running total', 'running totals']),
+    'hash map': g('A table from keys to values (a Python `dict`) with $O(1)$ average lookup and insert. It turns "have I seen this before?" from a scan into a single lookup.', ['hash maps', 'hash table', 'hash set']),
+    'two pointers': g('Two indices moving through the data, often from both ends of a sorted array toward each other. Each step moves one pointer and rules out a whole row of pairs, so all pairs are covered in $O(n)$.', ['two-pointer']),
+    'sliding window': g('A contiguous range `[left, right]` that grows on the right and shrinks on the left, keeping its state (a sum, counts) up to date as it moves. Each index enters and leaves once: $O(n)$.', ['sliding windows']),
+    "Kadane's algorithm": g('Maximum subarray sum in one pass: at each item, either extend the best run ending just before it or start fresh, $\\text{cur} = \\max(x, \\text{cur} + x)$, keeping the best seen.', ['Kadane'], "Kadane's algorithm"),
+    'binary search': g('Searching a sorted range by checking the middle and discarding the half that cannot hold the answer. Halving each time gives $O(\\log n)$ steps.'),
+    'greedy': g('Taking the choice that looks best right now and never revisiting it. It is correct only when an exchange argument shows some optimal answer agrees with that choice.', ['greedy algorithm', 'greedy choice']),
+    'XOR': g('Exclusive or, `^`: a bit is 1 when exactly one input bit is 1. Since $a \\oplus a = 0$ and $a \\oplus 0 = a$, XOR-ing everything cancels pairs and leaves the odd one out.'),
+    'bitmask': g('An integer whose bits mark which items are in a set: bit $i$ set means item $i$ is in. Sets become numbers, and union, intersection and membership become `|`, `&` and shifts.', ['bitmasks']),
+    'KMP': g('Knuth–Morris–Pratt string search. A precomputed table says, for each prefix of the pattern, how much of it is also a suffix, so on a mismatch the pattern shifts without re-reading the text: $O(n + m)$.', ['Knuth-Morris-Pratt']),
+    'trie': g('A prefix tree: each edge is a character and each path from the root spells a prefix. Words sharing a prefix share its nodes, so a prefix lookup costs its length, not the dictionary size.', ['tries', 'prefix tree']),
+    'monotonic stack': g('A stack kept in sorted order: before pushing, pop everything the new item beats. Each popped item has just met its next greater (or smaller) value. Every item is pushed and popped once: $O(n)$.'),
+    'monotonic queue': g('A deque kept in decreasing order, with the front the current window maximum. New items pop smaller ones off the back; the front leaves when it slides out of the window.', ['monotonic deque']),
+    'deque': g('A double-ended queue: push and pop at both ends in $O(1)$ (Python `collections.deque`).', ['deques']),
+    'heap': g('A binary tree in an array where each parent is no larger than its children (a min-heap), so the smallest item is always at the top. Push and pop cost $O(\\log n)$ (Python `heapq`).', ['heaps', 'priority queue']),
+    'min-heap': g('A heap with the smallest item on top. To keep the $k$ largest items, a min-heap of size $k$ puts the weakest of them on top, ready to be pushed out.', ['max-heap']),
+    'linked list': g('Nodes each holding a value and a pointer to the next node. Inserting or relinking is $O(1)$ once you are at the node, but reaching the $i$-th node takes $i$ steps.', ['linked lists']),
+    'tortoise and hare': g("Floyd's cycle detection: one pointer moves one step, the other two. If there is a cycle the fast one laps the slow one and they meet; otherwise the fast one reaches the end.", ['fast and slow pointers', 'fast & slow pointers', "Floyd's algorithm"]),
+    'preorder': g('Tree traversal that visits a node before its subtrees: node, left, right. Useful for copying or serializing a tree.', ['pre-order']),
+    'inorder': g('Tree traversal that visits the left subtree, then the node, then the right subtree. On a binary search tree it lists the keys in sorted order.', ['in-order']),
+    'postorder': g('Tree traversal that visits both subtrees before the node: left, right, node. Useful when a node needs its children\'s results first (sizes, heights, deleting).', ['post-order']),
+    'level order': g('Tree traversal level by level from the root, using a queue: breadth-first search on a tree.', ['level-order']),
+    'DFS': g('Depth-first search: follow one path as deep as it goes before backing up, by recursion or an explicit stack.', ['depth-first search', 'depth-first']),
+    'BFS': g('Breadth-first search: visit everything one step away, then two steps, and so on, using a queue. In an unweighted graph it finds shortest paths.', ['breadth-first search', 'breadth-first']),
+    'topological sort': g('An ordering of a directed acyclic graph where every edge points forward: each task comes after everything it depends on. It exists exactly when there is no cycle.', ['topological order', 'topological sorting']),
+    'in-degree': g("The number of edges coming into a node: how many prerequisites it still waits on. Kahn's algorithm starts from the nodes with in-degree 0.", ['in-degrees', 'indegree']),
+    "Kahn's algorithm": g('Topological sort by repeatedly taking a node with in-degree 0 and removing its outgoing edges. If nodes remain that never reach 0, the graph has a cycle.', ['Kahn'], "Kahn's algorithm"),
+    'union-find': g('A structure for grouping items into disjoint sets: `find` returns a set\'s representative (root) and `union` merges two sets. With path compression and union by rank each operation is nearly $O(1)$.', ['disjoint set union', 'disjoint-set', 'DSU']),
+    'path compression': g('During `find`, pointing every node on the path straight at the root, so later finds on those nodes take one step.'),
+    'union by rank': g('When merging two trees, hanging the shorter under the taller, so trees stay shallow ($O(\\log n)$ height even without path compression).', ['union by size']),
+    'recursion': g('A function solving a problem by calling itself on smaller copies of it, until a base case is small enough to answer directly.', ['recursive']),
+    'base case': g('The input small enough to answer without recursing. Every recursive call must move toward it, or the recursion never ends.', ['base cases']),
+    'call stack': g('The stack of active function calls: each call pushes a frame with its arguments and locals, and returning pops it. Deep recursion is limited by its size.'),
+    'memoization': g('Caching a function\'s result for each input so repeated calls return at once. It turns an exponential recursion with overlapping subproblems into a polynomial one: top-down dynamic programming.', ['memoize', 'memoized', 'memo']),
+    'backtracking': g('Building a solution one choice at a time and undoing the last choice when it leads nowhere (or after recording a solution), so the same partial state is reused for every branch.'),
+    'pruning': g('Abandoning a branch of a search as soon as it is clear it cannot lead to a valid or better answer.'),
+    'dynamic programming': g('Solving a problem from the answers to its smaller subproblems, each computed once and stored (in a table or a memo). It applies when subproblems overlap and an optimal answer is built from optimal sub-answers.', ['DP']),
+    'subproblem': g('A smaller instance of the same problem, such as the first $i$ houses or the first $i$ and $j$ characters, whose answer helps build the full one.', ['subproblems']),
+    'recurrence': g('The rule giving a subproblem\'s answer from smaller ones, such as $dp[i] = \\max(dp[i-1],\\, dp[i-2] + x_i)$. It, together with the base cases, defines the whole table.', ['recurrence relation']),
+    'longest common subsequence': g('The longest sequence appearing in both strings in order, not necessarily contiguously. A 2D table where $dp[i][j]$ covers the first $i$ and $j$ characters solves it in $O(nm)$.', ['LCS']),
+    'subarray': g('A contiguous run of an array, `a[i..j]`. Unlike a subsequence, no items may be skipped.', ['subarrays']),
+    'subsequence': g('Items taken from a sequence in their original order, possibly skipping some. Every subarray is a subsequence, but not the other way round.', ['subsequences']),
+    'amortized': g('Averaged over a whole run of operations: a step may occasionally be expensive, but the total over $n$ steps is bounded, such as each item being pushed and popped once, for $O(n)$ overall.', ['amortized cost']),
+};
+process.stdout.write(JSON.stringify({ title: 'Common algorithm patterns', glossary: GLOSSARY, codeFiles, scenes }));
