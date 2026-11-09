@@ -38064,12 +38064,21 @@ function setupCodePractice() {
 		offerHelp(message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: text })));
 		if (speakOn()) window.algebenchSpeakText?.(text, void 0, "coach");
 	}
-	/** A line finished (Enter): the assistant looks at it, then hints or starts the next. */
-	function pairLineDone() {
+	/**
+	* A line finished (Enter): the assistant looks at it, then hints or starts the next. Enter on an empty line is a
+	* turn too: the learner has nothing to add there, and hands over after the last line they wrote.
+	*/
+	function pairLineDone(finished) {
 		if (!pairing || assisting) return;
 		const lines = input.value.split("\n"), j = caretLine() - 1, text = lines[j] ?? "";
-		if (j < 0 || !text.trim()) return;
-		assist("pair", `I just finished line ${j + 1}: \`${text.trim()}\``);
+		if (j < 0) return;
+		if (finished.trim()) {
+			if (text.trim()) assist("pair", `I just finished line ${j + 1}: \`${text.trim()}\``);
+			return;
+		}
+		let k = Math.min(j, lines.length - 1);
+		while (k >= 0 && !lines[k].trim()) k--;
+		assist("pair", k >= 0 ? `I pressed Enter on an empty line after line ${k + 1} (\`${lines[k].trim()}\`): your turn.` : "I pressed Enter on an empty editor: your turn to start.");
 	}
 	let series = null;
 	/** The current question is done (judged, shown or skipped): in a quiz, the next one comes. */
@@ -39530,7 +39539,7 @@ function setupCodePractice() {
 			const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
 			if (pairing) {
 				if (!e.shiftKey) trimPairTail();
-				if (line.trim() && !quiet) pairLineDone();
+				if (!quiet) pairLineDone(line);
 			} else if (coachOn() && !quiet) review(false);
 		}
 	});

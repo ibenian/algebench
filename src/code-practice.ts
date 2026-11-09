@@ -1040,12 +1040,20 @@ export function setupCodePractice(): void {
         offerHelp(message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: text})));
         if (speakOn()) window.algebenchSpeakText?.(text, undefined, 'coach');
     }
-    /** A line finished (Enter): the assistant looks at it, then hints or starts the next. */
-    function pairLineDone() {
+    /**
+     * A line finished (Enter): the assistant looks at it, then hints or starts the next. Enter on an empty line is a
+     * turn too: the learner has nothing to add there, and hands over after the last line they wrote.
+     */
+    function pairLineDone(finished: string) {
         if (!pairing || assisting) return;
         const lines = input.value.split('\n'), j = caretLine() - 1, text = lines[j] ?? '';
-        if (j < 0 || !text.trim()) return;
-        void assist('pair', `I just finished line ${j + 1}: \`${text.trim()}\``);
+        if (j < 0) return;
+        // Empty or not by the line Enter was pressed on: trimming blank lines after it may have moved the caret up.
+        if (finished.trim()) { if (text.trim()) void assist('pair', `I just finished line ${j + 1}: \`${text.trim()}\``);return; }
+        let k = Math.min(j, lines.length - 1);
+        while (k >= 0 && !lines[k]!.trim()) k--;
+        void assist('pair', k >= 0 ? `I pressed Enter on an empty line after line ${k + 1} (\`${lines[k]!.trim()}\`): your turn.`
+            : 'I pressed Enter on an empty editor: your turn to start.');
     }
     // Quiz me: a series of questions, each asked once the last is done, until another choice (or End quiz) ends it.
     let series: {topic: string; turns: QuizTurn[]} | null = null;
@@ -2012,7 +2020,7 @@ export function setupCodePractice(): void {
             // With Shift (or, while pairing, Cmd/Ctrl) it is only a new line: the AI doesn't take a turn. Shift also keeps
             // the blank lines at the end, so the learner can leave room.
             const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
-            if (pairing) { if (!e.shiftKey) trimPairTail();if (line.trim() && !quiet) pairLineDone(); }
+            if (pairing) { if (!e.shiftKey) trimPairTail();if (!quiet) pairLineDone(line); }
             else if (coachOn() && !quiet) void review(false);
         }
     });
