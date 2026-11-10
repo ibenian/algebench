@@ -96,6 +96,10 @@ export function buildStylesheet(c: Record<string, string>): StylesheetJson {
             'text-wrap': 'wrap', 'text-max-width': '110px',
             'text-background-color': c.page!, 'text-background-opacity': 0.7, 'text-background-padding': '1px',
             'min-zoomed-font-size': 5,
+            // The label is part of the target: hovering / clicking a concept's
+            // name acts on the concept. Small shapes (a 22px diamond) are
+            // otherwise easy to slip off, which made the cursor flicker.
+            'text-events': 'yes',
             'transition-property': 'border-color, border-width, background-color', 'transition-duration': 160,
         } },
         { selector: 'node.cat-problem', style: { 'background-color': c.problem!, 'shape': 'round-rectangle', 'width': 24, 'height': 18,
@@ -131,6 +135,7 @@ export function buildStylesheet(c: Record<string, string>): StylesheetJson {
             'color': c.muted!, 'text-rotation': 'autorotate', 'text-background-color': c.page!,
             'text-background-opacity': 0.85, 'text-background-padding': '2px', 'font-family': c.font!,
             'min-zoomed-font-size': 7,
+            'text-events': 'yes',                  // relationship labels are targets too
             'transition-property': 'line-color, width', 'transition-duration': 160,
         } },
         { selector: 'edge.kind-analysis', style: { 'line-style': 'dashed' } },
@@ -153,6 +158,8 @@ export class CytoscapeGraphView<N, E> {
     /** The node currently glowing as the focus, and a token that ends its pulse loop. */
     private glowNode: NodeSingular | null = null;
     private glowGen = 0;
+    private hoverNode: string | null = null;
+    private hoverResetTimer: ReturnType<typeof setTimeout> | null = null;
     /** Work deferred while the container has no size (e.g. the Doc tab is hidden). */
     private pendingLayout = false;
     private pendingFit = false;
@@ -268,11 +275,26 @@ export class CytoscapeGraphView<N, E> {
         });
         // Discoverability: pointer cursor + a native tooltip saying what a
         // double-click will do on THIS concept.
+        // A node, its label and the ends of its edges sit within a few pixels,
+        // so moving inside a node fires mouseout/mouseover pairs; resetting the
+        // cursor in between made it flicker hand ↔ pointer. Leaving is deferred
+        // and cancelled by the next enter, and a node outranks its edges.
         cy.on('mouseover', 'node', (ev) => {
-            this.hoverHint('pointer', this.dblClickHint(ev.target.id()));
+            this.hoverNode = ev.target.id();
+            this.hoverHint('pointer', this.dblClickHint(this.hoverNode!));   // ! — just set
         });
-        cy.on('mouseover', 'edge', () => this.hoverHint('pointer', 'Click for relationship details'));
-        cy.on('mouseout', 'node, edge', () => this.hoverHint('', ''));
+        cy.on('mouseover', 'edge', () => {
+            if (this.hoverNode) { this.hoverHint('pointer', null); return; }   // keep the node's hint
+            this.hoverHint('pointer', 'Click for relationship details');
+        });
+        cy.on('mouseout', 'node', (ev) => { if (this.hoverNode === ev.target.id()) this.hoverNode = null; this.hoverHint('', ''); });
+        cy.on('mouseout', 'edge', () => this.hoverHint('', ''));
+        // Hand cursors like the app's other draggable surfaces: open hand on
+        // the canvas (CSS), closed fist while panning it or dragging a node.
+        const host = this.container.parentElement ?? this.container;
+        cy.on('tapstart', (ev) => { if (ev.target === cy) host.classList.add('kg-grabbing'); });
+        cy.on('grab', 'node', () => host.classList.add('kg-grabbing'));
+        cy.on('tapend free', () => host.classList.remove('kg-grabbing'));
         cy.on('dragfree', 'node', (ev) => { this.vm.savePosition(ev.target.id(), ev.target.position()); });
         cy.on('viewport', () => {
             if (this.viewportTimer) clearTimeout(this.viewportTimer);
@@ -455,10 +477,21 @@ export class CytoscapeGraphView<N, E> {
      * MutationObserver that calls cy.resize()), so touching them on every
      * hover made it resize and redraw for nothing.
      */
-    private hoverHint(cursor: string, title: string): void {
+    private hoverHint(cursor: string, title: string | null): void {
         const host = this.container.parentElement ?? this.container;
+        if (this.hoverResetTimer) { clearTimeout(this.hoverResetTimer); this.hoverResetTimer = null; }
+        if (!cursor) {
+            // Leaving: wait ~180 ms — an enter right behind it (node → its
+            // edge, edge → label) cancels this and nothing visibly changes.
+            this.hoverResetTimer = setTimeout(() => {
+                this.hoverResetTimer = null;
+                host.style.cursor = '';
+                host.title = '';
+            }, 180);
+            return;
+        }
         host.style.cursor = cursor;
-        host.title = title;
+        if (title !== null) host.title = title;
     }
 
     /**
@@ -611,6 +644,7 @@ export class CytoscapeGraphView<N, E> {
         for (const u of this.unsubs.splice(0)) u();
         if (this.viewportTimer) clearTimeout(this.viewportTimer);
         if (this.flashTimer) clearTimeout(this.flashTimer);
+        if (this.hoverResetTimer) clearTimeout(this.hoverResetTimer);
         if (this.wheelHandler) { this.container.removeEventListener('wheel', this.wheelHandler); this.wheelHandler = null; }
         if (this.cy) {
             this.vm.saveViewport({ zoom: this.cy.zoom(), pan: this.cy.pan() });

@@ -372,6 +372,14 @@ export class GraphViewModel<N, E> {
 
     inScope(id: string): boolean { return !this.scopeFn || this.scopeFn(id); }
 
+    /** How many concepts the current scope covers (the whole graph for Global). */
+    scopedNodeCount(): number {
+        if (!this.scopeFn) return this.engine.nodeCount;
+        let n = 0;
+        for (const node of this.engine.allNodes()) if (this.scopeFn(node.id)) n++;
+        return n;
+    }
+
     /** The visible node set: union of every root's neighbourhood, capped. */
     private computeVisibleNodes(): Set<string> {
         const vis = new Set<string>();

@@ -5747,10 +5747,6 @@ body:has(.push-array) #legend { display: none; }
 #lesson-kg-head { cursor: pointer; user-select: none; }
 #lesson-kg-head:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
 #lesson-kg-slot { height: 440px; min-height: 260px; resize: vertical; overflow: hidden; display: flex; position: relative; }
-#lesson-kg-slot[data-away]::after {
-    content: "Knowledge graph is open in a larger view"; position: absolute; inset: 0; display: grid; place-items: center;
-    font-size: 12px; color: var(--muted-color);
-}
 
 #kg-layer { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
 #kg-layer.hidden { display: none; }
@@ -5783,7 +5779,23 @@ body:has(.push-array) #legend { display: none; }
     background: color-mix(in srgb, var(--text-color) 4%, transparent); border-bottom: 1px solid var(--border-color);
     user-select: none; white-space: nowrap; overflow: hidden;
 }
-.kg-layer-title { overflow: hidden; text-overflow: ellipsis; }
+.kg-layer-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kg-layer-buttons { flex: none; display: inline-flex; gap: 2px; margin-right: -6px; }
+.kg-layer-buttons .kg-tb-btn { min-width: 22px; height: 20px; padding: 0 4px; border: none; background: transparent; color: var(--muted-color); }
+.kg-layer-buttons .kg-tb-btn:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 10%, transparent); }
+/* In the narrow lesson panel the pressed "dock" button only says "you are
+   here" and costs the toolbar its one row — hide it there; popped-out views
+   keep the full set. */
+.kg-explorer[data-mode="embedded"] .kg-tb-modes .kg-mode-btn.active { display: none; }
+/* Docked: window buttons on the section header; hidden while folded. */
+#lesson-kg-buttons { margin-right: 2px; }
+#lesson-kg-head.side-section-folded #lesson-kg-buttons { display: none; }
+#lesson-kg-buttons .kg-tb-btn { text-transform: none; letter-spacing: 0; }
+/* The current presentation mode, shown pressed (title bar and toolbar). */
+.kg-mode-btn.active { color: var(--accent-color); background: var(--chip-bg); cursor: default; }
+.kg-layer-buttons .kg-mode-btn.active { background: color-mix(in srgb, var(--accent-color) 18%, transparent); color: var(--accent-color); }
+.kg-layer-head { height: 24px; }
+#kg-layer[data-mode="popup"] .kg-layer-buttons { cursor: default; }
 .kg-layer-grip { color: var(--accent-color); font-size: 12px; line-height: 1; }
 .kg-layer-body { flex: 1; min-height: 0; display: flex; }
 #kg-layer[data-mode="popup"] .kg-layer-head { cursor: move; }
@@ -5851,7 +5863,8 @@ body:has(.push-array) #legend { display: none; }
 .kg-hit-none { padding: 6px 8px; }
 
 .kg-body { flex: 1; min-height: 0; display: flex; }
-.kg-canvas-wrap { flex: 1; min-width: 0; position: relative; background: var(--page-bg); }
+.kg-canvas-wrap { flex: 1; min-width: 0; position: relative; background: var(--page-bg); cursor: grab; }
+.kg-canvas-wrap.kg-grabbing, .kg-canvas-wrap.kg-grabbing * { cursor: grabbing !important; }
 .kg-canvas { position: absolute; inset: 0; }
 .kg-overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .kg-overlay:empty { display: none; }

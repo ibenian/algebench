@@ -141,10 +141,13 @@ function followActiveLesson(): void {
         globalFollowedLesson = activeLesson.id;
         const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
         vm.focusOn(target);
-    } else if (vm.visibleNodes.size === 0) {
+    } else if (vm.visibleNodes.size === 0 && vm.scopeId !== 'local') {
+        // Nothing on screen: start from an overview. Not in Local — an empty
+        // Local is the honest answer for a lesson without concepts, and an
+        // overview of nothing would wipe the view kept for Global.
         vm.showOverview(40);
     }
-    globalSlot.explorer.setStatusExtra(coverageText());
+    globalSlot.explorer.setStatusExtra(() => statusText(vm));
 }
 
 // ---------- tutor context (CTX) ----------
@@ -160,8 +163,24 @@ let lastViewed: GraphViewModel<ConceptData, RelationData> | null = null;
 function trackForTutor(vm: GraphViewModel<ConceptData, RelationData>): void {
     vm.events.on('state', ({ reason }) => {
         if (reason !== 'data' && vm.presentation !== 'closed') lastViewed = vm;
+        // One focus across the app: a new focus in either graph (lesson panel
+        // or popup) carries to the other, so the docked and opened views never
+        // disagree. The other view skips it when the concept is outside its
+        // scope (Local can't show another lesson's concept).
+        if ((reason === 'focus' || reason === 'history') && vm.focus && !syncingFocus) {
+            syncingFocus = true;
+            try {
+                for (const slot of [lessonSlot, globalSlot]) {
+                    const other = slot?.explorer.vm;
+                    if (other && other !== vm && other.focus !== vm.focus && other.inScope(vm.focus)) other.focusOn(vm.focus);
+                }
+            } finally { syncingFocus = false; }
+        }
     });
 }
+
+/** Guards the focus sync above against echoing back and forth. */
+let syncingFocus = false;
 
 /** `runtime.knowledgeGraph` for the chat context; null until a graph was opened. */
 export function getKnowledgeGraphContext(): KnowledgeGraphContext | null {
@@ -212,9 +231,22 @@ function applyScope(vm: GraphViewModel<ConceptData, RelationData>, scopeId: stri
     }
 }
 
+/**
+ * The status-line context for a view: Local names the open lesson (and says
+ * when it has no knowledge graph); Global shows how much of the catalogue the
+ * graph covers.
+ */
+function statusText(vm: GraphViewModel<ConceptData, RelationData>): string {
+    if (vm.scopeId !== 'local') return coverageText();
+    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const title = activeLesson.title ? esc(activeLesson.title) : 'this lesson';
+    return activeLesson.focus ? `local: ${title}`
+        : `local: ${title} — <span class="kg-warn">no knowledge graph yet</span>`;
+}
+
 function updateCoverageText(): void {
-    globalSlot?.explorer.setStatusExtra(coverageText());
-    lessonSlot?.explorer.setStatusExtra(coverageText());
+    if (globalSlot) { const vm = globalSlot.explorer.vm; globalSlot.explorer.setStatusExtra(() => statusText(vm)); }
+    if (lessonSlot) { const vm = lessonSlot.explorer.vm; lessonSlot.explorer.setStatusExtra(() => statusText(vm)); }
 }
 
 // ---------- lesson navigation (explicit only) ----------
@@ -259,6 +291,46 @@ function makeAskButton(title: string, getMessage: () => string): HTMLElement {
 const POPUP_POS_KEY = 'algebench.kgPopupPos';
 const POPUP_SIZE_KEY = 'algebench.kgPopupSize';
 const POPUP_MIN = { w: 380, h: 260 };
+
+/**
+ * Follow one pointer drag on `el` until it really ends. A release outside the
+ * browser window may never deliver pointerup (capture is just lost), so the
+ * drag also ends on lostpointercapture, on a move with no button held, and on
+ * window blur — otherwise it "sticks" and follows the pointer when it comes
+ * back. `end` always runs exactly once, with the last known position.
+ */
+function trackDrag(el: HTMLElement, start: PointerEvent,
+                   move: (x: number, y: number) => void, end: (x: number, y: number) => void): void {
+    let x = start.clientX, y = start.clientY, done = false;
+    try { el.setPointerCapture(start.pointerId); } catch { /* capture is best-effort */ }
+    const finish = () => {
+        if (done) return;
+        done = true;
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', finish);
+        el.removeEventListener('lostpointercapture', finish);
+        window.removeEventListener('blur', finish);
+        try { if (el.hasPointerCapture(start.pointerId)) el.releasePointerCapture(start.pointerId); } catch { /* already gone */ }
+        end(x, y);
+    };
+    const onMove = (e: PointerEvent) => {
+        if (e.pointerId !== start.pointerId) return;
+        if (e.buttons === 0) { finish(); return; }            // released somewhere we never heard about
+        x = e.clientX; y = e.clientY;
+        move(x, y);
+    };
+    const onUp = (e: PointerEvent) => {
+        if (e.pointerId !== start.pointerId) return;
+        x = e.clientX; y = e.clientY;
+        finish();
+    };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', finish);
+    el.addEventListener('lostpointercapture', finish);
+    window.addEventListener('blur', finish);
+}
 
 function loadPopupSize(): { w: number; h: number } | null {
     try {
@@ -323,41 +395,25 @@ function makePopupMovable(layerEl: HTMLElement, panel: HTMLElement): void {
         placePopup(panel, r.left, r.top, true);
         const ox = ev.clientX - r.width, oy = ev.clientY - r.height;
         panel.classList.add('kg-dragging');
-        grip.setPointerCapture(ev.pointerId);
-        const move = (e: PointerEvent) => sizePopup(panel, e.clientX - ox, e.clientY - oy, false);
-        const up = (e: PointerEvent) => {
-            grip.removeEventListener('pointermove', move);
-            grip.removeEventListener('pointerup', up);
-            grip.removeEventListener('pointercancel', up);
+        trackDrag(grip, ev, (x, y) => sizePopup(panel, x - ox, y - oy, false), (x, y) => {
             panel.classList.remove('kg-dragging');
-            sizePopup(panel, e.clientX - ox, e.clientY - oy, true);
-        };
-        grip.addEventListener('pointermove', move);
-        grip.addEventListener('pointerup', up);
-        grip.addEventListener('pointercancel', up);
+            sizePopup(panel, x - ox, y - oy, true);
+        });
     });
     panel.addEventListener('pointerdown', (ev) => {
         const t = ev.target as Element;
         if (layerEl.dataset.mode !== 'popup' || ev.button !== 0) return;
         // The title bar, or an empty part of the toolbar.
-        const onHead = !!t.closest('.kg-layer-head');
+        const onHead = !!t.closest('.kg-layer-head') && !t.closest('button');
         if (!onHead && (!t.closest('.kg-toolbar') || t.closest('button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label'))) return;
         ev.preventDefault();
         const r = panel.getBoundingClientRect();
         const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
         panel.classList.add('kg-dragging');
-        panel.setPointerCapture(ev.pointerId);
-        const move = (e: PointerEvent) => placePopup(panel, e.clientX - dx, e.clientY - dy, false);
-        const up = (e: PointerEvent) => {
-            panel.removeEventListener('pointermove', move);
-            panel.removeEventListener('pointerup', up);
-            panel.removeEventListener('pointercancel', up);
+        trackDrag(panel, ev, (x, y) => placePopup(panel, x - dx, y - dy, false), (x, y) => {
             panel.classList.remove('kg-dragging');
-            placePopup(panel, e.clientX - dx, e.clientY - dy, true);
-        };
-        panel.addEventListener('pointermove', move);
-        panel.addEventListener('pointerup', up);
-        panel.addEventListener('pointercancel', up);
+            placePopup(panel, x - dx, y - dy, true);
+        });
     });
     // A smaller window must not strand the popup off screen.
     window.addEventListener('resize', () => {
@@ -379,7 +435,8 @@ function ensureLayer(): HTMLElement {
     layer.innerHTML = '<div class="kg-layer-scrim"></div>'
         + '<div class="kg-layer-panel" role="dialog" aria-modal="false" aria-label="Knowledge Graph">'
         + '<div class="kg-layer-head"><span class="kg-layer-grip" aria-hidden="true">⠿</span>'
-        + '<span class="kg-layer-title">Knowledge Graph</span></div>'
+        + '<span class="kg-layer-title">Knowledge Graph</span>'
+        + '<span class="kg-layer-buttons"></span></div>'
         + '<div class="kg-layer-body"></div>'
         + '<div class="kg-layer-resize" role="separator" aria-label="Resize the Knowledge Graph" title="Drag to resize"></div></div>';
     document.body.appendChild(layer);
@@ -422,6 +479,17 @@ async function setMode(slot: ExplorerSlot, mode: PresentationMode): Promise<void
     }
     if (mode === 'embedded') {
         if (layerOwner === slot) hideLayer();
+        // Mutually exclusive with the global popup: while it is up, the docked
+        // copy waits (placeholder) and is restored when the popup closes.
+        if (slot !== globalSlot && layerOwner === globalSlot && globalSlot && slot.home) {
+            slot.home.classList.remove('hidden');
+            slot.home.dataset.away = '1';
+            lessonSuspended = true;
+            updateStatusButton();
+            return;
+        }
+        // Docked: the window buttons sit on the lesson panel's Knowledge Graph header.
+        ex.setModeButtonsHost(document.getElementById('lesson-kg-buttons'));
         slot.home!.classList.remove('hidden');   // ! — checked above
         await ex.mount(slot.home!, 'embedded');
         updateStatusButton();
@@ -437,9 +505,19 @@ async function setMode(slot: ExplorerSlot, mode: PresentationMode): Promise<void
     layer!.dataset.mode = mode;
     layerOwner = slot;
     if (slot.home && from === 'embedded') slot.home.dataset.away = '1';
+    // Popped and docked are mutually exclusive: while the global graph is up
+    // in the layer, the lesson panel's copy steps aside (focus is shared, so
+    // nothing is lost) and comes back when the layer closes.
+    if (slot === globalSlot && lessonSlot && lessonSlot.explorer.vm.presentation === 'embedded' && lessonSlot.home) {
+        lessonSlot.explorer.unmount();
+        lessonSlot.home.dataset.away = '1';
+        lessonSuspended = true;
+    }
     const title = layer!.querySelector('.kg-layer-title');
     if (title) title.textContent = ex.root.getAttribute('aria-label') ?? 'Knowledge Graph';
     layer!.querySelector('.kg-layer-panel')!.setAttribute('aria-label', title?.textContent ?? 'Knowledge Graph');
+    // Window buttons (lesson panel / popup / fullscreen / close) sit on the title bar.
+    ex.setModeButtonsHost(layer!.querySelector<HTMLElement>('.kg-layer-buttons'));
     await ex.mount(panel, mode);
     updateStatusButton();
 }
@@ -447,7 +525,25 @@ async function setMode(slot: ExplorerSlot, mode: PresentationMode): Promise<void
 function hideLayer(): void {
     layer?.classList.add('hidden');
     if (layerOwner?.home) delete layerOwner.home.dataset.away;
+    const wasGlobal = layerOwner === globalSlot;
     layerOwner = null;
+    if (wasGlobal) restoreDocked();
+    syncLessonSection();
+}
+
+/** The lesson panel's graph stepped aside for the global popup. */
+let lessonSuspended = false;
+
+/** Bring the docked lesson graph back once the global graph leaves the layer
+ *  (unless the learner folded the section meanwhile). */
+function restoreDocked(): void {
+    if (!lessonSuspended) return;
+    lessonSuspended = false;
+    const slot = lessonSlot;
+    if (!slot?.home) return;
+    delete slot.home.dataset.away;
+    const folded = lessonSectionEls().head?.classList.contains('side-section-folded');
+    if (!folded && slot.explorer.vm.presentation === 'closed') void setMode(slot, 'embedded');
 }
 
 // ---------- global explorer ----------
@@ -467,14 +563,17 @@ function getGlobalSlot(): ExplorerSlot {
         makeAskButton,
         detailsContext: () => ({ currentLessonId: currentLessonId() }),
         scopes: SCOPES,
-        onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
+        onScope: (id) => {
+            applyScope(vm, id, activeLesson.id, activeLesson.focus);
+            if (id === 'global' && vm.visibleNodes.size === 0) vm.showOverview(40);   // never an empty Global
+        },
         emptyText: () => vm.scopeId === 'local'
             ? (activeLesson.focus
                 ? "None of this lesson's concepts are in view. Search, or switch to Global."
                 : 'This lesson has no knowledge graph yet. Switch to Global to explore concepts from other lessons.')
             : 'No lesson knowledge graphs yet. Lessons add one with a "knowledgeGraph" block.',
     });
-    slot.explorer.setStatusExtra(coverageText());
+    slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
     trackForTutor(vm);
     globalSlot = slot;
     return slot;
@@ -519,12 +618,27 @@ export function conceptForGlossaryKey(key: string): string | null {
     return lessonId ? lookupGlossaryConcept(knowledgeStore, lessonId, key) : null;
 }
 
+/** Refresh the chrome outside the explorers after any mode change. */
 function updateStatusButton(): void {
+    syncLessonSection();
     const btn = document.getElementById('kg-status');
     if (!btn) return;
     const open = !!globalSlot && globalSlot.explorer.vm.presentation !== 'closed';
     btn.classList.toggle('active', open);
     btn.setAttribute('aria-expanded', String(open));
+}
+
+/**
+ * Either docked or popped out — never both: the Doc tab's Knowledge Graph
+ * section exists only while no graph is up in the popup / fullscreen layer
+ * (the lesson's own, or the global one). It comes back when the layer closes.
+ */
+function syncLessonSection(): void {
+    const { section } = lessonSectionEls();
+    if (!section) return;
+    const hasGraph = !!lessonSlot && lessonSlot.parsed.concepts.length > 0;
+    const poppedOut = layerOwner !== null;
+    section.classList.toggle('hidden', !hasGraph || poppedOut);
 }
 
 // ---------- lesson (embedded) explorer ----------
@@ -608,8 +722,9 @@ export function onLessonLoaded(spec: unknown): void {
     vm.focusOn(activeLesson.placeFocus ?? focus, 1);
     followActiveLesson();
     els.section.classList.remove('hidden');
+    syncLessonSection();                     // hidden again if a graph is popped out
     if (els.count) els.count.textContent = `${parsed.concepts.length} concepts`;
-    slot.explorer.setStatusExtra(coverageText());
+    slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
     // The learner's last fold choice (folded by default, so Cytoscape only
     // loads once someone opens a graph).
     void setEmbeddedFolded(loadFolded(), false);

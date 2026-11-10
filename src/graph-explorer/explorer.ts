@@ -33,6 +33,9 @@ const ICON = {
     close: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
 };
 
+/** An element that shows an explorer's window buttons (e.g. a title bar). */
+type ModesHost = HTMLElement & { kgRequestMode?: (mode: PresentationMode) => void };
+
 export interface ExplorerOptions<N, E> {
     vm: GraphViewModel<N, E>;
     adapter: GraphTypeAdapter<N, E>;
@@ -87,7 +90,7 @@ export class GraphExplorer<N, E> {
     /** Until this time (ms), every size change refits — set by a mode switch,
      *  so the fit tracks the popup/fullscreen size transition to its end. */
     private fitUntil = 0;
-    private statusExtra = '';
+    private statusExtra: string | (() => string) = '';
     private lastMountedMode: PresentationMode | null = null;
     private searchHits: string[] = [];
     private searchIndex = -1;
@@ -223,7 +226,8 @@ export class GraphExplorer<N, E> {
         if (title) b.title = title;
     }
 
-    setStatusExtra(html: string): void { this.statusExtra = html; this.renderChrome(); }
+    /** Host text after the counts; a function is re-read on every render (so it can follow scope). */
+    setStatusExtra(html: string | (() => string)): void { this.statusExtra = html; this.renderChrome(); }
 
     focusSearch(): void { this.searchInput.focus(); this.searchInput.select(); }
 
@@ -244,12 +248,53 @@ export class GraphExplorer<N, E> {
         }
     }
 
+    /** Where the window buttons (lesson panel / popup / fullscreen / close) go:
+     *  a host's title bar when it has one, else the explorer's own toolbar. */
+    private modesHost: ModesHost | null = null;
+
+    setModeButtonsHost(host: HTMLElement | null): void {
+        const h = host as ModesHost | null;
+        if (h === this.modesHost) return;
+        // Leaving a host: clear it if it still shows OUR buttons.
+        const old = this.modesHost;
+        if (old && old.kgRequestMode === this.opts.onRequestMode) { old.innerHTML = ''; old.kgRequestMode = undefined; }
+        this.modesHost = h;
+        if (h) {
+            // A host is shared (one title bar, several explorers): it calls
+            // whichever explorer put its buttons there last.
+            h.kgRequestMode = this.opts.onRequestMode;
+            if (!h.dataset.kgModesWired) {
+                h.dataset.kgModesWired = '1';
+                h.addEventListener('click', (ev) => {
+                    const b = (ev.target as Element).closest<HTMLElement>('[data-kg-mode]');
+                    if (!b) return;
+                    ev.stopPropagation();
+                    h.kgRequestMode?.(b.dataset.kgMode as PresentationMode);
+                });
+            }
+        }
+        this.renderModeButtons();
+    }
+
     private renderModeButtons(): void {
-        const box = this.root.querySelector('.kg-tb-modes')!;
+        const inToolbar = this.root.querySelector<HTMLElement>('.kg-tb-modes')!;
+        if (this.modesHost) {
+            inToolbar.innerHTML = '';
+            this.modesHost.kgRequestMode = this.opts.onRequestMode;
+        }
+        const box = this.modesHost ?? inToolbar;
         const cur = this.vm.presentation;
-        box.innerHTML = this.opts.modes.filter((m) => m !== cur).map((m) =>
-            `<button type="button" class="kg-tb-btn" data-kg-mode="${m}" title="${esc(MODE_META[m].title)}" aria-label="${esc(MODE_META[m].title)}">${MODE_META[m].icon}</button>`,
-        ).join('');
+        // The full set, always in the same order (dock · compact · fullscreen ·
+        // close), with the current mode shown pressed — buttons don't come and
+        // go as the mode changes. Close (and a press on the current mode) does
+        // what it says; the current one is simply a no-op.
+        const order: PresentationMode[] = ['embedded', 'popup', 'fullscreen', 'closed'];
+        box.innerHTML = order.filter((m) => this.opts.modes.includes(m)).map((m) => {
+            const on = m === cur;
+            const title = on ? `${MODE_META[m].title} (current)` : MODE_META[m].title;
+            return `<button type="button" class="kg-tb-btn kg-mode-btn${on ? ' active' : ''}" data-kg-mode="${m}" `
+                + `aria-pressed="${m === 'closed' ? 'false' : String(on)}" title="${esc(title)}" aria-label="${esc(title)}">${MODE_META[m].icon}</button>`;
+        }).join('');
     }
 
     // ---------- rendering ----------
@@ -269,10 +314,11 @@ export class GraphExplorer<N, E> {
         this.depthLabel.textContent = vm.focus === null ? 'overview' : `${vm.focusDepth}-hop`;
         this.renderDetails();
         const shown = vm.visibleNodes.size;
-        const total = vm.engine.nodeCount;
+        const total = vm.scopedNodeCount();       // Local counts only the lesson's concepts
         let s = `${shown} of ${total} concept${total === 1 ? '' : 's'} shown · ${vm.visibleEdges.size} relationship${vm.visibleEdges.size === 1 ? '' : 's'}`;
         if (vm.truncated) s += ` · <span class="kg-warn">limited to ${vm.maxVisible} — focus or search to see more</span>`;
-        if (this.statusExtra) s += ` · ${this.statusExtra}`;
+        const extra = typeof this.statusExtra === 'function' ? this.statusExtra() : this.statusExtra;
+        if (extra) s += ` · ${extra}`;
         this.status.innerHTML = s;
         if (this.view?.isReady) {
             this.overlay.innerHTML = shown ? ''

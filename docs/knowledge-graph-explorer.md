@@ -82,8 +82,18 @@ One `GraphExplorer` per context, moved between hosts by `mount(host, mode)`:
 - **popup** — floating panel above the status bar (`#kg-layer`) with a title
   bar: drag the title bar (or an empty toolbar spot) to move it, the
   bottom-right grip to resize it. Kept on screen, minimum 380×260; position
-  and size are remembered.
+  and size are remembered. The window buttons (lesson panel / popup / fullscreen /
+  close) sit on the title bar; in the lesson panel they stay in the toolbar.
+  A drag also ends if the button is released outside the window (lost
+  capture, a buttonless move, or window blur), so it never sticks.
 - **fullscreen** — the same layer, viewport-sized.
+
+**Either docked or popped out, never both.** While any graph is up in the
+popup / fullscreen layer (the lesson's own, or the global one), the Doc tab's
+Knowledge Graph section is removed; it returns when the layer closes or the
+graph is docked. Both views share one focus. The window buttons (dock ·
+compact · fullscreen · close, current one pressed) sit on the popup's title bar,
+or on the section header when docked.
 
 Moving between modes re-parents the root element; the Cytoscape instance is
 **kept** and only `resize()`d around the current view centre, so selection,
@@ -144,6 +154,10 @@ the view re-centres on the lesson's main concept, otherwise it stays put. In
 the global graph, Local means the *current* lesson: it follows lesson changes,
 and in a lesson without a knowledge graph it is empty, with a message pointing
 to Global (it never silently shows other lessons' concepts).
+
+The status line follows the scope: Global reports coverage ("knowledge graphs
+from 2 of 36 lessons"), Local counts only the lesson's concepts and names the
+lesson ("4 of 7 concepts shown · local: Sliding Window Maximum").
 
 ### Setting the focus (standard entry point)
 

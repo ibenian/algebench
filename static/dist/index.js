@@ -30171,6 +30171,7 @@ function buildStylesheet(c) {
 				"text-background-opacity": .7,
 				"text-background-padding": "1px",
 				"min-zoomed-font-size": 5,
+				"text-events": "yes",
 				"transition-property": "border-color, border-width, background-color",
 				"transition-duration": 160
 			}
@@ -30303,6 +30304,7 @@ function buildStylesheet(c) {
 				"text-background-padding": "2px",
 				"font-family": c.font,
 				"min-zoomed-font-size": 7,
+				"text-events": "yes",
 				"transition-property": "line-color, width",
 				"transition-duration": 160
 			}
@@ -30360,6 +30362,8 @@ var CytoscapeGraphView = class {
 		this.currentLayout = null;
 		this.glowNode = null;
 		this.glowGen = 0;
+		this.hoverNode = null;
+		this.hoverResetTimer = null;
 		this.pendingLayout = false;
 		this.pendingFit = false;
 		this.lastPatchStats = {
@@ -30491,10 +30495,27 @@ var CytoscapeGraphView = class {
 			else this.vm.expand(id);
 		});
 		cy.on("mouseover", "node", (ev) => {
-			this.hoverHint("pointer", this.dblClickHint(ev.target.id()));
+			this.hoverNode = ev.target.id();
+			this.hoverHint("pointer", this.dblClickHint(this.hoverNode));
 		});
-		cy.on("mouseover", "edge", () => this.hoverHint("pointer", "Click for relationship details"));
-		cy.on("mouseout", "node, edge", () => this.hoverHint("", ""));
+		cy.on("mouseover", "edge", () => {
+			if (this.hoverNode) {
+				this.hoverHint("pointer", null);
+				return;
+			}
+			this.hoverHint("pointer", "Click for relationship details");
+		});
+		cy.on("mouseout", "node", (ev) => {
+			if (this.hoverNode === ev.target.id()) this.hoverNode = null;
+			this.hoverHint("", "");
+		});
+		cy.on("mouseout", "edge", () => this.hoverHint("", ""));
+		const host = this.container.parentElement ?? this.container;
+		cy.on("tapstart", (ev) => {
+			if (ev.target === cy) host.classList.add("kg-grabbing");
+		});
+		cy.on("grab", "node", () => host.classList.add("kg-grabbing"));
+		cy.on("tapend free", () => host.classList.remove("kg-grabbing"));
 		cy.on("dragfree", "node", (ev) => {
 			this.vm.savePosition(ev.target.id(), ev.target.position());
 		});
@@ -30705,8 +30726,20 @@ var CytoscapeGraphView = class {
 	*/
 	hoverHint(cursor, title) {
 		const host = this.container.parentElement ?? this.container;
+		if (this.hoverResetTimer) {
+			clearTimeout(this.hoverResetTimer);
+			this.hoverResetTimer = null;
+		}
+		if (!cursor) {
+			this.hoverResetTimer = setTimeout(() => {
+				this.hoverResetTimer = null;
+				host.style.cursor = "";
+				host.title = "";
+			}, 180);
+			return;
+		}
 		host.style.cursor = cursor;
-		host.title = title;
+		if (title !== null) host.title = title;
 	}
 	/**
 	* Draw now, inside this task. Resizing the canvas element clears it and
@@ -30867,6 +30900,7 @@ var CytoscapeGraphView = class {
 		for (const u of this.unsubs.splice(0)) u();
 		if (this.viewportTimer) clearTimeout(this.viewportTimer);
 		if (this.flashTimer) clearTimeout(this.flashTimer);
+		if (this.hoverResetTimer) clearTimeout(this.hoverResetTimer);
 		if (this.wheelHandler) {
 			this.container.removeEventListener("wheel", this.wheelHandler);
 			this.wheelHandler = null;
@@ -30928,6 +30962,7 @@ var GraphExplorer = class {
 		this.searchHits = [];
 		this.searchIndex = -1;
 		this.reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+		this.modesHost = null;
 		this.opts = opts;
 		this.vm = opts.vm;
 		this.adapter = opts.adapter;
@@ -31050,6 +31085,7 @@ var GraphExplorer = class {
 		b.disabled = !available;
 		if (title) b.title = title;
 	}
+	/** Host text after the counts; a function is re-read on every render (so it can follow scope). */
 	setStatusExtra(html) {
 		this.statusExtra = html;
 		this.renderChrome();
@@ -31077,10 +31113,47 @@ var GraphExplorer = class {
 			});
 		}
 	}
+	setModeButtonsHost(host) {
+		const h = host;
+		if (h === this.modesHost) return;
+		const old = this.modesHost;
+		if (old && old.kgRequestMode === this.opts.onRequestMode) {
+			old.innerHTML = "";
+			old.kgRequestMode = void 0;
+		}
+		this.modesHost = h;
+		if (h) {
+			h.kgRequestMode = this.opts.onRequestMode;
+			if (!h.dataset.kgModesWired) {
+				h.dataset.kgModesWired = "1";
+				h.addEventListener("click", (ev) => {
+					const b = ev.target.closest("[data-kg-mode]");
+					if (!b) return;
+					ev.stopPropagation();
+					h.kgRequestMode?.(b.dataset.kgMode);
+				});
+			}
+		}
+		this.renderModeButtons();
+	}
 	renderModeButtons() {
-		const box = this.root.querySelector(".kg-tb-modes");
+		const inToolbar = this.root.querySelector(".kg-tb-modes");
+		if (this.modesHost) {
+			inToolbar.innerHTML = "";
+			this.modesHost.kgRequestMode = this.opts.onRequestMode;
+		}
+		const box = this.modesHost ?? inToolbar;
 		const cur = this.vm.presentation;
-		box.innerHTML = this.opts.modes.filter((m) => m !== cur).map((m) => `<button type="button" class="kg-tb-btn" data-kg-mode="${m}" title="${esc(MODE_META[m].title)}" aria-label="${esc(MODE_META[m].title)}">${MODE_META[m].icon}</button>`).join("");
+		box.innerHTML = [
+			"embedded",
+			"popup",
+			"fullscreen",
+			"closed"
+		].filter((m) => this.opts.modes.includes(m)).map((m) => {
+			const on = m === cur;
+			const title = on ? `${MODE_META[m].title} (current)` : MODE_META[m].title;
+			return `<button type="button" class="kg-tb-btn kg-mode-btn${on ? " active" : ""}" data-kg-mode="${m}" aria-pressed="${m === "closed" ? "false" : String(on)}" title="${esc(title)}" aria-label="${esc(title)}">${MODE_META[m].icon}</button>`;
+		}).join("");
 	}
 	renderChrome() {
 		const vm = this.vm;
@@ -31096,10 +31169,11 @@ var GraphExplorer = class {
 		this.depthLabel.textContent = vm.focus === null ? "overview" : `${vm.focusDepth}-hop`;
 		this.renderDetails();
 		const shown = vm.visibleNodes.size;
-		const total = vm.engine.nodeCount;
+		const total = vm.scopedNodeCount();
 		let s = `${shown} of ${total} concept${total === 1 ? "" : "s"} shown · ${vm.visibleEdges.size} relationship${vm.visibleEdges.size === 1 ? "" : "s"}`;
 		if (vm.truncated) s += ` · <span class="kg-warn">limited to ${vm.maxVisible} — focus or search to see more</span>`;
-		if (this.statusExtra) s += ` · ${this.statusExtra}`;
+		const extra = typeof this.statusExtra === "function" ? this.statusExtra() : this.statusExtra;
+		if (extra) s += ` · ${extra}`;
 		this.status.innerHTML = s;
 		if (this.view?.isReady) this.overlay.innerHTML = shown ? "" : `<div class="kg-empty">${esc((typeof this.opts.emptyText === "function" ? this.opts.emptyText() : this.opts.emptyText) ?? "Nothing to show yet. Search for a concept to start exploring.")}</div>`;
 	}
@@ -31687,6 +31761,13 @@ var GraphViewModel = class {
 	}
 	inScope(id) {
 		return !this.scopeFn || this.scopeFn(id);
+	}
+	/** How many concepts the current scope covers (the whole graph for Global). */
+	scopedNodeCount() {
+		if (!this.scopeFn) return this.engine.nodeCount;
+		let n = 0;
+		for (const node of this.engine.allNodes()) if (this.scopeFn(node.id)) n++;
+		return n;
 	}
 	/** The visible node set: union of every root's neighbourhood, capped. */
 	computeVisibleNodes() {
@@ -32769,8 +32850,8 @@ function followActiveLesson() {
 		globalFollowedLesson = activeLesson.id;
 		const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
 		vm.focusOn(target);
-	} else if (vm.visibleNodes.size === 0) vm.showOverview(40);
-	globalSlot.explorer.setStatusExtra(coverageText());
+	} else if (vm.visibleNodes.size === 0 && vm.scopeId !== "local") vm.showOverview(40);
+	globalSlot.explorer.setStatusExtra(() => statusText(vm));
 }
 /**
 * The view the learner most recently worked in — focus, selection, visible
@@ -32782,8 +32863,21 @@ var lastViewed = null;
 function trackForTutor(vm) {
 	vm.events.on("state", ({ reason }) => {
 		if (reason !== "data" && vm.presentation !== "closed") lastViewed = vm;
+		if ((reason === "focus" || reason === "history") && vm.focus && !syncingFocus) {
+			syncingFocus = true;
+			try {
+				for (const slot of [lessonSlot, globalSlot]) {
+					const other = slot?.explorer.vm;
+					if (other && other !== vm && other.focus !== vm.focus && other.inScope(vm.focus)) other.focusOn(vm.focus);
+				}
+			} finally {
+				syncingFocus = false;
+			}
+		}
 	});
 }
+/** Guards the focus sync above against echoing back and forth. */
+var syncingFocus = false;
 /** `runtime.knowledgeGraph` for the chat context; null until a graph was opened. */
 function getKnowledgeGraphContext() {
 	if (!lastViewed) return null;
@@ -32829,9 +32923,26 @@ function applyScope(vm, scopeId, lessonId, fallbackFocus) {
 		if ((vm.focus !== null && !vm.inScope(vm.focus) || vm.visibleNodes.size === 0) && fallbackFocus && vm.inScope(fallbackFocus)) vm.focusOn(fallbackFocus);
 	} else vm.setScope("global", null);
 }
+/**
+* The status-line context for a view: Local names the open lesson (and says
+* when it has no knowledge graph); Global shows how much of the catalogue the
+* graph covers.
+*/
+function statusText(vm) {
+	if (vm.scopeId !== "local") return coverageText();
+	const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	const title = activeLesson.title ? esc(activeLesson.title) : "this lesson";
+	return activeLesson.focus ? `local: ${title}` : `local: ${title} — <span class="kg-warn">no knowledge graph yet</span>`;
+}
 function updateCoverageText() {
-	globalSlot?.explorer.setStatusExtra(coverageText());
-	lessonSlot?.explorer.setStatusExtra(coverageText());
+	if (globalSlot) {
+		const vm = globalSlot.explorer.vm;
+		globalSlot.explorer.setStatusExtra(() => statusText(vm));
+	}
+	if (lessonSlot) {
+		const vm = lessonSlot.explorer.vm;
+		lessonSlot.explorer.setStatusExtra(() => statusText(vm));
+	}
 }
 function currentLessonId() {
 	return builtinIdFromPath(state.currentSceneSourcePath) ?? (state.currentSceneSourcePath ? `local:${state.currentSceneSourcePath}` : null);
@@ -32864,6 +32975,53 @@ var POPUP_MIN = {
 	w: 380,
 	h: 260
 };
+/**
+* Follow one pointer drag on `el` until it really ends. A release outside the
+* browser window may never deliver pointerup (capture is just lost), so the
+* drag also ends on lostpointercapture, on a move with no button held, and on
+* window blur — otherwise it "sticks" and follows the pointer when it comes
+* back. `end` always runs exactly once, with the last known position.
+*/
+function trackDrag(el, start, move, end) {
+	let x = start.clientX, y = start.clientY, done = false;
+	try {
+		el.setPointerCapture(start.pointerId);
+	} catch {}
+	const finish = () => {
+		if (done) return;
+		done = true;
+		el.removeEventListener("pointermove", onMove);
+		el.removeEventListener("pointerup", onUp);
+		el.removeEventListener("pointercancel", finish);
+		el.removeEventListener("lostpointercapture", finish);
+		window.removeEventListener("blur", finish);
+		try {
+			if (el.hasPointerCapture(start.pointerId)) el.releasePointerCapture(start.pointerId);
+		} catch {}
+		end(x, y);
+	};
+	const onMove = (e) => {
+		if (e.pointerId !== start.pointerId) return;
+		if (e.buttons === 0) {
+			finish();
+			return;
+		}
+		x = e.clientX;
+		y = e.clientY;
+		move(x, y);
+	};
+	const onUp = (e) => {
+		if (e.pointerId !== start.pointerId) return;
+		x = e.clientX;
+		y = e.clientY;
+		finish();
+	};
+	el.addEventListener("pointermove", onMove);
+	el.addEventListener("pointerup", onUp);
+	el.addEventListener("pointercancel", finish);
+	el.addEventListener("lostpointercapture", finish);
+	window.addEventListener("blur", finish);
+}
 function loadPopupSize() {
 	try {
 		const p = JSON.parse(localStorage.getItem(POPUP_SIZE_KEY) || "null");
@@ -32941,39 +33099,23 @@ function makePopupMovable(layerEl, panel) {
 		placePopup(panel, r.left, r.top, true);
 		const ox = ev.clientX - r.width, oy = ev.clientY - r.height;
 		panel.classList.add("kg-dragging");
-		grip.setPointerCapture(ev.pointerId);
-		const move = (e) => sizePopup(panel, e.clientX - ox, e.clientY - oy, false);
-		const up = (e) => {
-			grip.removeEventListener("pointermove", move);
-			grip.removeEventListener("pointerup", up);
-			grip.removeEventListener("pointercancel", up);
+		trackDrag(grip, ev, (x, y) => sizePopup(panel, x - ox, y - oy, false), (x, y) => {
 			panel.classList.remove("kg-dragging");
-			sizePopup(panel, e.clientX - ox, e.clientY - oy, true);
-		};
-		grip.addEventListener("pointermove", move);
-		grip.addEventListener("pointerup", up);
-		grip.addEventListener("pointercancel", up);
+			sizePopup(panel, x - ox, y - oy, true);
+		});
 	});
 	panel.addEventListener("pointerdown", (ev) => {
 		const t = ev.target;
 		if (layerEl.dataset.mode !== "popup" || ev.button !== 0) return;
-		if (!!!t.closest(".kg-layer-head") && (!t.closest(".kg-toolbar") || t.closest("button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label"))) return;
+		if (!(!!t.closest(".kg-layer-head") && !t.closest("button")) && (!t.closest(".kg-toolbar") || t.closest("button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label"))) return;
 		ev.preventDefault();
 		const r = panel.getBoundingClientRect();
 		const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
 		panel.classList.add("kg-dragging");
-		panel.setPointerCapture(ev.pointerId);
-		const move = (e) => placePopup(panel, e.clientX - dx, e.clientY - dy, false);
-		const up = (e) => {
-			panel.removeEventListener("pointermove", move);
-			panel.removeEventListener("pointerup", up);
-			panel.removeEventListener("pointercancel", up);
+		trackDrag(panel, ev, (x, y) => placePopup(panel, x - dx, y - dy, false), (x, y) => {
 			panel.classList.remove("kg-dragging");
-			placePopup(panel, e.clientX - dx, e.clientY - dy, true);
-		};
-		panel.addEventListener("pointermove", move);
-		panel.addEventListener("pointerup", up);
-		panel.addEventListener("pointercancel", up);
+			placePopup(panel, x - dx, y - dy, true);
+		});
 	});
 	window.addEventListener("resize", () => {
 		if (!panel.classList.contains("kg-moved")) return;
@@ -32988,7 +33130,7 @@ function ensureLayer() {
 	layer = document.createElement("div");
 	layer.id = "kg-layer";
 	layer.className = "hidden";
-	layer.innerHTML = "<div class=\"kg-layer-scrim\"></div><div class=\"kg-layer-panel\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Knowledge Graph\"><div class=\"kg-layer-head\"><span class=\"kg-layer-grip\" aria-hidden=\"true\">⠿</span><span class=\"kg-layer-title\">Knowledge Graph</span></div><div class=\"kg-layer-body\"></div><div class=\"kg-layer-resize\" role=\"separator\" aria-label=\"Resize the Knowledge Graph\" title=\"Drag to resize\"></div></div>";
+	layer.innerHTML = "<div class=\"kg-layer-scrim\"></div><div class=\"kg-layer-panel\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Knowledge Graph\"><div class=\"kg-layer-head\"><span class=\"kg-layer-grip\" aria-hidden=\"true\">⠿</span><span class=\"kg-layer-title\">Knowledge Graph</span><span class=\"kg-layer-buttons\"></span></div><div class=\"kg-layer-body\"></div><div class=\"kg-layer-resize\" role=\"separator\" aria-label=\"Resize the Knowledge Graph\" title=\"Drag to resize\"></div></div>";
 	document.body.appendChild(layer);
 	const panelEl = layer.querySelector(".kg-layer-panel");
 	makePopupMovable(layer, panelEl);
@@ -33023,6 +33165,14 @@ async function setMode(slot, mode) {
 	}
 	if (mode === "embedded") {
 		if (layerOwner === slot) hideLayer();
+		if (slot !== globalSlot && layerOwner === globalSlot && globalSlot && slot.home) {
+			slot.home.classList.remove("hidden");
+			slot.home.dataset.away = "1";
+			lessonSuspended = true;
+			updateStatusButton();
+			return;
+		}
+		ex.setModeButtonsHost(document.getElementById("lesson-kg-buttons"));
 		slot.home.classList.remove("hidden");
 		await ex.mount(slot.home, "embedded");
 		updateStatusButton();
@@ -33037,16 +33187,37 @@ async function setMode(slot, mode) {
 	layer.dataset.mode = mode;
 	layerOwner = slot;
 	if (slot.home && from === "embedded") slot.home.dataset.away = "1";
+	if (slot === globalSlot && lessonSlot && lessonSlot.explorer.vm.presentation === "embedded" && lessonSlot.home) {
+		lessonSlot.explorer.unmount();
+		lessonSlot.home.dataset.away = "1";
+		lessonSuspended = true;
+	}
 	const title = layer.querySelector(".kg-layer-title");
 	if (title) title.textContent = ex.root.getAttribute("aria-label") ?? "Knowledge Graph";
 	layer.querySelector(".kg-layer-panel").setAttribute("aria-label", title?.textContent ?? "Knowledge Graph");
+	ex.setModeButtonsHost(layer.querySelector(".kg-layer-buttons"));
 	await ex.mount(panel, mode);
 	updateStatusButton();
 }
 function hideLayer() {
 	layer?.classList.add("hidden");
 	if (layerOwner?.home) delete layerOwner.home.dataset.away;
+	const wasGlobal = layerOwner === globalSlot;
 	layerOwner = null;
+	if (wasGlobal) restoreDocked();
+	syncLessonSection();
+}
+/** The lesson panel's graph stepped aside for the global popup. */
+var lessonSuspended = false;
+/** Bring the docked lesson graph back once the global graph leaves the layer
+*  (unless the learner folded the section meanwhile). */
+function restoreDocked() {
+	if (!lessonSuspended) return;
+	lessonSuspended = false;
+	const slot = lessonSlot;
+	if (!slot?.home) return;
+	delete slot.home.dataset.away;
+	if (!lessonSectionEls().head?.classList.contains("side-section-folded") && slot.explorer.vm.presentation === "closed") setMode(slot, "embedded");
 }
 function getGlobalSlot() {
 	if (globalSlot) return globalSlot;
@@ -33079,10 +33250,13 @@ function getGlobalSlot() {
 		makeAskButton,
 		detailsContext: () => ({ currentLessonId: currentLessonId() }),
 		scopes: SCOPES,
-		onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
+		onScope: (id) => {
+			applyScope(vm, id, activeLesson.id, activeLesson.focus);
+			if (id === "global" && vm.visibleNodes.size === 0) vm.showOverview(40);
+		},
 		emptyText: () => vm.scopeId === "local" ? activeLesson.focus ? "None of this lesson's concepts are in view. Search, or switch to Global." : "This lesson has no knowledge graph yet. Switch to Global to explore concepts from other lessons." : "No lesson knowledge graphs yet. Lessons add one with a \"knowledgeGraph\" block."
 	});
-	slot.explorer.setStatusExtra(coverageText());
+	slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
 	trackForTutor(vm);
 	globalSlot = slot;
 	return slot;
@@ -33126,12 +33300,26 @@ function conceptForGlossaryKey(key) {
 	const lessonId = currentLessonId();
 	return lessonId ? conceptForGlossaryKey$1(knowledgeStore, lessonId, key) : null;
 }
+/** Refresh the chrome outside the explorers after any mode change. */
 function updateStatusButton() {
+	syncLessonSection();
 	const btn = document.getElementById("kg-status");
 	if (!btn) return;
 	const open = !!globalSlot && globalSlot.explorer.vm.presentation !== "closed";
 	btn.classList.toggle("active", open);
 	btn.setAttribute("aria-expanded", String(open));
+}
+/**
+* Either docked or popped out — never both: the Doc tab's Knowledge Graph
+* section exists only while no graph is up in the popup / fullscreen layer
+* (the lesson's own, or the global one). It comes back when the layer closes.
+*/
+function syncLessonSection() {
+	const { section } = lessonSectionEls();
+	if (!section) return;
+	const hasGraph = !!lessonSlot && lessonSlot.parsed.concepts.length > 0;
+	const poppedOut = layerOwner !== null;
+	section.classList.toggle("hidden", !hasGraph || poppedOut);
 }
 function lessonSectionEls() {
 	return {
@@ -33224,8 +33412,9 @@ function onLessonLoaded(spec) {
 	vm.focusOn(activeLesson.placeFocus ?? focus, 1);
 	followActiveLesson();
 	els.section.classList.remove("hidden");
+	syncLessonSection();
 	if (els.count) els.count.textContent = `${parsed.concepts.length} concepts`;
-	slot.explorer.setStatusExtra(coverageText());
+	slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
 	setEmbeddedFolded(loadFolded(), false);
 }
 var FOLD_KEY = "algebench.foldKnowledgeGraph";
