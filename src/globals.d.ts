@@ -167,6 +167,11 @@ interface WindowEventMap {
    * src/view-state-bridge.ts turns into a replaceView rather than a push.
    */
   'algebench:fachange': CustomEvent<{ replace?: boolean } | undefined>;
+  /**
+   * A lesson (or single scene) finished loading — src/scene-loader.ts
+   * loadLesson. The knowledge-graph explorer reads `spec.knowledgeGraph`.
+   */
+  'algebench:lessonload': CustomEvent<{ spec: unknown }>;
 }
 
 // ── gemini-live-tools browser globals ───────────────────────────────────────
@@ -318,6 +323,17 @@ interface Window {
    */
   __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
   __algebenchGraph?: AlgeBenchGraphController;
+  /**
+   * Knowledge-graph integration handle (src/graph-explorer/knowledge-app.ts):
+   * the shared store and the validated runtime-update entry point that a
+   * future tutor / personal-graph integration calls.
+   */
+  algebenchKnowledgeGraph?: {
+    store: import('/graph-explorer/knowledge-model.js').KnowledgeGraph;
+    applyUpdate: (update: { concepts?: unknown; relations?: unknown }) => { issues: string[] };
+    openConcept: (id: string, mode?: import('/graph-explorer/view-model.js').PresentationMode) => Promise<boolean>;
+    explorers: () => { global: unknown; lesson: unknown };
+  };
   /**
    * Mermaid, injected as a CDN <script> by src/graph-view.ts's loadMermaidLib()
    * on first use — index.html deliberately does NOT include it, so it is absent

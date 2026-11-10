@@ -1,5 +1,85 @@
 {
   "title": "Parenthesis validation · full stack algorithm",
+  "knowledgeGraph": {
+    "focus": "dsa.balanced-brackets",
+    "concepts": [
+      {
+        "id": "dsa.balanced-brackets",
+        "label": "Balanced Brackets",
+        "category": "problem",
+        "definition": "Decide whether every opening bracket in a string is closed by the matching bracket in the right order.",
+        "refs": [
+          {
+            "scene": 0,
+            "label": "Nested brackets"
+          },
+          {
+            "scene": 2,
+            "label": "Wrong closing order"
+          }
+        ]
+      },
+      {
+        "id": "dsa.stack",
+        "label": "Stack",
+        "category": "data-structure",
+        "definition": "A last-in, first-out collection: push and pop happen at the same end.",
+        "refs": [
+          {
+            "scene": 0,
+            "label": "Stack of opener positions"
+          }
+        ]
+      },
+      {
+        "id": "dsa.lifo-order",
+        "label": "LIFO Order",
+        "category": "invariant",
+        "definition": "The most recently pushed opener is the only one a closing bracket may match.",
+        "refs": [
+          {
+            "scene": 2,
+            "label": "Mismatch detected"
+          }
+        ]
+      },
+      {
+        "id": "dsa.deque",
+        "label": "Deque",
+        "definition": "A double-ended queue: insert and remove at both ends."
+      },
+      {
+        "id": "cs.time-complexity",
+        "label": "Time Complexity",
+        "definition": "How running time grows with input size, in big-O notation."
+      }
+    ],
+    "relations": [
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "dsa.stack",
+        "type": "uses",
+        "description": "Each opener's position is pushed; each closer pops and checks it."
+      },
+      {
+        "source": "dsa.stack",
+        "target": "dsa.lifo-order",
+        "type": "maintains"
+      },
+      {
+        "source": "dsa.stack",
+        "target": "dsa.deque",
+        "type": "specializes",
+        "description": "A deque restricted to one end behaves as a stack."
+      },
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "cs.time-complexity",
+        "type": "measured-by",
+        "description": "One left-to-right pass: $O(n)$ time and $O(n)$ stack space."
+      }
+    ]
+  },
   "codeFiles": [
     {
       "id": "validator",

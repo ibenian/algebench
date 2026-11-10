@@ -31,6 +31,7 @@ import { setupSideSections } from '/side-sections.js';
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
 import { installGlossaryTooltip } from '/glossary.js';
+import { setupKnowledgeGraph } from '/graph-explorer/knowledge-app.js';
 import { AI_ICON, USER_ICON } from '/icons.js';
 import { applyTheme, initialTheme, wireThemeToggle } from '/theme.js';
 
@@ -85,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupContextStatusPopup();
     setupCamStatusPopup();
     setupAboutPopup();
+    setupKnowledgeGraph();
     // Deeplink sync must be live before the initial scene loads so the URL
     // reflects navigation, and applyViewState exists before ui.js calls it.
     setupViewSync();

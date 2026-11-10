@@ -1130,6 +1130,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
         setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
         updateDockVisibility();
         loadScene(spec);
+        announceLessonLoad(spec);
         return;
     }
     sceneState.lessonSpec = spec;
@@ -1147,6 +1148,12 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
+    announceLessonLoad(spec);
+}
+
+/** Tell listeners (the knowledge-graph explorer) which lesson is now loaded. */
+function announceLessonLoad(spec: unknown): void {
+    try { window.dispatchEvent(new CustomEvent('algebench:lessonload', { detail: { spec } })); } catch (_) { /* ignore */ }
 }
 
 // Path guard mirrors the one in graph-view.js dockProofAnimation.

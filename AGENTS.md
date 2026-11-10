@@ -151,6 +151,7 @@ src/               Frontend SOURCE (TypeScript, handwritten)
   main.ts          Entry point — wires all modules, exposes globals
   chat.ts          AI chat panel, TTS, voice picker
   graph-panel/     Semantic-graph renderers, themes, layout engines
+  graph-explorer/  Reusable graph explorer (Cytoscape) — Knowledge Graph; see docs/knowledge-graph-explorer.md
   proof-animation/ Realtime, Manim-style derivation morph engine (FLIP)
   objects/         Element renderers
   types/           GENERATED from schemas/ — never hand-edit
