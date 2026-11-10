@@ -16980,7 +16980,7 @@ function applyTrackerInfoOverlays(tracker, step) {
 	const infoDefs = step.info;
 	if (!infoDefs || !infoDefs.length) return;
 	for (const def of infoDefs) {
-		addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
+		addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false, def.title ?? null);
 		tracker.infoIds.push(def.id);
 	}
 }
@@ -17715,7 +17715,7 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			const landingTracker = sceneState.stepTrackers[sceneState.stepTrackers.length - 1];
 			if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
 				removeStepInfoOverlays();
-				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
+				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false, def.title ?? null);
 				landingTracker.infoIds = landingTracker.infoDefs.map((d) => d.id);
 			}
 		}

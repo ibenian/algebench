@@ -631,7 +631,7 @@
         {
           "id": "mean-centering",
           "title": "Mean-centering: Pearson similarity",
-          "description": "Some people give everything 4 stars, others are harsh. Subtracting each person's own mean $\\bar r_u$ removes that personal scale, and the cosine of the centered vectors is the **Pearson correlation**:\n$$w_{uv} = \\frac{\\sum_{i}(r_{ui}-\\bar r_u)(r_{vi}-\\bar r_v)}{\\sqrt{\\sum_i(r_{ui}-\\bar r_u)^2}\\sqrt{\\sum_i(r_{vi}-\\bar r_v)^2}}$$\nsummed over movies **both** rated — compactly, $w_{uv} = \\operatorname{Cov}(r_u, r_v) / (\\sigma_u \\sigma_v)$. The 3D matrix shows $w$ for **every** pair: height and color are the similarity (all cells the same size). The two cells for user 1 × user 2 glow — the matrix is symmetric, so the pair appears twice.",
+          "description": "Some people give everything 4 stars, others are harsh. Subtracting each person's global average $\\bar r_u$ (calculated from **all** their known ratings) removes their personal scale. The similarity $w_{uv}$ is then calculated by comparing these deviations **only for the movies both users have rated** — the cosine of the centered vectors, i.e. the **Pearson correlation**:\n$$w_{uv} = \\frac{\\sum_{i}(r_{ui}-\\bar r_u)(r_{vi}-\\bar r_v)}{\\sqrt{\\sum_i(r_{ui}-\\bar r_u)^2}\\sqrt{\\sum_i(r_{vi}-\\bar r_v)^2}}$$\nsummed over movies **both** rated — compactly, $w_{uv} = \\operatorname{Cov}(r_u, r_v) / (\\sigma_u \\sigma_v)$. The 3D matrix shows $w$ for **every** pair: height and color are the similarity (all cells the same size). The two cells for user 1 × user 2 glow — the matrix is symmetric, so the pair appears twice.",
           "add": [
             {
               "id": "s2_sims",
@@ -982,8 +982,8 @@
             {"id": "cf_stage", "label": "walkthrough stage", "min": 1, "max": 6, "step": 1, "default": 1, "valueExpr": "concat(string(cf_stage), '. ', cfWalkTitle(cf_stage))"}
           ],
           "info": [
-            {"id": "s2_info_walk", "position": "top-right", "content": "{{cfWalk(cf_stage)}}"},
-            {"id": "s2_info_play_sum", "position": "top-left", "content": "### Prediction\n{{cfWalkSummary()}}"}
+            {"id": "s2_info_walk", "position": "top-right", "content": "{{cfWalk(cf_stage)}}", "title": "Walkthrough {{cf_stage}}/6 · {{cfWalkTitle(cf_stage)}}"},
+            {"id": "s2_info_play_sum", "position": "top-left", "content": "{{cfWalkSummary()}}", "title": "Prediction"}
           ],
           "camera": {
             "position": [-1.6, -0.8, 15.5],

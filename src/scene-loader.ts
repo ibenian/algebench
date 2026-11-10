@@ -101,6 +101,8 @@ interface InfoOverlayDef {
     content: string;
     position?: string;
     keep?: boolean;
+    /** Short header (schema `title`); without it the header is derived from `content`. */
+    title?: string;
 }
 
 /** A SubTracker plus the undo bookkeeping a *step* needs for backward nav. */
@@ -376,7 +378,7 @@ function applyTrackerInfoOverlays(tracker: StepTracker, step: SceneStep): void {
     const infoDefs = step.info;
     if (!infoDefs || !infoDefs.length) return;
     for (const def of infoDefs) {
-        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false, def.title ?? null);
         tracker.infoIds.push(def.id);
     }
 }
@@ -1247,7 +1249,7 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
                 removeStepInfoOverlays();
                 for (const def of landingTracker.infoDefs) {
-                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false, def.title ?? null);
                 }
                 landingTracker.infoIds = landingTracker.infoDefs.map(d => d.id);
             }

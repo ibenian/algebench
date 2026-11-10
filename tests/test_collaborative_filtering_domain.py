@@ -205,5 +205,8 @@ assert.ok(cf.cfWalk(6).includes('= ' + pred + '$$'), cf.cfWalk(6));
 assert.ok(cf.cfWalk(3).includes(cf.cfSim(3, 0).toFixed(2)));
 assert.ok(cf.cfWalk(1).includes('3.00'));           // Dan's mean
 assert.ok(cf.cfWalk(4).includes('Ava') && cf.cfWalk(4).includes('Eli'));
-for (let s = 1; s <= 6; s++) assert.ok(cf.cfWalk(s).startsWith('### ' + s + '/6'));
+for (let s = 1; s <= 6; s++) {{
+    assert.ok(cf.cfWalk(s).startsWith('**What and why.**'));   // body only; the title is separate
+    assert.ok(cf.cfWalkTitle(s).length > 0 && !cf.cfWalkTitle(s).includes('\\n'));
+}}
 ''')

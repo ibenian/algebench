@@ -827,7 +827,10 @@
         const stage = _ci(Number(s) - 1, STAGES.length - 1) + 1;
         const Iu = _rated(st, u);
         const mu = _meanOf(st, u);
-        const head = `### ${stage}/6 · ${STAGES[stage - 1]}\n`;
+        // The stage title lives in the overlay's one-line `title` (cfWalkTitle),
+        // not here: a heading in the body made the collapsed overlay header the
+        // whole walkthrough.
+        const head = '';
         const cands = [];
         for (let v = 0; v < NU; v++) if (v !== u && st.obs[v][i]) cands.push(v);
         const ranked = cands.map(v => [v, _sim(st, u, v)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
@@ -871,6 +874,8 @@
                 `($x$ for ${U[u]}, $y$ for ${U[v]}) over the movies both rated, then take the cosine of the angle between the two centered vectors.\n\n` +
                 `**Formula.** $w_{uv} = \\dfrac{\\sum x_k y_k}{\\sqrt{\\sum x_k^2}\\sqrt{\\sum y_k^2}}$, $\\;x_k = r_{uk} - \\bar r_u$, $\\;y_k = r_{vk} - \\bar r_v$\n\n` +
                 `**Means.** $\\bar r_{\\text{${U[u]}}} = ${_f(pp.ma)}$, $\\bar r_{\\text{${U[v]}}} = ${_f(pp.mb)}$\n\n` +
+                `*Note:* the mean $\\bar r_{\\text{${U[u]}}}$ is calculated once using all of ${U[u]}'s ratings (except the target); ` +
+                `we then compare ${U[u]} and ${U[v]} only on the movies they both rated, using that fixed mean.\n\n` +
                 (rows.length ? `| movie | $r_u$ | $x$ | $r_v$ | $y$ | $xy$ | $x^2$ | $y^2$ |\n|---|---|---|---|---|---|---|---|\n${rows.join('\n')}\n| **sum** | | | | | **${_f(pp.sxy)}** | **${_f(pp.sxx)}** | **${_f(pp.syy)}** |\n\n` : '') +
                 `**Result.** ${result}\n\n**All voters for ${M[i]}:** ${all || '—'}`;
         }
