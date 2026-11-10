@@ -131,7 +131,7 @@ test('selection: nodes and edges, invalid ids ignored, re-selecting is silent', 
     vm.select({ kind: 'edge', id: 'a|uses|b' });
     assert.deepEqual(states, ['selection']);
     vm.select({ kind: 'node', id: 'ghost' });
-    assert.equal(vm.selection, null);
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'a' }, 'nothing valid selected → the focus');
 });
 
 test('presentation transitions (embedded → popup → fullscreen) never change exploration state', () => {
@@ -324,5 +324,22 @@ test('clearFocus: no focus or selection, the view stays, Back restores it', () =
     assert.equal(vm.clearFocus(), false, 'nothing left to clear');
     vm.back();
     assert.equal(vm.focus, 'b');
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'b' });
+});
+
+test('the focus is selected by default; another click selects something else; clearing falls back to the focus', () => {
+    const { vm } = vmOf(sample());
+    vm.focusOn('b');
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'b' });
+    vm.select({ kind: 'node', id: 'c' });
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'c' }, 'clicking another concept selects it');
+    vm.select({ kind: 'edge', id: 'b|uses|c' });
+    assert.equal(vm.selection!.kind, 'edge', 'relationships can be selected too');
+    vm.select(null);                                         // e.g. a click on the background
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'b' }, 'nothing selected means the focus');
+    vm.showOverview(3);
+    vm.select(null);
+    assert.equal(vm.selection, null, 'no focus (overview): nothing selected');
+    vm.back();
     assert.deepEqual(vm.selection, { kind: 'node', id: 'b' });
 });

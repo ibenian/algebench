@@ -84,7 +84,11 @@ export class GraphExplorer<N, E> {
     private resizeObs: ResizeObserver | null = null;
     private themeObs: MutationObserver | null = null;
     private resizeFrame = 0;
+    /** Until this time (ms), every size change refits — set by a mode switch,
+     *  so the fit tracks the popup/fullscreen size transition to its end. */
+    private fitUntil = 0;
     private statusExtra = '';
+    private lastMountedMode: PresentationMode | null = null;
     private searchHits: string[] = [];
     private searchIndex = -1;
     private readonly reducedMotion = (): boolean =>
@@ -178,9 +182,15 @@ export class GraphExplorer<N, E> {
             this.renderChrome();
         } else {
             await this.viewInit;
-            // Same Cytoscape instance, new box: resize without resetting the view.
-            requestAnimationFrame(() => this.view?.resize());
+            // Same Cytoscape instance, new box. A different mode means a very
+            // different box (fullscreen → popup), so fit the graph to it —
+            // keeping the old zoom would leave it overflowing. The panel
+            // animates its size, so keep refitting until that settles.
+            const modeChanged = this.lastMountedMode !== null && this.lastMountedMode !== mode;
+            if (modeChanged) this.fitUntil = performance.now() + 600;
+            requestAnimationFrame(() => { this.view?.resize(); if (modeChanged) this.view?.fit(false); });
         }
+        this.lastMountedMode = mode;
         // Popup / fullscreen take keyboard focus so the graph's keys work right
         // away (the status-bar entry then moves it on to the search box).
         if (mode !== 'embedded' && !this.root.contains(document.activeElement)) {
@@ -221,7 +231,10 @@ export class GraphExplorer<N, E> {
         if (!this.resizeObs && typeof ResizeObserver === 'function') {
             this.resizeObs = new ResizeObserver(() => {
                 cancelAnimationFrame(this.resizeFrame);
-                this.resizeFrame = requestAnimationFrame(() => this.view?.resize());
+                this.resizeFrame = requestAnimationFrame(() => {
+                    this.view?.resize();
+                    if (performance.now() < this.fitUntil) this.view?.fit(false);
+                });
             });
             this.resizeObs.observe(this.canvas);
         }
@@ -295,7 +308,7 @@ export class GraphExplorer<N, E> {
         delete this.details.dataset.kgFor;
         this.details.innerHTML = `<p class="kg-details-hint">Select a concept or relationship to see its details.</p>`
             + `<p class="kg-details-hint kg-kbd-hint">Keys: <kbd>/</kbd> search · <kbd>Enter</kbd> focus selected · `
-            + `<kbd>E</kbd>/<kbd>C</kbd> or double-click: show/hide neighbours (＋N = hidden) · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward · <kbd>F</kbd> fit</p>`
+            + `<kbd>]</kbd>/<kbd>[</kbd> or double-click: show/hide neighbours (＋N = hidden) · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward · <kbd>F</kbd> fit</p>`
             + this.legendHtml();
     }
 
@@ -395,7 +408,7 @@ export class GraphExplorer<N, E> {
         let handled = true;
         // Fall back to the physical key for layouts whose ev.key differs.
         const key = ev.key && ev.key !== 'Unidentified' ? ev.key
-            : ({ Slash: '/', Minus: '-', Equal: '=', NumpadAdd: '+', NumpadSubtract: '-' } as Record<string, string>)[ev.code] ?? ev.key;
+            : ({ Slash: '/', Minus: '-', Equal: '=', NumpadAdd: '+', NumpadSubtract: '-', BracketRight: ']', BracketLeft: '[' } as Record<string, string>)[ev.code] ?? ev.key;
         switch (key) {
             case '/': this.focusSearch(); break;
             case 'ArrowLeft': if (ev.altKey) vm.back(); else handled = false; break;
@@ -404,8 +417,8 @@ export class GraphExplorer<N, E> {
             case '+': case '=': this.view?.zoomBy(1.2); break;
             case '-': case '_': this.view?.zoomBy(1 / 1.2); break;
             case 'f': case 'F': this.view?.fit(); break;
-            case 'e': case 'E': if (sel) vm.expand(sel); break;
-            case 'c': case 'C': if (sel) vm.collapse(sel); break;
+            case ']': if (sel) vm.expand(sel); break;      // more neighbours
+            case '[': if (sel) vm.collapse(sel); break;    // fewer
             // Enter on a focused button activates the button; anywhere else in the graph it focuses the selection.
             case 'Enter': if (sel && !t.closest('button, a')) { vm.focusOn(sel); } else handled = false; break;
             default: handled = false;

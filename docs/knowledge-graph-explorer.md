@@ -79,7 +79,10 @@ repair it if, say, the focused node is removed).
 One `GraphExplorer` per context, moved between hosts by `mount(host, mode)`:
 
 - **embedded** — the lesson's Doc tab (`#lesson-kg-slot`), compact toolbar. The section folds to its header like the chat panel's Proof and Chat (header or chevron; remembered, folded by default so Cytoscape loads only on first open).
-- **popup** — floating panel above the status bar (`#kg-layer`).
+- **popup** — floating panel above the status bar (`#kg-layer`) with a title
+  bar: drag the title bar (or an empty toolbar spot) to move it, the
+  bottom-right grip to resize it. Kept on screen, minimum 380×260; position
+  and size are remembered.
 - **fullscreen** — the same layer, viewport-sized.
 
 Moving between modes re-parents the root element; the Cytoscape instance is
@@ -179,7 +182,7 @@ It opens the global graph focused on that concept.
 
 **Keys** (focus must be in the graph; clicking the canvas takes it — Cytoscape
 blurs on mousedown, so the explorer focuses on pointer release): `/` search,
-`Enter` focus the selection, `E`/`C` expand/collapse, `Alt+←/→` or
+`Enter` focus the selection, `]`/`[` expand/collapse, `Alt+←/→` or
 `Backspace` back/forward, `+`/`−` zoom, `F` fit, `Esc` close.
 
 ### Stale focus is cleared

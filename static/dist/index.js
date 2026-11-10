@@ -30904,7 +30904,9 @@ var GraphExplorer = class {
 		this.resizeObs = null;
 		this.themeObs = null;
 		this.resizeFrame = 0;
+		this.fitUntil = 0;
 		this.statusExtra = "";
+		this.lastMountedMode = null;
 		this.searchHits = [];
 		this.searchIndex = -1;
 		this.reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -30996,8 +30998,14 @@ var GraphExplorer = class {
 			this.renderChrome();
 		} else {
 			await this.viewInit;
-			requestAnimationFrame(() => this.view?.resize());
+			const modeChanged = this.lastMountedMode !== null && this.lastMountedMode !== mode;
+			if (modeChanged) this.fitUntil = performance.now() + 600;
+			requestAnimationFrame(() => {
+				this.view?.resize();
+				if (modeChanged) this.view?.fit(false);
+			});
 		}
+		this.lastMountedMode = mode;
 		if (mode !== "embedded" && !this.root.contains(document.activeElement)) this.canvas.focus({ preventScroll: true });
 	}
 	/** Tear down the renderer (closing). The view model keeps all exploration state. */
@@ -31036,7 +31044,10 @@ var GraphExplorer = class {
 		if (!this.resizeObs && typeof ResizeObserver === "function") {
 			this.resizeObs = new ResizeObserver(() => {
 				cancelAnimationFrame(this.resizeFrame);
-				this.resizeFrame = requestAnimationFrame(() => this.view?.resize());
+				this.resizeFrame = requestAnimationFrame(() => {
+					this.view?.resize();
+					if (performance.now() < this.fitUntil) this.view?.fit(false);
+				});
 			});
 			this.resizeObs.observe(this.canvas);
 		}
@@ -31102,7 +31113,7 @@ var GraphExplorer = class {
 			}
 		}
 		delete this.details.dataset.kgFor;
-		this.details.innerHTML = "<p class=\"kg-details-hint\">Select a concept or relationship to see its details.</p><p class=\"kg-details-hint kg-kbd-hint\">Keys: <kbd>/</kbd> search · <kbd>Enter</kbd> focus selected · <kbd>E</kbd>/<kbd>C</kbd> or double-click: show/hide neighbours (＋N = hidden) · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward · <kbd>F</kbd> fit</p>" + this.legendHtml();
+		this.details.innerHTML = "<p class=\"kg-details-hint\">Select a concept or relationship to see its details.</p><p class=\"kg-details-hint kg-kbd-hint\">Keys: <kbd>/</kbd> search · <kbd>Enter</kbd> focus selected · <kbd>]</kbd>/<kbd>[</kbd> or double-click: show/hide neighbours (＋N = hidden) · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward · <kbd>F</kbd> fit</p>" + this.legendHtml();
 	}
 	visibleGraph() {
 		return {
@@ -31214,7 +31225,9 @@ var GraphExplorer = class {
 			Minus: "-",
 			Equal: "=",
 			NumpadAdd: "+",
-			NumpadSubtract: "-"
+			NumpadSubtract: "-",
+			BracketRight: "]",
+			BracketLeft: "["
 		}[ev.code] ?? ev.key) {
 			case "/":
 				this.focusSearch();
@@ -31242,12 +31255,10 @@ var GraphExplorer = class {
 			case "F":
 				this.view?.fit();
 				break;
-			case "e":
-			case "E":
+			case "]":
 				if (sel) vm.expand(sel);
 				break;
-			case "c":
-			case "C":
+			case "[":
 				if (sel) vm.collapse(sel);
 				break;
 			case "Enter":
@@ -31555,12 +31566,17 @@ var GraphViewModel = class {
 		this.focus = snap.focus && this.engine.hasNode(snap.focus) ? snap.focus : null;
 		this.roots.clear();
 		for (const [id, d] of snap.roots) if (this.engine.hasNode(id)) this.roots.set(id, d);
-		this.selection = this.validSelection(snap.selection);
+		this.selection = this.withFocusFallback(this.validSelection(snap.selection));
 		this.recompute(this.focus ?? void 0);
 		this.emitState("history");
 	}
+	/**
+	* Select a node or edge. With a focus, "nothing" means the focus: the
+	* focused concept is selected by default (so the keys and details act on
+	* it), and clicking anything else selects that instead.
+	*/
 	select(sel) {
-		const next = this.validSelection(sel);
+		const next = this.withFocusFallback(this.validSelection(sel));
 		if (next?.kind === this.selection?.kind && next?.id === this.selection?.id) return;
 		this.selection = next;
 		this.emitState("selection");
@@ -31581,7 +31597,10 @@ var GraphViewModel = class {
 		if (id === this.scopeId && predicate === this.scopeFn) return;
 		this.scopeId = id;
 		this.scopeFn = predicate;
-		if (this.selection?.kind === "node" && !this.inScope(this.selection.id)) this.selection = null;
+		if (this.selection?.kind === "node" && !this.inScope(this.selection.id)) {
+			const f = this.withFocusFallback(null);
+			this.selection = f && this.inScope(f.id) ? f : null;
+		}
 		this.recompute(this.focus ?? void 0);
 		this.emitState("filter");
 	}
@@ -31622,6 +31641,13 @@ var GraphViewModel = class {
 	dispose() {
 		this.unsubscribe();
 		this.events.clear();
+	}
+	withFocusFallback(sel) {
+		if (sel) return sel;
+		return this.focus !== null && this.engine.hasNode(this.focus) ? {
+			kind: "node",
+			id: this.focus
+		} : null;
 	}
 	validSelection(sel) {
 		if (!sel) return null;
@@ -31709,7 +31735,7 @@ var GraphViewModel = class {
 			}
 		}
 		if (this.selection && !this.validSelection(this.selection)) {
-			this.selection = null;
+			this.selection = this.withFocusFallback(null);
 			stateChanged = true;
 		}
 		let anchor;
@@ -32814,14 +32840,141 @@ function makeAskButton(title, getMessage) {
 	}, true);
 	return btn;
 }
+var POPUP_POS_KEY = "algebench.kgPopupPos";
+var POPUP_SIZE_KEY = "algebench.kgPopupSize";
+var POPUP_MIN = {
+	w: 380,
+	h: 260
+};
+function loadPopupSize() {
+	try {
+		const p = JSON.parse(localStorage.getItem(POPUP_SIZE_KEY) || "null");
+		return p && Number.isFinite(p.w) && Number.isFinite(p.h) ? {
+			w: p.w,
+			h: p.h
+		} : null;
+	} catch {
+		return null;
+	}
+}
+/** Size the popup, within the minimum and what fits right/below its top-left. */
+function sizePopup(panel, w, h, remember) {
+	const r = panel.getBoundingClientRect();
+	const cw = Math.max(POPUP_MIN.w, Math.min(window.innerWidth - r.left - 4, w));
+	const ch = Math.max(POPUP_MIN.h, Math.min(window.innerHeight - r.top - 26, h));
+	panel.style.setProperty("--kg-w", `${Math.round(cw)}px`);
+	panel.style.setProperty("--kg-h", `${Math.round(ch)}px`);
+	panel.classList.add("kg-sized");
+	if (remember) try {
+		localStorage.setItem(POPUP_SIZE_KEY, JSON.stringify({
+			w: Math.round(cw),
+			h: Math.round(ch)
+		}));
+	} catch {}
+}
+function loadPopupPos() {
+	try {
+		const p = JSON.parse(localStorage.getItem(POPUP_POS_KEY) || "null");
+		return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? {
+			x: p.x,
+			y: p.y
+		} : null;
+	} catch {
+		return null;
+	}
+}
+/** Put the popup at (x, y), kept fully on screen; persist unless told not to. */
+function placePopup(panel, x, y, remember) {
+	const w = panel.offsetWidth, h = panel.offsetHeight;
+	const cx = Math.max(4, Math.min(window.innerWidth - w - 4, x));
+	const cy = Math.max(4, Math.min(window.innerHeight - h - 26, y));
+	panel.style.setProperty("--kg-x", `${Math.round(cx)}px`);
+	panel.style.setProperty("--kg-y", `${Math.round(cy)}px`);
+	panel.classList.add("kg-moved");
+	if (remember) try {
+		localStorage.setItem(POPUP_POS_KEY, JSON.stringify({
+			x: Math.round(cx),
+			y: Math.round(cy)
+		}));
+	} catch {}
+}
+/**
+* The popup moves by dragging an empty part of its toolbar (controls keep
+* working). Position is remembered and clamped on screen; fullscreen ignores
+* it (CSS applies --kg-x/--kg-y in popup mode only).
+*/
+function makePopupMovable(layerEl, panel) {
+	const saved = loadPopupPos();
+	const savedSize = loadPopupSize();
+	requestAnimationFrame(() => {
+		if (savedSize) {
+			panel.style.setProperty("--kg-w", `${savedSize.w}px`);
+			panel.style.setProperty("--kg-h", `${savedSize.h}px`);
+			panel.classList.add("kg-sized");
+		}
+		if (saved) placePopup(panel, saved.x, saved.y, false);
+	});
+	const grip = panel.querySelector(".kg-layer-resize");
+	grip?.addEventListener("pointerdown", (ev) => {
+		if (layerEl.dataset.mode !== "popup" || ev.button !== 0) return;
+		ev.preventDefault();
+		ev.stopPropagation();
+		const r = panel.getBoundingClientRect();
+		placePopup(panel, r.left, r.top, true);
+		const ox = ev.clientX - r.width, oy = ev.clientY - r.height;
+		panel.classList.add("kg-dragging");
+		grip.setPointerCapture(ev.pointerId);
+		const move = (e) => sizePopup(panel, e.clientX - ox, e.clientY - oy, false);
+		const up = (e) => {
+			grip.removeEventListener("pointermove", move);
+			grip.removeEventListener("pointerup", up);
+			grip.removeEventListener("pointercancel", up);
+			panel.classList.remove("kg-dragging");
+			sizePopup(panel, e.clientX - ox, e.clientY - oy, true);
+		};
+		grip.addEventListener("pointermove", move);
+		grip.addEventListener("pointerup", up);
+		grip.addEventListener("pointercancel", up);
+	});
+	panel.addEventListener("pointerdown", (ev) => {
+		const t = ev.target;
+		if (layerEl.dataset.mode !== "popup" || ev.button !== 0) return;
+		if (!!!t.closest(".kg-layer-head") && (!t.closest(".kg-toolbar") || t.closest("button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label"))) return;
+		ev.preventDefault();
+		const r = panel.getBoundingClientRect();
+		const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+		panel.classList.add("kg-dragging");
+		panel.setPointerCapture(ev.pointerId);
+		const move = (e) => placePopup(panel, e.clientX - dx, e.clientY - dy, false);
+		const up = (e) => {
+			panel.removeEventListener("pointermove", move);
+			panel.removeEventListener("pointerup", up);
+			panel.removeEventListener("pointercancel", up);
+			panel.classList.remove("kg-dragging");
+			placePopup(panel, e.clientX - dx, e.clientY - dy, true);
+		};
+		panel.addEventListener("pointermove", move);
+		panel.addEventListener("pointerup", up);
+		panel.addEventListener("pointercancel", up);
+	});
+	window.addEventListener("resize", () => {
+		if (!panel.classList.contains("kg-moved")) return;
+		const r = panel.getBoundingClientRect();
+		if (layerEl.dataset.mode !== "popup") return;
+		placePopup(panel, r.left, r.top, false);
+		if (panel.classList.contains("kg-sized")) sizePopup(panel, r.width, r.height, false);
+	});
+}
 function ensureLayer() {
 	if (layer && layerPanel) return layerPanel;
 	layer = document.createElement("div");
 	layer.id = "kg-layer";
 	layer.className = "hidden";
-	layer.innerHTML = "<div class=\"kg-layer-scrim\"></div><div class=\"kg-layer-panel\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Knowledge Graph\"></div>";
+	layer.innerHTML = "<div class=\"kg-layer-scrim\"></div><div class=\"kg-layer-panel\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Knowledge Graph\"><div class=\"kg-layer-head\"><span class=\"kg-layer-grip\" aria-hidden=\"true\">⠿</span><span class=\"kg-layer-title\">Knowledge Graph</span></div><div class=\"kg-layer-body\"></div><div class=\"kg-layer-resize\" role=\"separator\" aria-label=\"Resize the Knowledge Graph\" title=\"Drag to resize\"></div></div>";
 	document.body.appendChild(layer);
-	layerPanel = layer.querySelector(".kg-layer-panel");
+	const panelEl = layer.querySelector(".kg-layer-panel");
+	makePopupMovable(layer, panelEl);
+	layerPanel = layer.querySelector(".kg-layer-body");
 	layer.querySelector(".kg-layer-scrim").addEventListener("click", () => {
 		if (layerOwner) setMode(layerOwner, layerOwner.previous === "fullscreen" ? "popup" : layerOwner.previous);
 	});
@@ -32866,6 +33019,9 @@ async function setMode(slot, mode) {
 	layer.dataset.mode = mode;
 	layerOwner = slot;
 	if (slot.home && from === "embedded") slot.home.dataset.away = "1";
+	const title = layer.querySelector(".kg-layer-title");
+	if (title) title.textContent = ex.root.getAttribute("aria-label") ?? "Knowledge Graph";
+	layer.querySelector(".kg-layer-panel").setAttribute("aria-label", title?.textContent ?? "Knowledge Graph");
 	await ex.mount(panel, mode);
 	updateStatusButton();
 }

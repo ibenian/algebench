@@ -5757,12 +5757,42 @@ body:has(.push-array) #legend { display: none; }
 .kg-layer-scrim { position: absolute; inset: 0; background: var(--scrim); pointer-events: auto; display: none; }
 #kg-layer[data-mode="fullscreen"] .kg-layer-scrim { display: block; }
 .kg-layer-panel {
-    position: absolute; pointer-events: auto; display: flex;
+    position: absolute; pointer-events: auto; display: flex; flex-direction: column; overflow: hidden;
     background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
     right: 16px; bottom: 30px; width: min(620px, calc(100vw - 32px)); height: min(460px, calc(100vh - 80px));
     transition: inset var(--dur-slow) var(--ease), width var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease);
 }
 #kg-layer[data-mode="fullscreen"] .kg-layer-panel { right: 12px; bottom: 30px; width: calc(100vw - 24px); height: calc(100vh - 44px); }
+/* Moved popup: positioned from its top-left (src/graph-explorer/knowledge-app.ts
+   makePopupMovable). Popup mode only, so fullscreen keeps its own box. */
+#kg-layer[data-mode="popup"] .kg-layer-panel.kg-moved { left: var(--kg-x); top: var(--kg-y); right: auto; bottom: auto; }
+#kg-layer[data-mode="popup"] .kg-layer-panel.kg-sized { width: var(--kg-w); height: var(--kg-h); }
+/* Resize grip (popup only): bottom-right corner, diagonal lines. */
+.kg-layer-resize {
+    position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; z-index: 6; cursor: nwse-resize; display: none;
+    background: linear-gradient(135deg, transparent 0 45%, var(--muted-color) 45% 52%, transparent 52% 64%,
+                var(--muted-color) 64% 71%, transparent 71% 83%, var(--muted-color) 83% 90%, transparent 90%);
+    opacity: 0.7;
+}
+.kg-layer-resize:hover { opacity: 1; }
+#kg-layer[data-mode="popup"] .kg-layer-resize { display: block; }
+/* Title bar: the popup's drag handle (a plain title in fullscreen). */
+.kg-layer-head {
+    flex: none; display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--muted-color);
+    background: color-mix(in srgb, var(--text-color) 4%, transparent); border-bottom: 1px solid var(--border-color);
+    user-select: none; white-space: nowrap; overflow: hidden;
+}
+.kg-layer-title { overflow: hidden; text-overflow: ellipsis; }
+.kg-layer-grip { color: var(--accent-color); font-size: 12px; line-height: 1; }
+.kg-layer-body { flex: 1; min-height: 0; display: flex; }
+#kg-layer[data-mode="popup"] .kg-layer-head { cursor: move; }
+#kg-layer[data-mode="popup"] .kg-layer-head:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 8%, transparent); }
+#kg-layer[data-mode="fullscreen"] .kg-layer-grip { display: none; }
+#kg-layer[data-mode="popup"] .kg-toolbar { cursor: move; }
+#kg-layer[data-mode="popup"] .kg-toolbar :is(button, input, select, a, .kg-search, .kg-scope) { cursor: pointer; }
+#kg-layer[data-mode="popup"] .kg-toolbar input { cursor: text; }
+.kg-layer-panel.kg-dragging { transition: none; user-select: none; }
 
 .kg-explorer { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; font-family: var(--font-body); color: var(--text-color);
     container-type: inline-size; container-name: kg; }

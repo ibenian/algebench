@@ -262,13 +262,18 @@ export class GraphViewModel<N, E> {
         this.focus = snap.focus && this.engine.hasNode(snap.focus) ? snap.focus : null;
         this.roots.clear();
         for (const [id, d] of snap.roots) if (this.engine.hasNode(id)) this.roots.set(id, d);
-        this.selection = this.validSelection(snap.selection);
+        this.selection = this.withFocusFallback(this.validSelection(snap.selection));
         this.recompute(this.focus ?? undefined);
         this.emitState('history');
     }
 
+    /**
+     * Select a node or edge. With a focus, "nothing" means the focus: the
+     * focused concept is selected by default (so the keys and details act on
+     * it), and clicking anything else selects that instead.
+     */
     select(sel: Selection | null): void {
-        const next = this.validSelection(sel);
+        const next = this.withFocusFallback(this.validSelection(sel));
         if (next?.kind === this.selection?.kind && next?.id === this.selection?.id) return;
         this.selection = next;
         this.emitState('selection');
@@ -291,7 +296,10 @@ export class GraphViewModel<N, E> {
         if (id === this.scopeId && predicate === this.scopeFn) return;
         this.scopeId = id;
         this.scopeFn = predicate;
-        if (this.selection?.kind === 'node' && !this.inScope(this.selection.id)) this.selection = null;
+        if (this.selection?.kind === 'node' && !this.inScope(this.selection.id)) {
+            const f = this.withFocusFallback(null);
+            this.selection = f && this.inScope(f.id) ? f : null;
+        }
         this.recompute(this.focus ?? undefined);
         this.emitState('filter');
     }
@@ -334,6 +342,11 @@ export class GraphViewModel<N, E> {
     }
 
     // ---------- internals ----------
+
+    private withFocusFallback(sel: Selection | null): Selection | null {
+        if (sel) return sel;
+        return this.focus !== null && this.engine.hasNode(this.focus) ? { kind: 'node', id: this.focus } : null;
+    }
 
     private validSelection(sel: Selection | null): Selection | null {
         if (!sel) return null;
@@ -428,7 +441,7 @@ export class GraphViewModel<N, E> {
             if (this.roots.delete(n.id)) stateChanged = true;
             if (this.focus === n.id) { this.focus = null; stateChanged = true; }
         }
-        if (this.selection && !this.validSelection(this.selection)) { this.selection = null; stateChanged = true; }
+        if (this.selection && !this.validSelection(this.selection)) { this.selection = this.withFocusFallback(null); stateChanged = true; }
         // Anchor new material on the first visible endpoint of a new edge, so a
         // node added next to something on screen appears beside it.
         let anchor: string | undefined;

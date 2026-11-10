@@ -254,14 +254,138 @@ function makeAskButton(title: string, getMessage: () => string): HTMLElement {
 
 // ---------- the popup / fullscreen layer ----------
 
+// ---------- a movable popup ----------
+
+const POPUP_POS_KEY = 'algebench.kgPopupPos';
+const POPUP_SIZE_KEY = 'algebench.kgPopupSize';
+const POPUP_MIN = { w: 380, h: 260 };
+
+function loadPopupSize(): { w: number; h: number } | null {
+    try {
+        const p = JSON.parse(localStorage.getItem(POPUP_SIZE_KEY) || 'null') as { w?: unknown; h?: unknown } | null;
+        return p && Number.isFinite(p.w) && Number.isFinite(p.h) ? { w: p.w as number, h: p.h as number } : null;
+    } catch { return null; }
+}
+
+/** Size the popup, within the minimum and what fits right/below its top-left. */
+function sizePopup(panel: HTMLElement, w: number, h: number, remember: boolean): void {
+    const r = panel.getBoundingClientRect();
+    const cw = Math.max(POPUP_MIN.w, Math.min(window.innerWidth - r.left - 4, w));
+    const ch = Math.max(POPUP_MIN.h, Math.min(window.innerHeight - r.top - 26, h));
+    panel.style.setProperty('--kg-w', `${Math.round(cw)}px`);
+    panel.style.setProperty('--kg-h', `${Math.round(ch)}px`);
+    panel.classList.add('kg-sized');
+    if (remember) { try { localStorage.setItem(POPUP_SIZE_KEY, JSON.stringify({ w: Math.round(cw), h: Math.round(ch) })); } catch { /* not remembered */ } }
+}
+
+function loadPopupPos(): { x: number; y: number } | null {
+    try {
+        const p = JSON.parse(localStorage.getItem(POPUP_POS_KEY) || 'null') as { x?: unknown; y?: unknown } | null;
+        return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x as number, y: p.y as number } : null;
+    } catch { return null; }
+}
+
+/** Put the popup at (x, y), kept fully on screen; persist unless told not to. */
+function placePopup(panel: HTMLElement, x: number, y: number, remember: boolean): void {
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const cx = Math.max(4, Math.min(window.innerWidth - w - 4, x));
+    const cy = Math.max(4, Math.min(window.innerHeight - h - 26, y));   // keep clear of the status bar
+    panel.style.setProperty('--kg-x', `${Math.round(cx)}px`);
+    panel.style.setProperty('--kg-y', `${Math.round(cy)}px`);
+    panel.classList.add('kg-moved');
+    if (remember) { try { localStorage.setItem(POPUP_POS_KEY, JSON.stringify({ x: Math.round(cx), y: Math.round(cy) })); } catch { /* not remembered */ } }
+}
+
+/**
+ * The popup moves by dragging an empty part of its toolbar (controls keep
+ * working). Position is remembered and clamped on screen; fullscreen ignores
+ * it (CSS applies --kg-x/--kg-y in popup mode only).
+ */
+function makePopupMovable(layerEl: HTMLElement, panel: HTMLElement): void {
+    const saved = loadPopupPos();
+    const savedSize = loadPopupSize();
+    requestAnimationFrame(() => {
+        if (savedSize) {
+            panel.style.setProperty('--kg-w', `${savedSize.w}px`);
+            panel.style.setProperty('--kg-h', `${savedSize.h}px`);
+            panel.classList.add('kg-sized');
+        }
+        if (saved) placePopup(panel, saved.x, saved.y, false);
+    });
+    // Resize from the bottom-right grip. The popup is pinned by its top-left
+    // first (it opens anchored bottom-right), so it grows toward the pointer.
+    const grip = panel.querySelector<HTMLElement>('.kg-layer-resize');
+    grip?.addEventListener('pointerdown', (ev) => {
+        if (layerEl.dataset.mode !== 'popup' || ev.button !== 0) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const r = panel.getBoundingClientRect();
+        placePopup(panel, r.left, r.top, true);
+        const ox = ev.clientX - r.width, oy = ev.clientY - r.height;
+        panel.classList.add('kg-dragging');
+        grip.setPointerCapture(ev.pointerId);
+        const move = (e: PointerEvent) => sizePopup(panel, e.clientX - ox, e.clientY - oy, false);
+        const up = (e: PointerEvent) => {
+            grip.removeEventListener('pointermove', move);
+            grip.removeEventListener('pointerup', up);
+            grip.removeEventListener('pointercancel', up);
+            panel.classList.remove('kg-dragging');
+            sizePopup(panel, e.clientX - ox, e.clientY - oy, true);
+        };
+        grip.addEventListener('pointermove', move);
+        grip.addEventListener('pointerup', up);
+        grip.addEventListener('pointercancel', up);
+    });
+    panel.addEventListener('pointerdown', (ev) => {
+        const t = ev.target as Element;
+        if (layerEl.dataset.mode !== 'popup' || ev.button !== 0) return;
+        // The title bar, or an empty part of the toolbar.
+        const onHead = !!t.closest('.kg-layer-head');
+        if (!onHead && (!t.closest('.kg-toolbar') || t.closest('button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label'))) return;
+        ev.preventDefault();
+        const r = panel.getBoundingClientRect();
+        const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+        panel.classList.add('kg-dragging');
+        panel.setPointerCapture(ev.pointerId);
+        const move = (e: PointerEvent) => placePopup(panel, e.clientX - dx, e.clientY - dy, false);
+        const up = (e: PointerEvent) => {
+            panel.removeEventListener('pointermove', move);
+            panel.removeEventListener('pointerup', up);
+            panel.removeEventListener('pointercancel', up);
+            panel.classList.remove('kg-dragging');
+            placePopup(panel, e.clientX - dx, e.clientY - dy, true);
+        };
+        panel.addEventListener('pointermove', move);
+        panel.addEventListener('pointerup', up);
+        panel.addEventListener('pointercancel', up);
+    });
+    // A smaller window must not strand the popup off screen.
+    window.addEventListener('resize', () => {
+        if (!panel.classList.contains('kg-moved')) return;
+        const r = panel.getBoundingClientRect();
+        if (layerEl.dataset.mode !== 'popup') return;
+        placePopup(panel, r.left, r.top, false);
+        if (panel.classList.contains('kg-sized')) sizePopup(panel, r.width, r.height, false);
+    });
+}
+
 function ensureLayer(): HTMLElement {
     if (layer && layerPanel) return layerPanel;
     layer = document.createElement('div');
     layer.id = 'kg-layer';
     layer.className = 'hidden';
-    layer.innerHTML = '<div class="kg-layer-scrim"></div><div class="kg-layer-panel" role="dialog" aria-modal="false" aria-label="Knowledge Graph"></div>';
+    // The panel: a title bar (the drag handle in popup mode) over the body the
+    // explorer mounts into.
+    layer.innerHTML = '<div class="kg-layer-scrim"></div>'
+        + '<div class="kg-layer-panel" role="dialog" aria-modal="false" aria-label="Knowledge Graph">'
+        + '<div class="kg-layer-head"><span class="kg-layer-grip" aria-hidden="true">⠿</span>'
+        + '<span class="kg-layer-title">Knowledge Graph</span></div>'
+        + '<div class="kg-layer-body"></div>'
+        + '<div class="kg-layer-resize" role="separator" aria-label="Resize the Knowledge Graph" title="Drag to resize"></div></div>';
     document.body.appendChild(layer);
-    layerPanel = layer.querySelector('.kg-layer-panel')!; // ! — created just above
+    const panelEl = layer.querySelector<HTMLElement>('.kg-layer-panel')!; // ! — created just above
+    makePopupMovable(layer, panelEl);
+    layerPanel = layer.querySelector<HTMLElement>('.kg-layer-body')!;    // explorers mount here
     layer.querySelector('.kg-layer-scrim')!.addEventListener('click', () => {
         if (layerOwner) setMode(layerOwner, layerOwner.previous === 'fullscreen' ? 'popup' : layerOwner.previous);
     });
@@ -313,6 +437,9 @@ async function setMode(slot: ExplorerSlot, mode: PresentationMode): Promise<void
     layer!.dataset.mode = mode;
     layerOwner = slot;
     if (slot.home && from === 'embedded') slot.home.dataset.away = '1';
+    const title = layer!.querySelector('.kg-layer-title');
+    if (title) title.textContent = ex.root.getAttribute('aria-label') ?? 'Knowledge Graph';
+    layer!.querySelector('.kg-layer-panel')!.setAttribute('aria-label', title?.textContent ?? 'Knowledge Graph');
     await ex.mount(panel, mode);
     updateStatusButton();
 }
