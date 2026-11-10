@@ -18,6 +18,8 @@ export interface CodeCanvas {
     edited(): void;
     /** Take these off the board, by name; 'all' for everything. Only the agent asks for this. */
     erase(names: readonly string[]): void;
+    /** The code was judged right: a cross on any of it is wrong now, and goes. */
+    clearCrosses(): void;
     /** What is on the board, as the agent is told it. */
     describe(): string[];
     /** The marks on screen that touch this box (client pixels), told as `describe` tells them: what the learner boxed. */
@@ -129,6 +131,12 @@ export function createCodeCanvas(o: {stack: HTMLElement; rowAt: (line: number) =
             run++;   // what is being drawn stops at what is whole
             const kept = names.includes('all') ? [] : marks.slice(0, shown).filter(mark => !names.includes(mark.mid ?? ''));
             marks = kept;shown = kept.length;
+            paint();
+        },
+        clearCrosses() {
+            if (!marks.some(m => m.kind === 'cross')) return;
+            run++;
+            marks = marks.slice(0, shown).filter(m => m.kind !== 'cross');shown = marks.length;
             paint();
         },
         describe() { return marks.slice(0, shown).map(describeMark); },

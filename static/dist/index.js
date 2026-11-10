@@ -35669,6 +35669,13 @@ function createCodeCanvas(o) {
 			shown = kept.length;
 			paint();
 		},
+		clearCrosses() {
+			if (!marks.some((m) => m.kind === "cross")) return;
+			run++;
+			marks = marks.slice(0, shown).filter((m) => m.kind !== "cross");
+			shown = marks.length;
+			paint();
+		},
 		describe() {
 			return marks.slice(0, shown).map(describeMark);
 		},
@@ -36722,7 +36729,8 @@ var HINT_LEVELS = [
 var QUIZ_VERDICTS = {
 	correct: "Correct",
 	partly: "Partly right",
-	incorrect: "Not quite"
+	incorrect: "Not quite",
+	question: "Your question"
 };
 var VERDICTS = {
 	correct: "Correct",
@@ -37127,15 +37135,16 @@ function setupCodePractice() {
 			then?.();
 		}, "coach");
 	}
-	/** What the coach has handed to the chat on this block: a concept is shown once. */
-	const shownInChat = /* @__PURE__ */ new Set();
+	/** Whether the coach has handed a concept of its own to the chat on this block: one a block. Its wording changes
+	*  from review to review, so the same concept would otherwise be shown again and again. */
+	let coachShowed = false;
 	/**
 	* The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
 	* the presenter on, once the review has been said, and not over the chat's own answer.
 	*/
 	function showInChat(request, body, asked = false) {
-		if (!request || !asked && shownInChat.has(request) || !presenterOn()) return null;
-		shownInChat.add(request);
+		if (!request || !asked && coachShowed || !presenterOn()) return null;
+		if (!asked) coachShowed = true;
 		const note = el("div", "cp-report-show");
 		note.textContent = "🎯 Showing it in the chat…";
 		body.append(note);
@@ -37299,7 +37308,7 @@ function setupCodePractice() {
 		block = text;
 		quiz = null;
 		askedQuestions = [];
-		shownInChat.clear();
+		coachShowed = false;
 		series = null;
 		pairing = false;
 		pairSaid = "";
@@ -37741,6 +37750,7 @@ function setupCodePractice() {
 		reportSummary.textContent = badge.textContent;
 		reportGrip.classList.toggle("fresh", report.hidden === true);
 		const perfect = r.verdict === "correct" && r.score === 100;
+		if (perfect) canvas.clearCrosses();
 		reportGrip.classList.toggle("perfect", perfect);
 		const about = el("span", "cp-report-about");
 		about.textContent = focus ? focus.title : "The whole block";
@@ -38269,7 +38279,7 @@ function setupCodePractice() {
 		ask.addEventListener("submit", (e) => {
 			e.preventDefault();
 			if (!words.value.trim()) return;
-			assist(quiz?.kind === "answer" ? "grade" : "ask", words.value.trim());
+			assist(quiz ? "grade" : "ask", words.value.trim());
 		});
 		row.append(label, ask);
 		if (pairing) {
@@ -39209,7 +39219,7 @@ function setupCodePractice() {
 				kind: pending.kind,
 				answer_key: pending.answerKey,
 				setup: pending.setup,
-				answer: pending.kind === "answer" ? request : ""
+				answer: request
 			}) : await invokeExpert("code_assist", {
 				...where,
 				scope,
@@ -39259,6 +39269,7 @@ function setupCodePractice() {
 				].includes(scope) && out.reason) {
 					const body = bubble("cp-assist-close");
 					if (scope === "pair" && out.complete) {
+						canvas.clearCrosses();
 						body.closest(".chat-msg")?.classList.add("cp-msg-perfect");
 						const badge = el("span", "cp-verdict cp-verdict-correct");
 						badge.textContent = "✓ Correct";
@@ -39351,15 +39362,18 @@ function setupCodePractice() {
 			if (scope === "quiz") await poseQuestion(r, bubble("cp-quiz"), run);
 			else if (scope === "grade") {
 				const body = bubble("cp-quiz-verdict");
+				const asked = r.verdict === "question";
 				const badge = el("span", `cp-verdict cp-quiz-${r.verdict}`);
 				badge.textContent = QUIZ_VERDICTS[r.verdict ?? ""] ?? "Checked";
 				const text = el("div", "");
 				body.append(badge, text);
-				pending?.card.querySelector(".cp-quiz-controls")?.remove();
-				quizTurnDone(r.verdict ?? "partly", pending?.kind === "answer" ? own : "");
-				quiz = null;
+				if (!asked) {
+					pending?.card.querySelector(".cp-quiz-controls")?.remove();
+					quizTurnDone(r.verdict ?? "partly", pending?.kind === "answer" ? own : "");
+					quiz = null;
+				}
 				await say(r.feedback ?? "", text, run);
-				nextAfter = !!series;
+				nextAfter = !!series && !asked;
 			} else if (scope === "pair" || scope === "finish") {
 				if (r.closing && !r.steps.length) {
 					pairing = false;

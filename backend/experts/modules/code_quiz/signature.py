@@ -79,6 +79,12 @@ class QuizGradeSig(dspy.Signature):
     the editor as you left it: judge what they changed.
 
     `verdict` is "correct", "partly" (on the right track, something missing or a little off) or "incorrect".
+
+    What they sent may not be an answer at all: a question back (what you mean, a hint, something about the code),
+    or a remark. Then `verdict` is "question": nothing is judged and the question stays open. Answer what they asked
+    in `feedback`, briefly, without giving away `answer_key`, and hand the question back to them; `steps` may point
+    at what you talk about but type nothing. Judge it as an answer only when it answers (a guess phrased as a
+    question, "is it O(n)?", is an answer).
     Then explain it at the keyboard, as a teacher at a shared screen: `steps` select pieces of the editor
     (`select`, `select_line`) and say what to see there, and may type to explain (`code`: the WHOLE editor after
     the step; empty when the step only selects and talks):
@@ -113,9 +119,9 @@ class QuizGradeSig(dspy.Signature):
     answer_key: str = dspy.InputField(desc="the answer you expected")
     setup: str = dspy.InputField(desc="the editor right after you set the question up, with line numbers")
     editor: str = dspy.InputField(desc="the editor now, with line numbers: what your steps select in and type into")
-    answer: str = dspy.InputField(desc="the learner's answer: their words, or (for \"type\") their editor now, with line numbers")
+    answer: str = dspy.InputField(desc="what the learner sent: their words, or (for \"type\") their editor now, with line numbers, and any words they sent with it")
 
-    verdict: str = dspy.OutputField(desc='"correct", "partly" or "incorrect"')
+    verdict: str = dspy.OutputField(desc='"correct", "partly" or "incorrect"; "question" when they asked something instead of answering')
     steps: list[AssistStep] = dspy.OutputField(desc="pieces to point at, and comments or code to type, while explaining; may be empty")
     feedback: str = dspy.OutputField(desc="two to four spoken sentences judging the answer and teaching the idea")
 

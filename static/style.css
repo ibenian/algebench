@@ -6453,6 +6453,7 @@ body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context ho
 .cp-verdict.cp-quiz-correct { color: #4fb39a; border-color: #4fb39a; }
 .cp-verdict.cp-quiz-partly { color: #e0b04a; border-color: #e0b04a; }
 .cp-verdict.cp-quiz-incorrect { color: #e0705a; border-color: #e0705a; }
+.cp-verdict.cp-quiz-question { color: #8fb4e8; border-color: #8fb4e8; }
 /* Reset, armed: the click that erases the code is the second one. */
 .cp-tool.cp-armed { color: #fff; background: #d0573f; border-color: #d0573f; }
 /* The learner's selection, kept while the editor is unfocused (as the textarea's own would look). */

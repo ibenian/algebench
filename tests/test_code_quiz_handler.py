@@ -76,3 +76,13 @@ def test_the_handler_reaches_the_model_and_keeps_the_learners_lines(monkeypatch)
     q = SimpleNamespace(plan="", question="Why?", kind="answer", answer_key="k", steps=[])
     monkeypatch.setattr(intent, "_asker", lambda: (lambda **_: q))
     assert h.code_quiz(_req())["result"]["question"] == "Why?"
+
+
+def test_a_question_back_is_answered_not_judged_and_types_nothing(monkeypatch):
+    out = SimpleNamespace(verdict="Question", feedback="It means the running total. What is it after [1, 2]?",
+                          steps=[AssistStep(say="This one.", code="total = 0  # running", select="total")])
+    monkeypatch.setattr(intent, "_grader", lambda: (lambda **_: out))
+    v = intent.grade_answer(**{f: "" for f in GRADE_FIELDS})
+    assert v.verdict == "question" and v.steps[0].code == "" and v.steps[0].select == "total"
+    grade = h.grade_inputs(_req(mode="grade", kind="type", answer=" which line? "))
+    assert "  1 | def f(xs):" in grade["answer"] and grade["answer"].endswith("With it they said: which line?")

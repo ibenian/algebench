@@ -70,8 +70,8 @@ interface QuizTurn { question: string; kind: 'type' | 'answer'; outcome: 'correc
 type AssistStep = AssistPlan['steps'][number];
 /** Ask me a question (the code_quiz expert): the question, how it is answered, and what it expects (kept until judged). */
 interface QuizAsk { plan: string; steps: AssistStep[]; question: string; kind: 'type' | 'answer'; answer_key: string }
-interface QuizGrade { verdict: 'correct' | 'partly' | 'incorrect'; steps: AssistStep[]; feedback: string }
-const QUIZ_VERDICTS: Record<string, string> = {correct: 'Correct', partly: 'Partly right', incorrect: 'Not quite'};
+interface QuizGrade { verdict: 'correct' | 'partly' | 'incorrect' | 'question'; steps: AssistStep[]; feedback: string }
+const QUIZ_VERDICTS: Record<string, string> = {correct: 'Correct', partly: 'Partly right', incorrect: 'Not quite', question: 'Your question'};
 interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; show?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
@@ -356,16 +356,17 @@ export function setupCodePractice(): void {
         coachTalking = true;
         window.algebenchSpeakText(text, () => { coachTalking = false;then?.(); }, 'coach');
     }
-    /** What the coach has handed to the chat on this block: a concept is shown once. */
-    const shownInChat = new Set<string>();
+    /** Whether the coach has handed a concept of its own to the chat on this block: one a block. Its wording changes
+     *  from review to review, so the same concept would otherwise be shown again and again. */
+    let coachShowed = false;
     /**
      * The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
      * the presenter on, once the review has been said, and not over the chat's own answer.
      */
     function showInChat(request: string, body: HTMLElement, asked = false) {
-        // The learner's own ask always goes; the coach's own idea goes once a block.
-        if (!request || (!asked && shownInChat.has(request)) || !presenterOn()) return null;
-        shownInChat.add(request);
+        // The learner's own ask always goes; the coach's own idea, one a block.
+        if (!request || (!asked && coachShowed) || !presenterOn()) return null;
+        if (!asked) coachShowed = true;
         const note = el('div', 'cp-report-show');note.textContent = '🎯 Showing it in the chat…';body.append(note);
         return async () => {
             if (!presenterOn()) { note.textContent = '🎯 The presenter is off: ask the chat to show this.';return; }
@@ -479,7 +480,7 @@ export function setupCodePractice(): void {
         showTarget(v);paintAltTool();
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;pairSaid = '';turns = [];clearTimeout(pairIdle);
+        key = next;block = text;quiz = null;askedQuestions = [];coachShowed = false;series = null;pairing = false;pairSaid = '';turns = [];clearTimeout(pairIdle);
         // The block's sections, kept to it: the first may start above it (taking the imports).
         // (Its last line is the last with code: a section running on over the blank line after it still fits.)
         const last = v.from + text.split('\n').length - 1;
@@ -814,6 +815,7 @@ export function setupCodePractice(): void {
         reportSummary.textContent = badge.textContent;reportGrip.classList.toggle('fresh', report.hidden === true);
         // A fully correct review is marked green: the badge, the message and the bar's summary.
         const perfect = r.verdict === 'correct' && r.score === 100;
+        if (perfect) canvas.clearCrosses();
         reportGrip.classList.toggle('perfect', perfect);
         const about = el('span', 'cp-report-about');about.textContent = focus ? focus.title : 'The whole block';
         top.append(badge, about);
@@ -1149,7 +1151,8 @@ export function setupCodePractice(): void {
         ask.addEventListener('submit', e => {
             e.preventDefault();
             if (!words.value.trim()) return;
-            void assist(quiz?.kind === 'answer' ? 'grade' : 'ask', words.value.trim());
+            // With a question waiting, what they send goes to it: an answer is judged, a question back is answered.
+            void assist(quiz ? 'grade' : 'ask', words.value.trim());
         });
         row.append(label, ask);
         if (pairing) {
@@ -1741,7 +1744,7 @@ export function setupCodePractice(): void {
                     : {reason: 'I am not sure which line you mean: put the cursor on it and ask again.'})
                 : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
-                    answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
+                    answer_key: pending!.answerKey, setup: pending!.setup, answer: request})
                 // While pairing, the scene is shown only when the learner asks for something: a presentation of its
                 // own pulls them away from the line they are typing.
                 : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && !canvasOn() && (!pairing || scope === 'ask'), hint_level: pairing ? hintLevel() : 'direct', last_said: said.slice(0, 600), recent_turns: recentTurns(), canvas: canvasOn(), canvas_marks: canvasOn() ? canvas.describe().slice(0, 40) : [], cursor: input.value.slice(0, userCaret).split('\n').length,
@@ -1774,6 +1777,7 @@ export function setupCodePractice(): void {
                     const body = bubble('cp-assist-close');
                     // Pairing done, and the code right: said as plainly as a perfect review, whatever the names.
                     if (scope === 'pair' && out.complete) {
+                        canvas.clearCrosses();
                         body.closest('.chat-msg')?.classList.add('cp-msg-perfect');
                         const badge = el('span', 'cp-verdict cp-verdict-correct');badge.textContent = '✓ Correct';
                         const text = el('div', '');body.append(badge, text);
@@ -1850,13 +1854,17 @@ export function setupCodePractice(): void {
             if (scope === 'quiz') await poseQuestion(r as QuizAsk, bubble('cp-quiz'), run);
             else if (scope === 'grade') {
                 const body = bubble('cp-quiz-verdict');
+                const asked = r.verdict === 'question';
                 const badge = el('span', `cp-verdict cp-quiz-${r.verdict}`);badge.textContent = QUIZ_VERDICTS[r.verdict ?? ''] ?? 'Checked';
                 const text = el('div', '');body.append(badge, text);
-                // Answered: its card keeps the question, not its controls.
-                pending?.card.querySelector('.cp-quiz-controls')?.remove();
-                quizTurnDone(r.verdict ?? 'partly', pending?.kind === 'answer' ? own : '');quiz = null;
+                // A question back isn't an answer: the question stays open, its controls with it, for the answer.
+                if (!asked) {
+                    // Answered: its card keeps the question, not its controls.
+                    pending?.card.querySelector('.cp-quiz-controls')?.remove();
+                    quizTurnDone((r.verdict ?? 'partly') as QuizTurn['outcome'], pending?.kind === 'answer' ? own : '');quiz = null;
+                }
                 await say(r.feedback ?? '', text, run);
-                nextAfter = !!series;
+                nextAfter = !!series && !asked;
             }
             // Pairing hands the keyboard back without a word: the learner carries on with the line.
             else if (scope === 'pair' || scope === 'finish') { if (r.closing && !r.steps.length) { pairing = false;await say(r.closing, bubble('cp-assist-close'), run); } }

@@ -43,7 +43,10 @@ def _turn(k: int, t) -> str:
 
 
 def grade_inputs(req: CodeQuizRequest) -> dict:
-    answer = (_numbered(req.typed) if req.typed.strip() else "(empty)") if req.kind == "type" else req.answer.strip()
+    answer = req.answer.strip()
+    if req.kind == "type":
+        edited = _numbered(req.typed) if req.typed.strip() else "(empty)"
+        answer = f"{edited}\n\nWith it they said: {answer}" if answer else edited
     return {"language": req.language or "unknown", "expected": _numbered(req.expected, req.first_line),
             "question": req.question, "kind": req.kind, "answer_key": req.answer_key,
             "setup": _numbered(req.setup) if req.setup.strip() else "(empty)", "answer": answer,
