@@ -19,7 +19,7 @@ import { GraphViewModel, type PresentationMode } from '/graph-explorer/view-mode
 import { createKnowledgeAdapter } from '/graph-explorer/knowledge-adapter.js';
 import { snapshotKnowledgeView, type KnowledgeGraphContext } from '/graph-explorer/agent-context.js';
 import {
-    applyRuntimeUpdate, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, type RuntimeUpdate,
+    applyRuntimeUpdate, conceptAtPlace, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, type RuntimeUpdate,
     type ConceptData, type KnowledgeGraph, type ParsedLessonGraph, type RelationData,
 } from '/graph-explorer/knowledge-model.js';
 
@@ -99,7 +99,13 @@ export function loadGlobalKnowledge(): Promise<void> {
 }
 
 /** The lesson on screen, as the global graph sees it. */
-const activeLesson: { id: string | null; title: string; focus: string | null } = { id: null, title: '', focus: null };
+const activeLesson: {
+    id: string | null; title: string;
+    /** The lesson's main concept (its `focus`, else its first concept). */
+    focus: string | null;
+    /** The concept taught at the current scene/step (follows navigation). */
+    placeFocus: string | null;
+} = { id: null, title: '', focus: null, placeFocus: null };
 /** The lesson the global graph last re-focused for — it follows each newly opened lesson once. */
 let globalFollowedLesson: string | null = null;
 /** A lesson opened FROM the graph: keep the graph on the concept the learner came from. */
@@ -131,7 +137,8 @@ function followActiveLesson(): void {
     if (vm.scopeId === 'local') applyScope(vm, activeLesson.focus ? 'local' : 'global', activeLesson.id, activeLesson.focus);
     if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
         globalFollowedLesson = activeLesson.id;
-        vm.focusOn(activeLesson.focus);
+        const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
+        vm.focusOn(target);
     } else if (vm.visibleNodes.size === 0) {
         vm.showOverview(40);
     }
@@ -402,6 +409,7 @@ export function onLessonLoaded(spec: unknown): void {
     activeLesson.id = lessonId;
     activeLesson.title = title;
     activeLesson.focus = null;
+    activeLesson.placeFocus = null;
     if (raw === undefined || !lessonId || !els.section || !els.slot) {
         els.section?.classList.add('hidden');
         followActiveLesson();
@@ -439,8 +447,11 @@ export function onLessonLoaded(spec: unknown): void {
     trackForTutor(vm);
     // A lesson's own graph opens Local; Global is one click away.
     vm.setScope('local', lessonScope(lessonId));
-    vm.focusOn(focus, 1);
     activeLesson.focus = focus;
+    // Start where the learner is: the concept taught at the current scene/step
+    // (loadLesson has already navigated), else the lesson's main concept.
+    activeLesson.placeFocus = conceptAtPlace(parsed.concepts, lessonId, state.currentSceneIndex, state.currentStepIndex, focus);
+    vm.focusOn(activeLesson.placeFocus ?? focus, 1);
     followActiveLesson();
     els.section.classList.remove('hidden');
     if (els.count) els.count.textContent = `${parsed.concepts.length} concepts`;
@@ -496,6 +507,41 @@ function toggleEmbedded(): void {
     if (head) void setEmbeddedFolded(!head.classList.contains('side-section-folded'));
 }
 
+// ---------- setting the focus (the one standard way) ----------
+
+export type FocusSource = 'navigation' | 'user' | 'tutor' | 'app';
+
+/**
+ * THE standard way to set the Knowledge Graph's current focus from outside the
+ * explorer — lesson navigation uses it, and a tutor tool or another feature
+ * should too. Focuses every open-or-closed explorer that can show the concept
+ * (the lesson graph when it is in its scope, the global graph), each keeping
+ * its own history so Back returns to what the learner had. A no-op for
+ * explorers already focused there. Returns whether any view changed.
+ */
+export function focusKnowledgeConcept(conceptId: string, _opts: { source?: FocusSource } = {}): boolean {
+    if (!knowledgeStore.hasNode(conceptId)) return false;
+    let changed = false;
+    for (const slot of [lessonSlot, globalSlot]) {
+        if (!slot) continue;
+        const vm = slot.explorer.vm;
+        if (vm.focus === conceptId || !vm.inScope(conceptId)) continue;
+        vm.focusOn(conceptId);
+        changed = true;
+    }
+    return changed;
+}
+
+/** Scene/step changed: focus the concept the lesson teaches there (if any). */
+function followLessonPosition(): void {
+    if (!lessonSlot || lessonSlot.lessonId !== currentLessonId()) return;
+    const id = conceptAtPlace(lessonSlot.parsed.concepts, lessonSlot.lessonId,
+                              state.currentSceneIndex, state.currentStepIndex, activeLesson.focus ?? undefined);
+    if (!id || id === activeLesson.placeFocus) return;     // same concept as the last step: leave the view alone
+    activeLesson.placeFocus = id;
+    focusKnowledgeConcept(id, { source: 'navigation' });
+}
+
 // ---------- runtime updates (future AI tutor / personal graph entry point) ----------
 
 /**
@@ -524,6 +570,8 @@ export function setupKnowledgeGraph(): void {
     window.addEventListener('algebench:lessonload', (ev) => {
         onLessonLoaded(ev.detail?.spec);
     });
+    // Scene/step navigation moves the graph's focus to what is taught there.
+    window.addEventListener('algebench:navchange', followLessonPosition);
     // Debug / integration handle (console demos, future tutor tools).
     // The tutor reads the last-viewed graph through the chat context (CTX).
     window.algebenchGetKnowledgeGraphState = getKnowledgeGraphContext;
@@ -531,6 +579,7 @@ export function setupKnowledgeGraph(): void {
         store: knowledgeStore,
         applyUpdate: applyKnowledgeUpdate,
         openConcept,
+        focusConcept: focusKnowledgeConcept,
         explorers: () => ({ global: globalSlot?.explorer ?? null, lesson: lessonSlot?.explorer ?? null }),
     };
 }

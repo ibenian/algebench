@@ -336,6 +336,8 @@ interface Window {
     store: import('/graph-explorer/knowledge-model.js').KnowledgeGraph;
     applyUpdate: (update: { concepts?: unknown; relations?: unknown }) => { issues: string[] };
     openConcept: (id: string, mode?: import('/graph-explorer/view-model.js').PresentationMode) => Promise<boolean>;
+    /** The standard way to set the current focus (all explorers that can show it). */
+    focusConcept: (id: string, opts?: { source?: import('/graph-explorer/knowledge-app.js').FocusSource }) => boolean;
     explorers: () => { global: unknown; lesson: unknown };
   };
   /**

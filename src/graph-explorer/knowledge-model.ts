@@ -215,6 +215,36 @@ export function parseLessonKnowledgeGraph(raw: unknown, lesson: LessonInfo,
     return result;
 }
 
+// ---------- lesson position → concept ----------
+
+/**
+ * The concept a lesson teaches at a scene/step, from the concepts' authored
+ * `refs` (no extra schema): an exact step reference first, else the nearest
+ * earlier step in the same scene, else the scene's own reference (step -1).
+ * Ties go to `preferred` (the lesson's main focus), then authored order.
+ * Returns null when nothing in the lesson points at that scene.
+ */
+export function conceptAtPlace(concepts: ParsedConcept[], lessonId: string, scene: number, step: number,
+                               preferred?: string): string | null {
+    let best: { id: string; rank: number; order: number } | null = null;
+    concepts.forEach((c, order) => {
+        const ref = c.data.lessons.find((l) => l.lessonId === lessonId);
+        if (!ref) return;
+        for (const p of ref.places) {
+            if (p.scene !== scene) continue;
+            // rank: lower is better. exact = 0; earlier step = 1 + distance; scene-level = 1000.
+            let rank: number;
+            if (p.step === step) rank = 0;
+            else if (p.step >= 0 && p.step < step) rank = 1 + (step - p.step);
+            else if (p.step === -1) rank = 1000;
+            else continue;                       // a later step: not taught yet
+            if (c.id === preferred) rank -= 0.5;  // tie-break toward the lesson's main concept
+            if (!best || rank < best.rank || (rank === best.rank && order < best.order)) best = { id: c.id, rank, order };
+        }
+    });
+    return best ? (best as { id: string }).id : null;
+}
+
 // ---------- runtime updates ----------
 
 /** The authored shape a runtime update uses — the same as a lesson block's

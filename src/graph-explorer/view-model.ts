@@ -73,6 +73,9 @@ export class GraphViewModel<N, E> {
     presentation: PresentationMode = 'closed';
     /** Last viewport a view reported; null until one did. Presentation-only. */
     viewport: Viewport | null = null;
+    /** The focus the saved positions were laid out around (a view re-lays out
+     *  when the focus has moved on since). Presentation-only. */
+    layoutFocus: string | null = null;
     /** Last node positions a view reported. Presentation-only. */
     readonly positions = new Map<string, Point>();
     /** Expanded neighbourhoods: node id → hop radius. The focus is one of them. */

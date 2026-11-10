@@ -176,18 +176,23 @@ export class CytoscapeGraphView<N, E> {
         this.cy = cy;
         this.wireEvents(cy);
         this.unsubs.push(vm.events.on('view', (p) => this.applyPatch(p)));
-        this.unsubs.push(vm.events.on('state', () => this.syncState()));
-        if (missing.length) {
-            // Some (or all) nodes have never been placed: lay out only those,
-            // keep the placed ones where the user left them.
-            if (missing.length === cy.nodes().length) this.runLayout(false);
-            else this.placeAround(missing, vm.focus ?? undefined);
+        this.unsubs.push(vm.events.on('state', () => { this.syncState(); this.followFocus(); }));
+        let relaidOut = false;
+        if (vm.focus !== null && vm.focus !== vm.layoutFocus && cy.nodes().nonempty()) {
+            // The focus moved while this view was closed (lesson navigation, a
+            // tutor call): arrange around the new focus instead of reusing the
+            // old picture.
+            relaidOut = true;
+        } else if (missing.length === cy.nodes().length) {
+            relaidOut = true;                                   // nothing placed yet
+        } else if (missing.length) {
+            // Some nodes have never been placed: put only those around the
+            // focus, keep the placed ones where the user left them.
+            this.placeAround(missing, vm.focus ?? undefined);
         }
-        if (vm.viewport && missing.length < cy.nodes().length) {
-            cy.viewport({ zoom: vm.viewport.zoom, pan: vm.viewport.pan });
-        } else {
-            this.fit(false);
-        }
+        if (relaidOut) this.runLayout(false);                   // ends with its own fit
+        else if (vm.viewport) cy.viewport({ zoom: vm.viewport.zoom, pan: vm.viewport.pan });
+        else this.fit(false);
         this.syncState();
         this.opts.onZoom?.(Math.round(cy.zoom() * 100));
         this.opts.onReady?.();
@@ -374,10 +379,25 @@ export class CytoscapeGraphView<N, E> {
     }
 
     /** Full layout of what is visible (explicit user action, or first render). */
+    /**
+     * The focus changed (navigation, search, Focus here, Back/Forward, a tutor
+     * call): re-arrange the visible nodes in rings around the new focus and
+     * bring it to the centre, animated unless reduced motion is on. Expanding
+     * or collapsing keeps the focus and never triggers this, so incremental
+     * exploration stays stable.
+     */
+    private followFocus(): void {
+        const vm = this.vm;
+        if (!this.cy || vm.focus === vm.layoutFocus) return;
+        if (vm.focus === null) { vm.layoutFocus = null; return; }   // overview: keep its layout
+        this.runLayout();
+    }
+
     runLayout(animate = this.motion()): void {
         const cy = this.cy;
         if (!cy || cy.nodes().empty()) return;
         const focus = this.vm.focus;
+        this.vm.layoutFocus = focus;
         const dist = new Map<string, number>();
         if (focus && cy.getElementById(focus).nonempty()) {
             cy.elements().bfs({ roots: cy.getElementById(focus), directed: false,

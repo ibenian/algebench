@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-    createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, relationId, relationInfo,
+    conceptAtPlace, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, relationId, relationInfo,
 } from '/graph-explorer/knowledge-model.js';
 
 const LESSON = { lessonId: 'draft/demo', lessonTitle: 'Demo', draft: true };
@@ -180,4 +180,39 @@ test('demo lesson: the expected concepts and accurate typed relations', () => {
     assert.ok(p.concepts.find((c) => c.id === 'dsa.monotonic-deque')!.data.definition!.includes('indices'));
     assert.equal(spec.knowledgeGraph.liveUpdateExample, undefined, 'no demo payload in production lesson content');
     assert.ok(!p.concepts.some((c) => c.id === 'dsa.sliding-window-minimum'), 'the demo concept is not lesson content');
+});
+
+test('conceptAtPlace: exact step, else nearest earlier step, else the scene; ties to the main concept', () => {
+    const p = parseLessonKnowledgeGraph({
+        focus: 'b',
+        concepts: [
+            { id: 'a', label: 'A', refs: [{ scene: 0 }, { scene: 1 }] },
+            { id: 'b', label: 'B', refs: [{ scene: 1 }, { scene: 1, step: 3 }] },
+            { id: 'c', label: 'C', refs: [{ scene: 0, step: 1 }] },
+            { id: 'd', label: 'D', refs: [{ scene: 0, step: 1 }] },
+        ],
+    }, LESSON);
+    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, LESSON.lessonId, scene, step, p.focus);
+    assert.equal(at(0, -1), 'a', 'scene base view → scene-level ref');
+    assert.equal(at(0, 0), 'a', 'no step ref yet → scene-level ref');
+    assert.equal(at(0, 1), 'c', 'exact step ref; authored order breaks the tie');
+    assert.equal(at(0, 5), 'c', 'later steps keep the nearest earlier step ref');
+    assert.equal(at(1, -1), 'b', 'scene-level tie → the lesson main concept');
+    assert.equal(at(1, 2), 'b', 'tie-break also applies to the scene-level fallback');
+    assert.equal(at(1, 3), 'b');
+    assert.equal(at(2, 0), null, 'nothing references this scene');
+    assert.equal(conceptAtPlace(p.concepts, 'other-lesson', 0, 1), null, 'only this lesson\'s refs count');
+});
+
+test('demo lesson: navigation maps scenes/steps to the concept being taught', () => {
+    const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/sliding-window-maximum.json'), 'utf8'));
+    const id = 'draft/sliding-window-maximum';
+    const p = parseLessonKnowledgeGraph(spec.knowledgeGraph, { lessonId: id, lessonTitle: spec.title, glossary: spec.glossary });
+    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, id, scene, step, p.focus);
+    assert.equal(at(0, -1), 'dsa.sliding-window-maximum');
+    assert.equal(at(0, 0), 'dsa.sliding-window');
+    assert.equal(at(1, -1), 'dsa.monotonic-deque', 'the main concept wins the scene-level tie');
+    assert.equal(at(1, 3), 'dsa.monotonic-invariant');
+    assert.equal(at(1, 4), 'dsa.monotonic-deque');
+    assert.equal(at(2, -1), 'cs.amortized-analysis');
 });

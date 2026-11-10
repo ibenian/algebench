@@ -141,6 +141,32 @@ the view re-centres on the lesson's main concept, otherwise it stays put. In
 the global graph, Local means the *current* lesson: it follows lesson changes,
 and is disabled (falling back to Global) when the open lesson has no graph.
 
+### Setting the focus (standard entry point)
+
+`focusKnowledgeConcept(id, { source })` (`knowledge-app.ts`, also
+`window.algebenchKnowledgeGraph.focusConcept`) is the one way to set the
+Knowledge Graph's current focus from outside the explorer — lesson navigation
+uses it, and a tutor tool or another feature should too. It focuses every
+explorer that can show the concept (the lesson graph when the concept is in its
+scope, the global graph), each pushing its own history so Back returns to what
+the learner had.
+
+**Scene/step navigation** calls it on every `algebench:navchange`. The concept
+comes from the lesson's existing `refs` — no extra schema
+(`conceptAtPlace`, `knowledge-model.ts`): a concept referenced at exactly that
+step; else the nearest earlier step in the scene; else the scene's own
+reference; ties go to the lesson's main `focus`, then authored order. When the
+new place maps to the same concept as the previous one, nothing moves, so the
+learner's own exploration survives steps that stay on one topic. A lesson
+loads focused on the concept of its starting place.
+
+The open view follows every focus change (navigation, search, Focus here,
+Back/Forward, `focusKnowledgeConcept`): the visible nodes are re-arranged in
+rings around the new focus and the view re-centres, animated unless reduced
+motion is on. Expand/collapse keep the focus and never re-lay out, so
+exploration stays stable. A view that was closed while the focus moved is
+arranged around the new focus when it reopens (`GraphViewModel.layoutFocus`).
+
 ### Following the open lesson
 
 The lesson section always shows the loaded lesson's graph (it is rebuilt on

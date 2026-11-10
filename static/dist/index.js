@@ -30362,12 +30362,16 @@ var CytoscapeGraphView = class {
 		this.cy = cy;
 		this.wireEvents(cy);
 		this.unsubs.push(vm.events.on("view", (p) => this.applyPatch(p)));
-		this.unsubs.push(vm.events.on("state", () => this.syncState()));
-		if (missing.length) {
-			if (missing.length === cy.nodes().length) this.runLayout(false);
-			else this.placeAround(missing, vm.focus ?? void 0);
-		}
-		if (vm.viewport && missing.length < cy.nodes().length) cy.viewport({
+		this.unsubs.push(vm.events.on("state", () => {
+			this.syncState();
+			this.followFocus();
+		}));
+		let relaidOut = false;
+		if (vm.focus !== null && vm.focus !== vm.layoutFocus && cy.nodes().nonempty()) relaidOut = true;
+		else if (missing.length === cy.nodes().length) relaidOut = true;
+		else if (missing.length) this.placeAround(missing, vm.focus ?? void 0);
+		if (relaidOut) this.runLayout(false);
+		else if (vm.viewport) cy.viewport({
 			zoom: vm.viewport.zoom,
 			pan: vm.viewport.pan
 		});
@@ -30596,10 +30600,27 @@ var CytoscapeGraphView = class {
 		return "Click to inspect · all neighbours are already shown";
 	}
 	/** Full layout of what is visible (explicit user action, or first render). */
+	/**
+	* The focus changed (navigation, search, Focus here, Back/Forward, a tutor
+	* call): re-arrange the visible nodes in rings around the new focus and
+	* bring it to the centre, animated unless reduced motion is on. Expanding
+	* or collapsing keeps the focus and never triggers this, so incremental
+	* exploration stays stable.
+	*/
+	followFocus() {
+		const vm = this.vm;
+		if (!this.cy || vm.focus === vm.layoutFocus) return;
+		if (vm.focus === null) {
+			vm.layoutFocus = null;
+			return;
+		}
+		this.runLayout();
+	}
 	runLayout(animate = this.motion()) {
 		const cy = this.cy;
 		if (!cy || cy.nodes().empty()) return;
 		const focus = this.vm.focus;
+		this.vm.layoutFocus = focus;
 		const dist = /* @__PURE__ */ new Map();
 		if (focus && cy.getElementById(focus).nonempty()) cy.elements().bfs({
 			roots: cy.getElementById(focus),
@@ -31202,6 +31223,7 @@ var GraphViewModel = class {
 		this.selection = null;
 		this.presentation = "closed";
 		this.viewport = null;
+		this.layoutFocus = null;
 		this.positions = /* @__PURE__ */ new Map();
 		this.roots = /* @__PURE__ */ new Map();
 		this.hiddenRelationTypes = /* @__PURE__ */ new Set();
@@ -32063,6 +32085,35 @@ function parseLessonKnowledgeGraph(raw, lesson, known = () => false) {
 	return result;
 }
 /**
+* The concept a lesson teaches at a scene/step, from the concepts' authored
+* `refs` (no extra schema): an exact step reference first, else the nearest
+* earlier step in the same scene, else the scene's own reference (step -1).
+* Ties go to `preferred` (the lesson's main focus), then authored order.
+* Returns null when nothing in the lesson points at that scene.
+*/
+function conceptAtPlace(concepts, lessonId, scene, step, preferred) {
+	let best = null;
+	concepts.forEach((c, order) => {
+		const ref = c.data.lessons.find((l) => l.lessonId === lessonId);
+		if (!ref) return;
+		for (const p of ref.places) {
+			if (p.scene !== scene) continue;
+			let rank;
+			if (p.step === step) rank = 0;
+			else if (p.step >= 0 && p.step < step) rank = 1 + (step - p.step);
+			else if (p.step === -1) rank = 1e3;
+			else continue;
+			if (c.id === preferred) rank -= .5;
+			if (!best || rank < best.rank || rank === best.rank && order < best.order) best = {
+				id: c.id,
+				rank,
+				order
+			};
+		}
+	});
+	return best ? best.id : null;
+}
+/**
 * Validate and merge a runtime update (a tutor/Expert proposal, a personal
 * graph, a dev check) into the store in ONE batch, so every view gets one
 * incremental patch. Same validation as lesson content: malformed entries are
@@ -32452,7 +32503,8 @@ function loadGlobalKnowledge() {
 var activeLesson = {
 	id: null,
 	title: "",
-	focus: null
+	focus: null,
+	placeFocus: null
 };
 /** The lesson the global graph last re-focused for — it follows each newly opened lesson once. */
 var globalFollowedLesson = null;
@@ -32480,7 +32532,8 @@ function followActiveLesson() {
 	if (vm.scopeId === "local") applyScope(vm, activeLesson.focus ? "local" : "global", activeLesson.id, activeLesson.focus);
 	if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
 		globalFollowedLesson = activeLesson.id;
-		vm.focusOn(activeLesson.focus);
+		const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
+		vm.focusOn(target);
 	} else if (vm.visibleNodes.size === 0) vm.showOverview(40);
 	globalSlot.explorer.setStatusExtra(coverageText());
 }
@@ -32726,6 +32779,7 @@ function onLessonLoaded(spec) {
 	activeLesson.id = lessonId;
 	activeLesson.title = title;
 	activeLesson.focus = null;
+	activeLesson.placeFocus = null;
 	if (raw === void 0 || !lessonId || !els.section || !els.slot) {
 		els.section?.classList.add("hidden");
 		followActiveLesson();
@@ -32780,8 +32834,9 @@ function onLessonLoaded(spec) {
 	const focus = parsed.focus ?? parsed.concepts[0].id;
 	trackForTutor(vm);
 	vm.setScope("local", lessonScope(lessonId));
-	vm.focusOn(focus, 1);
 	activeLesson.focus = focus;
+	activeLesson.placeFocus = conceptAtPlace(parsed.concepts, lessonId, state.currentSceneIndex, state.currentStepIndex, focus);
+	vm.focusOn(activeLesson.placeFocus ?? focus, 1);
 	followActiveLesson();
 	els.section.classList.remove("hidden");
 	if (els.count) els.count.textContent = `${parsed.concepts.length} concepts`;
@@ -32832,6 +32887,34 @@ function toggleEmbedded() {
 	if (head) setEmbeddedFolded(!head.classList.contains("side-section-folded"));
 }
 /**
+* THE standard way to set the Knowledge Graph's current focus from outside the
+* explorer — lesson navigation uses it, and a tutor tool or another feature
+* should too. Focuses every open-or-closed explorer that can show the concept
+* (the lesson graph when it is in its scope, the global graph), each keeping
+* its own history so Back returns to what the learner had. A no-op for
+* explorers already focused there. Returns whether any view changed.
+*/
+function focusKnowledgeConcept(conceptId, _opts = {}) {
+	if (!knowledgeStore.hasNode(conceptId)) return false;
+	let changed = false;
+	for (const slot of [lessonSlot, globalSlot]) {
+		if (!slot) continue;
+		const vm = slot.explorer.vm;
+		if (vm.focus === conceptId || !vm.inScope(conceptId)) continue;
+		vm.focusOn(conceptId);
+		changed = true;
+	}
+	return changed;
+}
+/** Scene/step changed: focus the concept the lesson teaches there (if any). */
+function followLessonPosition() {
+	if (!lessonSlot || lessonSlot.lessonId !== currentLessonId()) return;
+	const id = conceptAtPlace(lessonSlot.parsed.concepts, lessonSlot.lessonId, state.currentSceneIndex, state.currentStepIndex, activeLesson.focus ?? void 0);
+	if (!id || id === activeLesson.placeFocus) return;
+	activeLesson.placeFocus = id;
+	focusKnowledgeConcept(id, { source: "navigation" });
+}
+/**
 * Add concepts/relations at runtime. Accepts the same authored shape as a
 * lesson's knowledgeGraph block, validates it, and merges it in one batch —
 * every open explorer updates incrementally. Runtime records carry no lesson
@@ -32863,11 +32946,13 @@ function setupKnowledgeGraph() {
 	window.addEventListener("algebench:lessonload", (ev) => {
 		onLessonLoaded(ev.detail?.spec);
 	});
+	window.addEventListener("algebench:navchange", followLessonPosition);
 	window.algebenchGetKnowledgeGraphState = getKnowledgeGraphContext;
 	window.algebenchKnowledgeGraph = {
 		store: knowledgeStore,
 		applyUpdate: applyKnowledgeUpdate,
 		openConcept,
+		focusConcept: focusKnowledgeConcept,
 		explorers: () => ({
 			global: globalSlot?.explorer ?? null,
 			lesson: lessonSlot?.explorer ?? null
