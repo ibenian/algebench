@@ -272,3 +272,41 @@ test('hidden-neighbour count: what an expand would reveal', () => {
     vm.expand('c');
     assert.equal(vm.hiddenNeighborCount('c'), 0);
 });
+
+test('scope: a local scope limits focus neighbourhoods, overview, search and edges; global restores them', () => {
+    const g = sample();
+    const { vm, patches } = vmOf(g);
+    const local = new Set(['a', 'b', 'c']);                 // "this lesson's" concepts
+    vm.focusOn('b');                                        // a b c e
+    const rev = g.revision;
+    vm.setScope('local', (id) => local.has(id));
+    assert.equal(vm.scopeId, 'local');
+    assert.deepEqual(sorted(vm.visibleNodes), ['a', 'b', 'c']);
+    assert.deepEqual(patches.at(-1)!.nodesRemoved, ['e'], 'switching scope is an incremental diff');
+    assert.ok([...vm.visibleEdges].every((e) => e.split('|').every((p, i) => i === 1 || local.has(p))), 'no edge leaves the scope');
+    assert.deepEqual(vm.search('e'), [], 'search stays in scope');
+    assert.equal(vm.hiddenNeighborCount('c'), 0, 'out-of-scope neighbours are not offered');
+    vm.showOverview(10);
+    assert.deepEqual(sorted(vm.visibleNodes), ['a', 'b', 'c']);
+    vm.back();
+    vm.setScope('global', null);
+    assert.deepEqual(sorted(vm.visibleNodes), ['a', 'b', 'c', 'e'], 'global restores the full neighbourhood');
+    assert.equal(g.revision, rev, 'scope is presentation-only: the graph data never changes');
+});
+
+test('scope: a focus outside the scope shows nothing until refocused; data added later is classified live', () => {
+    const g = sample();
+    const { vm } = vmOf(g);
+    vm.focusOn('x');
+    const local = new Set(['a', 'b']);
+    vm.setScope('local', (id) => local.has(id));
+    assert.equal(vm.visibleNodes.size, 0);
+    vm.focusOn('a');
+    assert.deepEqual(sorted(vm.visibleNodes), ['a', 'b']);
+    g.addNode('n', { label: 'n' });
+    g.addEdge({ id: 'a|uses|n', source: 'a', target: 'n', type: 'uses', data: null });
+    assert.equal(vm.visibleNodes.has('n'), false, 'not in scope yet');
+    local.add('n');
+    g.updateNode('n', { label: 'N' });                      // any data change re-evaluates the scope
+    assert.ok(vm.visibleNodes.has('n'));
+});

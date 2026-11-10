@@ -78,6 +78,11 @@ export class GraphViewModel<N, E> {
     /** Expanded neighbourhoods: node id → hop radius. The focus is one of them. */
     readonly roots = new Map<string, number>();
     readonly hiddenRelationTypes = new Set<string>();
+    /** Active scope name ("global", "local", …) — which part of the graph may be shown. */
+    scopeId = 'global';
+    /** Scope membership; null = everything. Re-evaluated on every recompute, so
+     *  data added at runtime is classified as it arrives. */
+    private scopeFn: ((id: string) => boolean) | null = null;
     defaultDepth: number;
     maxVisible: number;
     /** The cap cut the last visible set short. */
@@ -107,6 +112,16 @@ export class GraphViewModel<N, E> {
     get visibleEdges(): ReadonlySet<string> { return this._visibleEdges; }
     get canGoBack(): boolean { return this.history.length > 0; }
     get canGoForward(): boolean { return this.future.length > 0; }
+
+    /** Earlier foci, most recent first (deduplicated) — what the learner looked at before. */
+    recentFoci(limit = 5): string[] {
+        const out: string[] = [];
+        for (let i = this.history.length - 1; i >= 0 && out.length < limit; i--) {
+            const f = this.history[i]!.focus;
+            if (f && f !== this.focus && !out.includes(f) && this.engine.hasNode(f)) out.push(f);
+        }
+        return out;
+    }
     get historyLength(): number { return this.history.length; }
 
     isExpanded(id: string): boolean { return (this.roots.get(id) ?? 0) > 0; }
@@ -190,7 +205,7 @@ export class GraphViewModel<N, E> {
         this.pushHistory();
         const ranked: [string, number][] = [];
         for (const n of this.engine.allNodes()) {
-            if (filter && !filter(n)) continue;
+            if ((filter && !filter(n)) || !this.inScope(n.id)) continue;
             ranked.push([n.id, this.engine.degree(n.id)]);
         }
         ranked.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -247,12 +262,28 @@ export class GraphViewModel<N, E> {
         this.emitState('filter');
     }
 
+    /**
+     * Restrict what may be shown to a scope (e.g. "local" = the open lesson's
+     * concepts). Presentation-only: the engine is untouched and switching back
+     * restores the full neighbourhoods. Roots outside the scope stay recorded
+     * but contribute nothing until the scope includes them again.
+     */
+    setScope(id: string, predicate: ((nodeId: string) => boolean) | null): void {
+        if (id === this.scopeId && predicate === this.scopeFn) return;
+        this.scopeId = id;
+        this.scopeFn = predicate;
+        if (this.selection?.kind === 'node' && !this.inScope(this.selection.id)) this.selection = null;
+        this.recompute(this.focus ?? undefined);
+        this.emitState('filter');
+    }
+
     /** Case-insensitive substring search, best (prefix) matches first. */
     search(query: string, limit = 12): string[] {
         const q = query.trim().toLowerCase();
         if (!q) return [];
         const hits: [string, number][] = [];
         for (const n of this.engine.allNodes()) {
+            if (!this.inScope(n.id)) continue;
             const text = this.searchText(n);
             const at = text.indexOf(q);
             if (at >= 0) hits.push([n.id, at === 0 ? 0 : 1]);
@@ -303,7 +334,11 @@ export class GraphViewModel<N, E> {
         this.events.emit('state', { reason });
     }
 
-    private edgeShown = (e: { type: string }): boolean => !this.hiddenRelationTypes.has(e.type);
+    /** An edge is walkable/drawn when its type is shown and both ends are in scope. */
+    private edgeShown = (e: { type: string; source: string; target: string }): boolean =>
+        !this.hiddenRelationTypes.has(e.type) && this.inScope(e.source) && this.inScope(e.target);
+
+    inScope(id: string): boolean { return !this.scopeFn || this.scopeFn(id); }
 
     /** The visible node set: union of every root's neighbourhood, capped. */
     private computeVisibleNodes(): Set<string> {
@@ -316,11 +351,12 @@ export class GraphViewModel<N, E> {
         // Seeds first so every root is shown even when another root's
         // neighbourhood would exhaust the cap.
         for (const [id] of roots) {
+            if (!this.inScope(id)) continue;
             if (vis.size >= this.maxVisible) { this.truncated = true; break; }
             vis.add(id);
         }
         for (const [id, depth] of roots) {
-            if (depth <= 0) continue;
+            if (depth <= 0 || !this.inScope(id)) continue;
             // Bounded BFS: never walks more than the cap, however dense the graph.
             const { nodes, truncated } = this.engine.neighborhood([id], depth,
                 { limit: this.maxVisible, edgeFilter: this.edgeShown });

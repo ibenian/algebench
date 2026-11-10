@@ -25900,6 +25900,7 @@ var _lastFocusedSurface = null;
 function _classifyFocusTarget(target) {
 	const el = target;
 	if (!el || !el.closest) return null;
+	if (el.closest(".kg-explorer, #kg-layer")) return "knowledge graph";
 	if (el.closest("#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip")) return "graph";
 	if (el.closest("#mathbox-container, #mathbox-overlay, canvas")) return "viewport";
 	if (el.closest(".explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts")) return "panel";
@@ -26056,6 +26057,12 @@ function buildChatContext() {
 	} catch (e) {
 		console.warn("[chat] failed to read graph panel state:", e);
 	}
+	if (typeof window.algebenchGetKnowledgeGraphState === "function") try {
+		const kg = window.algebenchGetKnowledgeGraphState();
+		if (kg) runtime.knowledgeGraph = kg;
+	} catch (e) {
+		console.warn("[chat] failed to read knowledge graph state:", e);
+	}
 	if (_lastFocusedSurface) runtime.lastFocusedSurface = _lastFocusedSurface;
 	const viewing = [];
 	const graphActive = runtime.graphPanel && runtime.graphPanel.open;
@@ -26065,6 +26072,7 @@ function buildChatContext() {
 		const proofPanel = document.getElementById("proof-panel");
 		if (proofPanel && !proofPanel.classList.contains("hidden")) viewing.push("proof");
 	} else if (runtime.activeTab === "doc") viewing.push("doc");
+	if (runtime.knowledgeGraph?.open) viewing.push(`knowledge graph (${runtime.knowledgeGraph.presentation})`);
 	runtime.userViewing = viewing;
 	try {
 		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
@@ -30756,6 +30764,7 @@ var GraphExplorer = class {
                            aria-label="Search concepts" aria-autocomplete="list" aria-expanded="false" role="combobox">
                     <ul class="kg-search-results hidden" role="listbox" aria-label="Matching concepts"></ul>
                 </div>
+                ${opts.scopes?.length ? `<span class="kg-scope" role="radiogroup" aria-label="Scope">${opts.scopes.map((sc) => `<button type="button" class="kg-scope-btn" role="radio" aria-checked="false" data-kg-scope="${esc(sc.id)}" title="${esc(sc.title)}">${esc(sc.label)}</button>`).join("")}</span>` : ""}
                 <button type="button" class="kg-tb-btn" data-kg-tb="back" title="Previous focus (Alt+←)" aria-label="Previous focus">${ICON.back}</button>
                 <button type="button" class="kg-tb-btn" data-kg-tb="forward" title="Next focus (Alt+→)" aria-label="Next focus">${ICON.forward}</button>
                 ${opts.overview ? `<button type="button" class="kg-tb-btn" data-kg-tb="overview" title="Overview of the best-connected concepts" aria-label="Overview">${ICON.overview}</button>` : ""}
@@ -30848,6 +30857,13 @@ var GraphExplorer = class {
 		this.unmount();
 		for (const u of this.unsubs.splice(0)) u();
 	}
+	/** Enable/disable one scope choice (e.g. Local when the lesson has no graph). */
+	setScopeAvailable(id, available, title) {
+		const b = this.root.querySelector(`[data-kg-scope="${CSS.escape(id)}"]`);
+		if (!b) return;
+		b.disabled = !available;
+		if (title) b.title = title;
+	}
 	setStatusExtra(html) {
 		this.statusExtra = html;
 		this.renderChrome();
@@ -30881,6 +30897,11 @@ var GraphExplorer = class {
 		const vm = this.vm;
 		const back = this.root.querySelector("[data-kg-tb=\"back\"]");
 		back.disabled = !vm.canGoBack;
+		for (const b of this.root.querySelectorAll("[data-kg-scope]")) {
+			const on = b.dataset.kgScope === vm.scopeId;
+			b.classList.toggle("active", on);
+			b.setAttribute("aria-checked", String(on));
+		}
 		this.root.querySelector("[data-kg-tb=\"forward\"]").disabled = !vm.canGoForward;
 		this.root.querySelector(".kg-depth").classList.toggle("kg-disabled", vm.focus === null);
 		this.depthLabel.textContent = vm.focus === null ? "overview" : `${vm.focusDepth}-hop`;
@@ -30945,6 +30966,11 @@ var GraphExplorer = class {
 			const tb = t.closest("[data-kg-tb]");
 			if (tb) {
 				this.toolbarAction(tb.dataset.kgTb);
+				return;
+			}
+			const scope = t.closest("[data-kg-scope]");
+			if (scope) {
+				if (!scope.disabled) this.opts.onScope?.(scope.dataset.kgScope);
 				return;
 			}
 			const mode = t.closest("[data-kg-mode]");
@@ -31179,12 +31205,14 @@ var GraphViewModel = class {
 		this.positions = /* @__PURE__ */ new Map();
 		this.roots = /* @__PURE__ */ new Map();
 		this.hiddenRelationTypes = /* @__PURE__ */ new Set();
+		this.scopeId = "global";
+		this.scopeFn = null;
 		this.truncated = false;
 		this._visibleNodes = /* @__PURE__ */ new Set();
 		this._visibleEdges = /* @__PURE__ */ new Set();
 		this.history = [];
 		this.future = [];
-		this.edgeShown = (e) => !this.hiddenRelationTypes.has(e.type);
+		this.edgeShown = (e) => !this.hiddenRelationTypes.has(e.type) && this.inScope(e.source) && this.inScope(e.target);
 		this.engine = engine;
 		this.graphType = opts.graphType;
 		this.contextId = opts.contextId;
@@ -31204,6 +31232,15 @@ var GraphViewModel = class {
 	}
 	get canGoForward() {
 		return this.future.length > 0;
+	}
+	/** Earlier foci, most recent first (deduplicated) — what the learner looked at before. */
+	recentFoci(limit = 5) {
+		const out = [];
+		for (let i = this.history.length - 1; i >= 0 && out.length < limit; i--) {
+			const f = this.history[i].focus;
+			if (f && f !== this.focus && !out.includes(f) && this.engine.hasNode(f)) out.push(f);
+		}
+		return out;
 	}
 	get historyLength() {
 		return this.history.length;
@@ -31285,7 +31322,7 @@ var GraphViewModel = class {
 		this.pushHistory();
 		const ranked = [];
 		for (const n of this.engine.allNodes()) {
-			if (filter && !filter(n)) continue;
+			if (filter && !filter(n) || !this.inScope(n.id)) continue;
 			ranked.push([n.id, this.engine.degree(n.id)]);
 		}
 		ranked.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -31339,12 +31376,27 @@ var GraphViewModel = class {
 		this.recompute();
 		this.emitState("filter");
 	}
+	/**
+	* Restrict what may be shown to a scope (e.g. "local" = the open lesson's
+	* concepts). Presentation-only: the engine is untouched and switching back
+	* restores the full neighbourhoods. Roots outside the scope stay recorded
+	* but contribute nothing until the scope includes them again.
+	*/
+	setScope(id, predicate) {
+		if (id === this.scopeId && predicate === this.scopeFn) return;
+		this.scopeId = id;
+		this.scopeFn = predicate;
+		if (this.selection?.kind === "node" && !this.inScope(this.selection.id)) this.selection = null;
+		this.recompute(this.focus ?? void 0);
+		this.emitState("filter");
+	}
 	/** Case-insensitive substring search, best (prefix) matches first. */
 	search(query, limit = 12) {
 		const q = query.trim().toLowerCase();
 		if (!q) return [];
 		const hits = [];
 		for (const n of this.engine.allNodes()) {
+			if (!this.inScope(n.id)) continue;
 			const at = this.searchText(n).indexOf(q);
 			if (at >= 0) hits.push([n.id, at === 0 ? 0 : 1]);
 		}
@@ -31394,12 +31446,16 @@ var GraphViewModel = class {
 	emitState(reason) {
 		this.events.emit("state", { reason });
 	}
+	inScope(id) {
+		return !this.scopeFn || this.scopeFn(id);
+	}
 	/** The visible node set: union of every root's neighbourhood, capped. */
 	computeVisibleNodes() {
 		const vis = /* @__PURE__ */ new Set();
 		this.truncated = false;
 		const roots = [...this.roots].sort((a, b) => (a[0] === this.focus ? -1 : b[0] === this.focus ? 1 : 0) || b[1] - a[1]);
 		for (const [id] of roots) {
+			if (!this.inScope(id)) continue;
 			if (vis.size >= this.maxVisible) {
 				this.truncated = true;
 				break;
@@ -31407,7 +31463,7 @@ var GraphViewModel = class {
 			vis.add(id);
 		}
 		for (const [id, depth] of roots) {
-			if (depth <= 0) continue;
+			if (depth <= 0 || !this.inScope(id)) continue;
 			const { nodes, truncated } = this.engine.neighborhood([id], depth, {
 				limit: this.maxVisible,
 				edgeFilter: this.edgeShown
@@ -32250,6 +32306,83 @@ function lessonTitleOf(kg, edge, lessonId) {
 	return lessonId;
 }
 Object.keys(RELATION_TYPES);
+var DEF_MAX = 300;
+var clip = (s, n) => s === void 0 ? void 0 : s.length > n ? s.slice(0, n - 1) + "…" : s;
+function concept(kg, id, extra = {}) {
+	const n = kg.getNode(id);
+	if (!n) return null;
+	const c = {
+		id,
+		label: n.data.label,
+		...extra
+	};
+	if (n.data.category) c.category = n.data.category;
+	if (n.data.lessons.length) c.lessons = n.data.lessons.map((l) => l.lessonTitle);
+	return c;
+}
+/** One relation as a sentence, read source → target. */
+function relationSentence(kg, id) {
+	const e = kg.getEdge(id);
+	if (!e) return null;
+	const name = (n) => kg.getNode(n)?.data.label ?? n;
+	return `${name(e.source)} ${relationInfo(e.type).verb} ${name(e.target)}`;
+}
+function snapshotKnowledgeView(vm, open, now = /* @__PURE__ */ new Date()) {
+	const kg = vm.engine;
+	const def = (id) => clip(kg.getNode(id)?.data.definition, DEF_MAX);
+	const focus = vm.focus ? concept(kg, vm.focus, {
+		role: "focus",
+		definition: def(vm.focus)
+	}) : null;
+	let selected = null;
+	const sel = vm.selection;
+	if (sel?.kind === "node" && sel.id !== vm.focus) selected = concept(kg, sel.id, {
+		role: "selected",
+		definition: def(sel.id)
+	});
+	else if (sel?.kind === "edge") {
+		const sentence = relationSentence(kg, sel.id);
+		if (sentence) {
+			const d = kg.getEdge(sel.id)?.data.description;
+			selected = {
+				kind: "relation",
+				sentence,
+				...d ? { description: clip(d, DEF_MAX) } : {}
+			};
+		}
+	}
+	const rank = (id) => id === vm.focus ? 0 : vm.isExpanded(id) ? 1 : 2;
+	const label = (id) => kg.getNode(id)?.data.label ?? id;
+	const ids = [...vm.visibleNodes].sort((a, b) => rank(a) - rank(b) || label(a).localeCompare(label(b)));
+	const visibleConcepts = [];
+	for (const id of ids.slice(0, 40)) {
+		const extra = {};
+		if (id === vm.focus) extra.role = "focus";
+		else if (sel?.kind === "node" && sel.id === id) extra.role = "selected";
+		if (vm.isExpanded(id)) extra.expanded = true;
+		const c = concept(kg, id, extra);
+		if (c) {
+			delete c.lessons;
+			visibleConcepts.push(c);
+		}
+	}
+	const rels = [...vm.visibleEdges].map((id) => relationSentence(kg, id)).filter((s) => !!s).sort();
+	return {
+		open,
+		context: vm.contextId,
+		presentation: vm.presentation,
+		scope: vm.scopeId,
+		focus,
+		selected,
+		visibleConcepts,
+		visibleRelations: rels.slice(0, 60),
+		conceptsOmitted: Math.max(0, ids.length - 40),
+		relationsOmitted: Math.max(0, rels.length - 60),
+		recentFoci: vm.recentFoci(5).map(label),
+		totalConcepts: kg.nodeCount,
+		at: now.toISOString()
+	};
+}
 //#endregion
 //#region src/graph-explorer/knowledge-app.ts
 /** The single, app-wide knowledge store. Every explorer reads it; lessons and
@@ -32343,11 +32476,70 @@ function coverageText() {
 function followActiveLesson() {
 	if (!globalSlot) return;
 	const vm = globalSlot.explorer.vm;
+	globalSlot.explorer.setScopeAvailable("local", !!activeLesson.focus, activeLesson.focus ? SCOPE_TITLES.local : "The current lesson has no knowledge graph");
+	if (vm.scopeId === "local") applyScope(vm, activeLesson.focus ? "local" : "global", activeLesson.id, activeLesson.focus);
 	if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
 		globalFollowedLesson = activeLesson.id;
 		vm.focusOn(activeLesson.focus);
 	} else if (vm.visibleNodes.size === 0) vm.showOverview(40);
 	globalSlot.explorer.setStatusExtra(coverageText());
+}
+/**
+* The view the learner most recently worked in — focus, selection, visible
+* concepts. Only user-visible activity counts (not background data patches or
+* the hidden lesson graph's initial focus), and it is kept after the explorer
+* closes: the tutor keeps knowing what was explored, flagged `open: false`.
+*/
+var lastViewed = null;
+function trackForTutor(vm) {
+	vm.events.on("state", ({ reason }) => {
+		if (reason !== "data" && vm.presentation !== "closed") lastViewed = vm;
+	});
+}
+/** `runtime.knowledgeGraph` for the chat context; null until a graph was opened. */
+function getKnowledgeGraphContext() {
+	if (!lastViewed) return null;
+	try {
+		return snapshotKnowledgeView(lastViewed, lastViewed.presentation !== "closed");
+	} catch (err) {
+		console.warn("[knowledge-graph] context snapshot failed", err);
+		return null;
+	}
+}
+var SCOPE_TITLES = {
+	local: "Local — only this lesson's concepts",
+	global: "Global — concepts from every lesson"
+};
+var SCOPES = [{
+	id: "local",
+	label: "Local",
+	title: SCOPE_TITLES.local
+}, {
+	id: "global",
+	label: "Global",
+	title: SCOPE_TITLES.global
+}];
+/**
+* Local scope membership: concepts the lesson references, plus runtime
+* additions linked to one of them (a concept proposed while studying the
+* lesson belongs with it). Read live from the store, so updates are classified
+* as they arrive.
+*/
+function lessonScope(lessonId) {
+	const taught = (id) => !!knowledgeStore.getNode(id)?.data.lessons.some((l) => l.lessonId === lessonId);
+	return (id) => {
+		const n = knowledgeStore.getNode(id);
+		if (!n) return false;
+		if (n.data.lessons.some((l) => l.lessonId === lessonId)) return true;
+		return n.data.origin === "runtime" && knowledgeStore.neighbors(id).some(taught);
+	};
+}
+/** Switch a view's scope; if its focus falls outside (or nothing is left), re-centre on `fallbackFocus`. */
+function applyScope(vm, scopeId, lessonId, fallbackFocus) {
+	if (scopeId === "local" && lessonId) {
+		vm.setScope("local", lessonScope(lessonId));
+		if ((vm.focus !== null && !vm.inScope(vm.focus) || vm.visibleNodes.size === 0) && fallbackFocus && vm.inScope(fallbackFocus)) vm.focusOn(fallbackFocus);
+	} else vm.setScope("global", null);
 }
 function updateCoverageText() {
 	globalSlot?.explorer.setStatusExtra(coverageText());
@@ -32467,9 +32659,12 @@ function getGlobalSlot() {
 		} },
 		overview: () => vm.showOverview(40),
 		makeAskButton,
+		scopes: SCOPES,
+		onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
 		emptyText: "No lesson knowledge graphs yet. Lessons add one with a \"knowledgeGraph\" block."
 	});
 	slot.explorer.setStatusExtra(coverageText());
+	trackForTutor(vm);
 	globalSlot = slot;
 	return slot;
 }
@@ -32577,10 +32772,14 @@ function onLessonLoaded(spec) {
 		actions: { openLesson: (id, sc, st) => {
 			openLesson(id, sc, st);
 		} },
-		makeAskButton
+		makeAskButton,
+		scopes: SCOPES,
+		onScope: (id) => applyScope(vm, id, lessonId, focus)
 	});
 	lessonSlot = slot;
 	const focus = parsed.focus ?? parsed.concepts[0].id;
+	trackForTutor(vm);
+	vm.setScope("local", lessonScope(lessonId));
 	vm.focusOn(focus, 1);
 	activeLesson.focus = focus;
 	followActiveLesson();
@@ -32664,6 +32863,7 @@ function setupKnowledgeGraph() {
 	window.addEventListener("algebench:lessonload", (ev) => {
 		onLessonLoaded(ev.detail?.spec);
 	});
+	window.algebenchGetKnowledgeGraphState = getKnowledgeGraphContext;
 	window.algebenchKnowledgeGraph = {
 		store: knowledgeStore,
 		applyUpdate: applyKnowledgeUpdate,

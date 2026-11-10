@@ -105,6 +105,42 @@ the focus history like a browser. Every concept and relationship has an
 the focus, visible concepts and visible relationships at the moment of the click
 (bounded to 30 concepts / 40 relationships, with the remainder counted).
 
+### Tutor context (CTX)
+
+The AI tutor sees the Knowledge Graph view the learner last explored, via the
+chat context (`runtime.knowledgeGraph`, viewable in the CTX popup):
+
+- `agent-context.ts` `snapshotKnowledgeView` (pure, tested) — open/closed,
+  which explorer and mode, scope, the focus and the selection (with short
+  definitions; a selected relationship as "A uses B" plus its description),
+  visible concepts (focus first, expanded flagged) and visible relationships as
+  sentences, earlier foci, and the store size. Bounded: 40 concepts, 60
+  relations, 300-char definitions, remainder counted.
+- `knowledge-app.ts` tracks the last explorer the learner *used* (user-visible
+  focus / selection / expansion / scope / mode changes — not background data
+  patches) and keeps it after the explorer closes, flagged `open: false`, so
+  the tutor still knows what was studied. `chat.ts` adds it to every turn's
+  context and lists "knowledge graph (popup)" in USER VIEWING while open.
+- `backend/agent_tools.py` `knowledge_graph_section` renders it into the system
+  prompt ("## Knowledge Graph — OPEN now …" / "— closed — this is the LAST view
+  …"), re-capping every list server-side. Nothing is sent until a graph has
+  been opened; nothing persists across a page reload.
+
+### Scopes: Local and Global
+
+Both explorers have a **Local | Global** switch. **Local** shows only the open
+lesson's concepts — those its `knowledgeGraph` names, plus runtime additions
+linked to one of them; **Global** shows concepts from every lesson. A lesson's
+own graph opens Local, the status-bar graph opens Global.
+
+Scope is presentation-only (`GraphViewModel.setScope(id, predicate)`): the
+engine is untouched, and focus neighbourhoods, overview, search, edges and the
+"＋N" hidden-neighbour badges all respect it. Switching scope is an incremental
+diff; if the focus falls outside the new scope (or nothing is left on screen)
+the view re-centres on the lesson's main concept, otherwise it stays put. In
+the global graph, Local means the *current* lesson: it follows lesson changes,
+and is disabled (falling back to Global) when the open lesson has no graph.
+
 ### Following the open lesson
 
 The lesson section always shows the loaded lesson's graph (it is rebuilt on

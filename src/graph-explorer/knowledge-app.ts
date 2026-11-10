@@ -17,6 +17,7 @@ import { loadBuiltinScene } from '/ui.js';
 import { GraphExplorer } from '/graph-explorer/explorer.js';
 import { GraphViewModel, type PresentationMode } from '/graph-explorer/view-model.js';
 import { createKnowledgeAdapter } from '/graph-explorer/knowledge-adapter.js';
+import { snapshotKnowledgeView, type KnowledgeGraphContext } from '/graph-explorer/agent-context.js';
 import {
     applyRuntimeUpdate, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, type RuntimeUpdate,
     type ConceptData, type KnowledgeGraph, type ParsedLessonGraph, type RelationData,
@@ -123,6 +124,11 @@ function coverageText(): string {
 function followActiveLesson(): void {
     if (!globalSlot) return;
     const vm = globalSlot.explorer.vm;
+    // Local scope means "the open lesson": it follows lesson changes, and falls
+    // back to Global when the new lesson has no knowledge graph.
+    globalSlot.explorer.setScopeAvailable('local', !!activeLesson.focus,
+        activeLesson.focus ? SCOPE_TITLES.local : 'The current lesson has no knowledge graph');
+    if (vm.scopeId === 'local') applyScope(vm, activeLesson.focus ? 'local' : 'global', activeLesson.id, activeLesson.focus);
     if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
         globalFollowedLesson = activeLesson.id;
         vm.focusOn(activeLesson.focus);
@@ -130,6 +136,70 @@ function followActiveLesson(): void {
         vm.showOverview(40);
     }
     globalSlot.explorer.setStatusExtra(coverageText());
+}
+
+// ---------- tutor context (CTX) ----------
+
+/**
+ * The view the learner most recently worked in — focus, selection, visible
+ * concepts. Only user-visible activity counts (not background data patches or
+ * the hidden lesson graph's initial focus), and it is kept after the explorer
+ * closes: the tutor keeps knowing what was explored, flagged `open: false`.
+ */
+let lastViewed: GraphViewModel<ConceptData, RelationData> | null = null;
+
+function trackForTutor(vm: GraphViewModel<ConceptData, RelationData>): void {
+    vm.events.on('state', ({ reason }) => {
+        if (reason !== 'data' && vm.presentation !== 'closed') lastViewed = vm;
+    });
+}
+
+/** `runtime.knowledgeGraph` for the chat context; null until a graph was opened. */
+export function getKnowledgeGraphContext(): KnowledgeGraphContext | null {
+    if (!lastViewed) return null;
+    try { return snapshotKnowledgeView(lastViewed, lastViewed.presentation !== 'closed'); }
+    catch (err) { console.warn('[knowledge-graph] context snapshot failed', err); return null; }
+}
+
+// ---------- scopes ----------
+
+const SCOPE_TITLES = {
+    local: "Local — only this lesson's concepts",
+    global: 'Global — concepts from every lesson',
+};
+const SCOPES = [
+    { id: 'local', label: 'Local', title: SCOPE_TITLES.local },
+    { id: 'global', label: 'Global', title: SCOPE_TITLES.global },
+];
+
+/**
+ * Local scope membership: concepts the lesson references, plus runtime
+ * additions linked to one of them (a concept proposed while studying the
+ * lesson belongs with it). Read live from the store, so updates are classified
+ * as they arrive.
+ */
+function lessonScope(lessonId: string): (id: string) => boolean {
+    const taught = (id: string) => !!knowledgeStore.getNode(id)?.data.lessons.some((l) => l.lessonId === lessonId);
+    return (id) => {
+        const n = knowledgeStore.getNode(id);
+        if (!n) return false;
+        if (n.data.lessons.some((l) => l.lessonId === lessonId)) return true;
+        return n.data.origin === 'runtime' && knowledgeStore.neighbors(id).some(taught);
+    };
+}
+
+/** Switch a view's scope; if its focus falls outside (or nothing is left), re-centre on `fallbackFocus`. */
+function applyScope(vm: GraphViewModel<ConceptData, RelationData>, scopeId: string,
+                    lessonId: string | null, fallbackFocus: string | null): void {
+    if (scopeId === 'local' && lessonId) {
+        vm.setScope('local', lessonScope(lessonId));
+        // Keep an overview as an overview; re-centre only when the focus left the
+        // scope or nothing in scope is on screen.
+        const lost = (vm.focus !== null && !vm.inScope(vm.focus)) || vm.visibleNodes.size === 0;
+        if (lost && fallbackFocus && vm.inScope(fallbackFocus)) vm.focusOn(fallbackFocus);
+    } else {
+        vm.setScope('global', null);
+    }
 }
 
 function updateCoverageText(): void {
@@ -258,9 +328,12 @@ function getGlobalSlot(): ExplorerSlot {
         actions: { openLesson: (id, s, t) => { void openLesson(id, s, t); } },
         overview: () => vm.showOverview(40),
         makeAskButton,
+        scopes: SCOPES,
+        onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
         emptyText: 'No lesson knowledge graphs yet. Lessons add one with a "knowledgeGraph" block.',
     });
     slot.explorer.setStatusExtra(coverageText());
+    trackForTutor(vm);
     globalSlot = slot;
     return slot;
 }
@@ -358,9 +431,14 @@ export function onLessonLoaded(spec: unknown): void {
         onRequestMode: (m) => { void setMode(slot, m); },
         actions: { openLesson: (id, sc, st) => { void openLesson(id, sc, st); } },
         makeAskButton,
+        scopes: SCOPES,
+        onScope: (id) => applyScope(vm, id, lessonId, focus),
     });
     lessonSlot = slot;
     const focus = parsed.focus ?? parsed.concepts[0]!.id;  // ! — concepts non-empty (checked above)
+    trackForTutor(vm);
+    // A lesson's own graph opens Local; Global is one click away.
+    vm.setScope('local', lessonScope(lessonId));
     vm.focusOn(focus, 1);
     activeLesson.focus = focus;
     followActiveLesson();
@@ -447,6 +525,8 @@ export function setupKnowledgeGraph(): void {
         onLessonLoaded(ev.detail?.spec);
     });
     // Debug / integration handle (console demos, future tutor tools).
+    // The tutor reads the last-viewed graph through the chat context (CTX).
+    window.algebenchGetKnowledgeGraphState = getKnowledgeGraphContext;
     window.algebenchKnowledgeGraph = {
         store: knowledgeStore,
         applyUpdate: applyKnowledgeUpdate,

@@ -5771,13 +5771,16 @@ body:has(.push-array) #legend { display: none; }
    (wheel, pinch, +/− keys and the fit button remain) rather than wrap. */
 .kg-toolbar { flex: none; display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; padding: 6px 8px; border-bottom: 1px solid var(--border-color); min-width: 0; }
 .kg-toolbar > * { flex-shrink: 0; }
-.kg-toolbar > .kg-search { flex: 1 1 160px; min-width: 90px; max-width: 280px; }
+.kg-toolbar > .kg-search { flex: 1 1 160px; min-width: 70px; max-width: 280px; }
 
 @container kg (max-width: 660px) {
     .kg-zoom > :not([data-kg-tb="fit"]), .kg-tb-sep { display: none; }
 }
 @container kg (max-width: 470px) {
     .kg-depth-label { display: none; }
+}
+@container kg (max-width: 420px) {
+    .kg-zoom [data-kg-tb="fit"] { display: none; }   /* double-click the background or F still fits */
 }
 .kg-tb-btn {
     min-width: 26px; height: 26px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
@@ -5786,6 +5789,13 @@ body:has(.push-array) #legend { display: none; }
 .kg-tb-btn:hover:not(:disabled) { background: var(--btn-hover); }
 .kg-tb-btn:focus-visible, .kg-btn:focus-visible, .kg-link:focus-visible, .kg-canvas:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
 .kg-tb-btn:disabled { opacity: 0.4; cursor: default; }
+.kg-scope { display: inline-flex; border: 1px solid var(--btn-border); border-radius: var(--radius-sm); overflow: hidden; }
+.kg-scope-btn { height: 26px; padding: 0 6px; font-size: 11px; border: none; background: var(--btn-bg); color: var(--muted-color); cursor: pointer; }
+.kg-scope-btn + .kg-scope-btn { border-left: 1px solid var(--btn-border); }
+.kg-scope-btn:hover:not(:disabled) { color: var(--text-color); background: var(--btn-hover); }
+.kg-scope-btn.active { background: var(--chip-bg); color: var(--text-color); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent-color); }
+.kg-scope-btn:disabled { opacity: 0.4; cursor: default; }
+.kg-scope-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
 .kg-zoom { display: inline-flex; align-items: center; gap: 3px; }
 .kg-zoom-level { font-family: var(--font-mono); font-size: 10px; min-width: 38px; text-align: center; color: var(--muted-color); cursor: pointer; user-select: none; }
 .kg-tb-sep { width: 1px; height: 18px; background: var(--border-color); margin: 0 2px; }

@@ -287,6 +287,8 @@ interface AlgeBenchChatRuntimeContext {
   projection?: string;
   proof?: unknown;
   graphPanel?: AlgeBenchGraphPanelState;
+  /** The Knowledge Graph view the learner last looked at (kept after it closes). */
+  knowledgeGraph?: import('/graph-explorer/agent-context.js').KnowledgeGraphContext;
   lastFocusedSurface?: string;
   userViewing?: string[];
   coach?: unknown;
@@ -328,6 +330,8 @@ interface Window {
    * the shared store and the validated runtime-update entry point that a
    * future tutor / personal-graph integration calls.
    */
+  /** src/graph-explorer/knowledge-app.ts — last-viewed Knowledge Graph for the chat context. */
+  algebenchGetKnowledgeGraphState?: () => import('/graph-explorer/agent-context.js').KnowledgeGraphContext | null;
   algebenchKnowledgeGraph?: {
     store: import('/graph-explorer/knowledge-model.js').KnowledgeGraph;
     applyUpdate: (update: { concepts?: unknown; relations?: unknown }) => { issues: string[] };

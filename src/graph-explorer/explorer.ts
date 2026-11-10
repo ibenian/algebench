@@ -49,6 +49,10 @@ export interface ExplorerOptions<N, E> {
     emptyText?: string;
     /** Extra toolbar controls supplied by the host. */
     toolbarExtras?: HTMLElement[];
+    /** Scope switch (e.g. Local / Global). The host owns what each scope means
+     *  and applies it with vm.setScope(); the explorer only shows the choice. */
+    scopes?: { id: string; label: string; title: string }[];
+    onScope?: (id: string) => void;
     /** Builds an "Ask AI" button (the host owns the chat); omitted = no button. */
     makeAskButton?: (title: string, getMessage: () => string) => HTMLElement;
 }
@@ -100,6 +104,8 @@ export class GraphExplorer<N, E> {
                            aria-label="Search concepts" aria-autocomplete="list" aria-expanded="false" role="combobox">
                     <ul class="kg-search-results hidden" role="listbox" aria-label="Matching concepts"></ul>
                 </div>
+                ${opts.scopes?.length ? `<span class="kg-scope" role="radiogroup" aria-label="Scope">${opts.scopes.map((sc) =>
+                    `<button type="button" class="kg-scope-btn" role="radio" aria-checked="false" data-kg-scope="${esc(sc.id)}" title="${esc(sc.title)}">${esc(sc.label)}</button>`).join('')}</span>` : ''}
                 <button type="button" class="kg-tb-btn" data-kg-tb="back" title="Previous focus (Alt+←)" aria-label="Previous focus">${ICON.back}</button>
                 <button type="button" class="kg-tb-btn" data-kg-tb="forward" title="Next focus (Alt+→)" aria-label="Next focus">${ICON.forward}</button>
                 ${opts.overview ? `<button type="button" class="kg-tb-btn" data-kg-tb="overview" title="Overview of the best-connected concepts" aria-label="Overview">${ICON.overview}</button>` : ''}
@@ -192,6 +198,14 @@ export class GraphExplorer<N, E> {
         for (const u of this.unsubs.splice(0)) u();
     }
 
+    /** Enable/disable one scope choice (e.g. Local when the lesson has no graph). */
+    setScopeAvailable(id: string, available: boolean, title?: string): void {
+        const b = this.root.querySelector<HTMLButtonElement>(`[data-kg-scope="${CSS.escape(id)}"]`);
+        if (!b) return;
+        b.disabled = !available;
+        if (title) b.title = title;
+    }
+
     setStatusExtra(html: string): void { this.statusExtra = html; this.renderChrome(); }
 
     focusSearch(): void { this.searchInput.focus(); this.searchInput.select(); }
@@ -224,6 +238,11 @@ export class GraphExplorer<N, E> {
         const vm = this.vm;
         const back = this.root.querySelector<HTMLButtonElement>('[data-kg-tb="back"]')!;
         back.disabled = !vm.canGoBack;
+        for (const b of this.root.querySelectorAll<HTMLButtonElement>('[data-kg-scope]')) {
+            const on = b.dataset.kgScope === vm.scopeId;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-checked', String(on));
+        }
         this.root.querySelector<HTMLButtonElement>('[data-kg-tb="forward"]')!.disabled = !vm.canGoForward;
         const depthBox = this.root.querySelector<HTMLElement>('.kg-depth')!;
         depthBox.classList.toggle('kg-disabled', vm.focus === null);
@@ -298,6 +317,8 @@ export class GraphExplorer<N, E> {
             const t = ev.target as HTMLElement;
             const tb = t.closest<HTMLElement>('[data-kg-tb]');
             if (tb) { this.toolbarAction(tb.dataset.kgTb!); return; }          // ! — selector guarantees it
+            const scope = t.closest<HTMLButtonElement>('[data-kg-scope]');
+            if (scope) { if (!scope.disabled) this.opts.onScope?.(scope.dataset.kgScope!); return; }
             const mode = t.closest<HTMLElement>('[data-kg-mode]');
             if (mode) { this.opts.onRequestMode(mode.dataset.kgMode as PresentationMode); return; }
             const hit = t.closest<HTMLElement>('.kg-search-results [data-kg-hit]');
