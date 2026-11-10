@@ -46,7 +46,7 @@ export interface ExplorerOptions<N, E> {
     /** Offer an "overview" button (global graph). */
     overview?: () => void;
     /** Shown when nothing is visible. */
-    emptyText?: string;
+    emptyText?: string | (() => string);
     /** Extra toolbar controls supplied by the host. */
     toolbarExtras?: HTMLElement[];
     /** Scope switch (e.g. Local / Global). The host owns what each scope means
@@ -263,7 +263,8 @@ export class GraphExplorer<N, E> {
         this.status.innerHTML = s;
         if (this.view?.isReady) {
             this.overlay.innerHTML = shown ? ''
-                : `<div class="kg-empty">${esc(this.opts.emptyText ?? 'Nothing to show yet. Search for a concept to start exploring.')}</div>`;
+                : `<div class="kg-empty">${esc((typeof this.opts.emptyText === 'function' ? this.opts.emptyText() : this.opts.emptyText)
+                    ?? 'Nothing to show yet. Search for a concept to start exploring.')}</div>`;
         }
     }
 

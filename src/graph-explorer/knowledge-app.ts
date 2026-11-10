@@ -130,11 +130,13 @@ function coverageText(): string {
 function followActiveLesson(): void {
     if (!globalSlot) return;
     const vm = globalSlot.explorer.vm;
-    // Local scope means "the open lesson": it follows lesson changes, and falls
-    // back to Global when the new lesson has no knowledge graph.
-    globalSlot.explorer.setScopeAvailable('local', !!activeLesson.focus,
-        activeLesson.focus ? SCOPE_TITLES.local : 'The current lesson has no knowledge graph');
-    if (vm.scopeId === 'local') applyScope(vm, activeLesson.focus ? 'local' : 'global', activeLesson.id, activeLesson.focus);
+    // Local scope means "the open lesson": it follows lesson changes. A lesson
+    // without a knowledge graph has no local concepts, so Local is then empty
+    // (with an explanation) — it never silently shows other lessons.
+    if (vm.scopeId === 'local') applyScope(vm, 'local', activeLesson.id, activeLesson.focus);
+    // A lesson with no concept of its own: whatever was focused belongs to
+    // another lesson, so it is stale context — clear it (Back restores it).
+    if (!activeLesson.focus) clearForeignFocus();
     if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
         globalFollowedLesson = activeLesson.id;
         const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
@@ -198,8 +200,9 @@ function lessonScope(lessonId: string): (id: string) => boolean {
 /** Switch a view's scope; if its focus falls outside (or nothing is left), re-centre on `fallbackFocus`. */
 function applyScope(vm: GraphViewModel<ConceptData, RelationData>, scopeId: string,
                     lessonId: string | null, fallbackFocus: string | null): void {
-    if (scopeId === 'local' && lessonId) {
-        vm.setScope('local', lessonScope(lessonId));
+    if (scopeId === 'local') {
+        // No open lesson: nothing is local.
+        vm.setScope('local', lessonId ? lessonScope(lessonId) : () => false);
         // Keep an overview as an overview; re-centre only when the focus left the
         // scope or nothing in scope is on screen.
         const lost = (vm.focus !== null && !vm.inScope(vm.focus)) || vm.visibleNodes.size === 0;
@@ -338,7 +341,11 @@ function getGlobalSlot(): ExplorerSlot {
         detailsContext: () => ({ currentLessonId: currentLessonId() }),
         scopes: SCOPES,
         onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
-        emptyText: 'No lesson knowledge graphs yet. Lessons add one with a "knowledgeGraph" block.',
+        emptyText: () => vm.scopeId === 'local'
+            ? (activeLesson.focus
+                ? "None of this lesson's concepts are in view. Search, or switch to Global."
+                : 'This lesson has no knowledge graph yet. Switch to Global to explore concepts from other lessons.')
+            : 'No lesson knowledge graphs yet. Lessons add one with a "knowledgeGraph" block.',
     });
     slot.explorer.setStatusExtra(coverageText());
     trackForTutor(vm);
@@ -552,12 +559,38 @@ export function focusKnowledgeConcept(conceptId: string, _opts: { source?: Focus
     return changed;
 }
 
+/**
+ * Clear a focus / selection that doesn't belong to the open lesson — it is
+ * stale context (for the learner and for the tutor's CTX). The view itself
+ * stays; Back restores the old focus. A focus that is in the lesson but with a
+ * foreign concept selected only loses the selection.
+ */
+function clearForeignFocus(): void {
+    const lessonId = currentLessonId();
+    const inLesson = lessonId ? lessonScope(lessonId) : () => false;
+    for (const slot of [lessonSlot, globalSlot]) {
+        if (!slot) continue;
+        const vm = slot.explorer.vm;
+        const sel = vm.selection;
+        const selForeign = sel?.kind === 'node' ? !inLesson(sel.id)
+            : sel?.kind === 'edge' ? (() => { const e = knowledgeStore.getEdge(sel.id); return !e || (!inLesson(e.source) && !inLesson(e.target)); })()
+            : false;
+        if (vm.focus !== null && !inLesson(vm.focus)) vm.clearFocus();
+        else if (selForeign) vm.select(null);
+    }
+}
+
 /** Scene/step changed: focus the concept the lesson teaches there (if any). */
 function followLessonPosition(): void {
     if (!lessonSlot || lessonSlot.lessonId !== currentLessonId()) return;
     const id = conceptAtPlace(lessonSlot.parsed.concepts, lessonSlot.lessonId,
                               state.currentSceneIndex, state.currentStepIndex, activeLesson.focus ?? undefined);
-    if (!id || id === activeLesson.placeFocus) return;     // same concept as the last step: leave the view alone
+    if (!id) {                                              // nothing taught here: drop a focus from elsewhere,
+        activeLesson.placeFocus = null;                     // and let the next mapped place focus again
+        clearForeignFocus();
+        return;
+    }
+    if (id === activeLesson.placeFocus) return;             // same concept as the last step: leave the view alone
     activeLesson.placeFocus = id;
     focusKnowledgeConcept(id, { source: 'navigation' });
 }

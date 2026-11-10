@@ -310,3 +310,19 @@ test('scope: a focus outside the scope shows nothing until refocused; data added
     g.updateNode('n', { label: 'N' });                      // any data change re-evaluates the scope
     assert.ok(vm.visibleNodes.has('n'));
 });
+
+test('clearFocus: no focus or selection, the view stays, Back restores it', () => {
+    const { vm, patches } = vmOf(sample());
+    vm.focusOn('b');
+    const shown = sorted(vm.visibleNodes);
+    const n = patches.length;
+    assert.equal(vm.clearFocus(), true);
+    assert.equal(vm.focus, null);
+    assert.equal(vm.selection, null);
+    assert.deepEqual(sorted(vm.visibleNodes), shown, 'nothing disappears');
+    assert.equal(patches.length, n, 'no view change');
+    assert.equal(vm.clearFocus(), false, 'nothing left to clear');
+    vm.back();
+    assert.equal(vm.focus, 'b');
+    assert.deepEqual(vm.selection, { kind: 'node', id: 'b' });
+});

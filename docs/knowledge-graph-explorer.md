@@ -139,7 +139,8 @@ engine is untouched, and focus neighbourhoods, overview, search, edges and the
 diff; if the focus falls outside the new scope (or nothing is left on screen)
 the view re-centres on the lesson's main concept, otherwise it stays put. In
 the global graph, Local means the *current* lesson: it follows lesson changes,
-and is disabled (falling back to Global) when the open lesson has no graph.
+and in a lesson without a knowledge graph it is empty, with a message pointing
+to Global (it never silently shows other lessons' concepts).
 
 ### Setting the focus (standard entry point)
 
@@ -180,6 +181,20 @@ It opens the global graph focused on that concept.
 blurs on mousedown, so the explorer focuses on pointer release): `/` search,
 `Enter` focus the selection, `E`/`C` expand/collapse, `Alt+←/→` or
 `Backspace` back/forward, `+`/`−` zoom, `F` fit, `Esc` close.
+
+### Stale focus is cleared
+
+A focus or selection that doesn't belong to the open lesson is stale context —
+for the learner and for the tutor's CTX. It is cleared (`GraphViewModel.clearFocus`:
+no focus, no selection, the view stays; Back restores it):
+
+- on a lesson change to a lesson with no concept of its own;
+- on a scene/step change, inside a lesson with a knowledge graph, to a place no
+  concept refers to (the next mapped place focuses again).
+
+In lessons without a graph, step changes leave the graph alone, so free
+exploration there isn't undone on every step. A selected concept from elsewhere
+next to an in-lesson focus only loses the selection.
 
 ### Following the open lesson
 

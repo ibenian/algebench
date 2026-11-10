@@ -220,6 +220,22 @@ export class GraphViewModel<N, E> {
         this.emitState('focus');
     }
 
+    /**
+     * Drop the focus and selection but keep what is on screen (the old focus's
+     * neighbourhood stays as an ordinary expansion). Used when the learner moves
+     * to a lesson the focused concept doesn't belong to. Goes on the history,
+     * so Back restores it. Returns false when there was nothing to clear.
+     */
+    clearFocus(): boolean {
+        if (this.focus === null && this.selection === null) return false;
+        this.pushHistory();
+        this.focus = null;
+        this.selection = null;
+        this.recompute();
+        this.emitState('focus');
+        return true;
+    }
+
     /** Return to the view before the last focusOn / showOverview. */
     back(): boolean {
         const snap = this.history.pop();
