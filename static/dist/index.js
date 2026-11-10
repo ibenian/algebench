@@ -18368,6 +18368,22 @@ function _learnButton(name) {
 	});
 	return btn;
 }
+var KG_ICON = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><circle cx=\"4.5\" cy=\"6\" r=\"2\"/><circle cx=\"19.5\" cy=\"6\" r=\"2\"/><circle cx=\"12\" cy=\"20.5\" r=\"2\"/><path d=\"M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5\"/></svg>";
+/** "Show in Knowledge Graph": open the graph focused on the concept this term is linked to. */
+function _knowledgeGraphButton(name, conceptId) {
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "glossary-learn-btn glossary-kg-btn";
+	btn.innerHTML = KG_ICON;
+	btn.title = `Show ${stripGlossaryMarkers(name)} in the Knowledge Graph`;
+	btn.setAttribute("aria-label", btn.title);
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		hideGlossaryTip();
+		window.algebenchKnowledgeGraph?.openConcept(conceptId, "popup");
+	});
+	return btn;
+}
 function _fill(tip, key, entry) {
 	const name = glossaryTermName(key, entry);
 	tip.el.innerHTML = "";
@@ -18379,6 +18395,8 @@ function _fill(tip, key, entry) {
 	head.appendChild(title);
 	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt && stripGlossaryMarkers(entry.prompt) || `Explain "${name}" in the context of what I'm looking at.`));
 	if (window.algebenchPlanAvailable) head.appendChild(_learnButton(name));
+	const conceptId = window.algebenchKnowledgeGraph?.conceptForGlossaryKey(key);
+	if (conceptId) head.appendChild(_knowledgeGraphButton(name, conceptId));
 	tip.el.appendChild(head);
 	if (entry.markdown) {
 		const body = document.createElement("div");
@@ -30105,8 +30123,27 @@ function themeColors(el) {
 		technique: v("--code-function", "#a9c47f"),
 		invariant: v("--code-decorator", "#c49bd8"),
 		analysis: v("--code-constant", "#d48f6a"),
-		font: v("--font-body", "sans-serif")
+		font: v("--font-body", "sans-serif"),
+		neon: mixHex(v("--accent-color", "#d9a441"), "#ffffff", .6),
+		...document.documentElement.dataset.theme === "light" ? {
+			neonText: v("--accent-color", "#9a6d1c"),
+			neonTextGlow: mixHex(v("--accent-color", "#9a6d1c"), "#ffffff", .75)
+		} : {
+			neonText: mixHex(v("--accent-color", "#d9a441"), "#ffffff", .6),
+			neonTextGlow: v("--accent-color", "#d9a441")
+		}
 	};
+}
+/** Mix two #rrggbb colours (t = share of `b`). Falls back to `a` on anything else. */
+function mixHex(a, b, t) {
+	const p = (h) => /^#[0-9a-f]{6}$/i.test(h) ? [
+		1,
+		3,
+		5
+	].map((i) => parseInt(h.slice(i, i + 2), 16)) : null;
+	const x = p(a), y = p(b);
+	if (!x || !y) return a;
+	return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
 }
 function buildStylesheet(c) {
 	return [
@@ -30116,6 +30153,8 @@ function buildStylesheet(c) {
 				"shape": "ellipse",
 				"width": 20,
 				"height": 20,
+				"overlay-shape": "ellipse",
+				"underlay-shape": "ellipse",
 				"background-color": c.muted,
 				"border-width": 2,
 				"border-color": c.page,
@@ -30142,7 +30181,9 @@ function buildStylesheet(c) {
 				"background-color": c.problem,
 				"shape": "round-rectangle",
 				"width": 24,
-				"height": 18
+				"height": 18,
+				"overlay-shape": "round-rectangle",
+				"underlay-shape": "round-rectangle"
 			}
 		},
 		{
@@ -30190,17 +30231,25 @@ function buildStylesheet(c) {
 		{
 			selector: "node.focus",
 			style: {
-				"width": 36,
-				"height": 36,
+				"width": 34,
+				"height": 34,
 				"border-width": 3,
-				"border-color": c.accent,
+				"border-color": c.neon,
+				"outline-color": c.accent,
+				"outline-width": 4,
+				"outline-offset": 0,
+				"outline-opacity": .9,
 				"underlay-color": c.accent,
-				"underlay-opacity": .28,
-				"underlay-padding": 9,
-				"underlay-shape": "ellipse",
+				"underlay-opacity": .3,
+				"underlay-padding": 14,
+				"color": c.neonText,
+				"text-outline-color": c.neonTextGlow,
+				"text-outline-width": 1.6,
+				"text-outline-opacity": .75,
+				"text-background-opacity": 0,
 				"font-weight": "bold",
 				"font-size": 13,
-				"text-margin-y": 6,
+				"text-margin-y": 9,
 				"z-index": 10
 			}
 		},
@@ -30224,7 +30273,7 @@ function buildStylesheet(c) {
 		{
 			selector: "node.focus.selected",
 			style: {
-				"border-color": c.accent,
+				"border-color": c.neon,
 				"border-width": 4
 			}
 		},
@@ -30308,6 +30357,11 @@ var CytoscapeGraphView = class {
 		this.viewportTimer = null;
 		this.flashTimer = null;
 		this.wheelHandler = null;
+		this.currentLayout = null;
+		this.glowNode = null;
+		this.glowGen = 0;
+		this.pendingLayout = false;
+		this.pendingFit = false;
 		this.lastPatchStats = {
 			added: 0,
 			removed: 0,
@@ -30555,6 +30609,7 @@ var CytoscapeGraphView = class {
 	reveal(ids, anchor) {
 		const cy = this.cy;
 		if (!cy) return;
+		if (this.vm.focus !== null && this.vm.focus !== this.vm.layoutFocus) return;
 		const els = cy.collection();
 		for (const id of ids) els.merge(cy.getElementById(id));
 		els.addClass("just-added");
@@ -30583,6 +30638,7 @@ var CytoscapeGraphView = class {
 				el.addClass("selected");
 				if (sel.kind === "node") el.connectedEdges().addClass("incident");
 			}
+			this.updateFocusGlow();
 			cy.nodes().forEach((n) => {
 				const node = vm.engine.getNode(n.id());
 				if (!node) return;
@@ -30590,6 +30646,63 @@ var CytoscapeGraphView = class {
 				if (n.data("display") !== text) n.data("display", text);
 			});
 		});
+	}
+	/**
+	* The focus glows like the app's other "look here" cue (style.css
+	* `plan-guide-glow`): the accent halo fades from nothing to full and back
+	* every 2.2 s. Cytoscape draws on a canvas, so CSS animations can't reach a
+	* node — the halo's opacity/size are animated here instead. With reduced
+	* motion only the brightness pulses (no size change).
+	*/
+	updateFocusGlow() {
+		const cy = this.cy;
+		if (!cy) return;
+		const focus = this.vm.focus;
+		const el = focus ? cy.getElementById(focus) : null;
+		const node = el && el.nonempty() ? el : null;
+		if (node && node === this.glowNode && !node.removed()) return;
+		this.glowGen++;
+		const old = this.glowNode;
+		if (old && !old.removed()) {
+			old.stop(false, false);
+			old.removeStyle("underlay-opacity underlay-padding outline-opacity outline-width");
+		}
+		this.glowNode = node;
+		if (!node) return;
+		const still = !this.motion();
+		if (still) node.style({
+			"underlay-padding": 16,
+			"outline-width": 4
+		});
+		const gen = this.glowGen;
+		const HALF = 1100;
+		const pulse = (up) => {
+			if (gen !== this.glowGen || this.destroyed || node.removed()) return;
+			const style = still ? up ? {
+				"underlay-opacity": .5,
+				"outline-opacity": 1
+			} : {
+				"underlay-opacity": .14,
+				"outline-opacity": .55
+			} : up ? {
+				"underlay-opacity": .48,
+				"underlay-padding": 20,
+				"outline-opacity": 1,
+				"outline-width": 5
+			} : {
+				"underlay-opacity": .12,
+				"underlay-padding": 11,
+				"outline-opacity": .55,
+				"outline-width": 3
+			};
+			node.animate({ style }, {
+				duration: HALF,
+				easing: "ease-in-out-sine",
+				queue: false,
+				complete: () => pulse(!up)
+			});
+		};
+		pulse(true);
 	}
 	/** What a double-click on `id` will do, for the hover hint. */
 	dblClickHint(id) {
@@ -30629,6 +30742,12 @@ var CytoscapeGraphView = class {
 				dist.set(v.id(), depth);
 			}
 		});
+		if (!this.hasSize()) {
+			this.pendingLayout = true;
+			return;
+		}
+		this.currentLayout?.stop();
+		cy.stop(true, false);
 		const layout = cy.layout({
 			name: "concentric",
 			concentric: (n) => focus ? 100 - (dist.get(n.id()) ?? 50) : n.degree(false),
@@ -30640,7 +30759,9 @@ var CytoscapeGraphView = class {
 			animationDuration: 320,
 			fit: false
 		});
+		this.currentLayout = layout;
 		layout.one("layoutstop", () => {
+			if (this.currentLayout === layout) this.currentLayout = null;
 			this.savePositions();
 			this.fit(animate);
 		});
@@ -30661,10 +30782,19 @@ var CytoscapeGraphView = class {
 			}
 		};
 	}
+	hasSize() {
+		return this.container.clientWidth > 0 && this.container.clientHeight > 0;
+	}
 	fit(animate = this.motion()) {
 		const cy = this.cy;
+		if (!cy) return;
+		if (!this.hasSize()) {
+			this.pendingFit = true;
+			return;
+		}
 		const vp = this.fitViewport();
-		if (!cy || !vp) return;
+		if (!vp) return;
+		cy.stop(true, false);
 		if (animate) cy.animate(vp, { duration: 220 });
 		else cy.viewport(vp);
 	}
@@ -30691,7 +30821,15 @@ var CytoscapeGraphView = class {
 	/** The container changed size (popup ↔ fullscreen): keep the user's view centre. */
 	resize() {
 		const cy = this.cy;
-		if (!cy) return;
+		if (!cy || !this.hasSize()) return;
+		if (this.pendingLayout || this.pendingFit) {
+			const layoutToo = this.pendingLayout;
+			this.pendingLayout = this.pendingFit = false;
+			cy.resize();
+			if (layoutToo) this.runLayout(false);
+			else this.fit(false);
+			return;
+		}
 		const ext = cy.extent();
 		cy.resize();
 		const cx = (ext.x1 + ext.x2) / 2, cy0 = (ext.y1 + ext.y2) / 2;
@@ -30860,6 +30998,7 @@ var GraphExplorer = class {
 			await this.viewInit;
 			requestAnimationFrame(() => this.view?.resize());
 		}
+		if (mode !== "embedded" && !this.root.contains(document.activeElement)) this.canvas.focus({ preventScroll: true });
 	}
 	/** Tear down the renderer (closing). The view model keeps all exploration state. */
 	unmount() {
@@ -30942,6 +31081,7 @@ var GraphExplorer = class {
 			const n = vm.engine.getNode(sel.id);
 			if (n) {
 				this.details.innerHTML = this.adapter.nodeDetailsHtml(n, vm.engine, {
+					...this.opts.detailsContext?.(),
 					expanded: vm.isExpanded(sel.id),
 					isFocus: vm.focus === sel.id,
 					hidden: vm.hiddenNeighborCount(sel.id)
@@ -30954,7 +31094,7 @@ var GraphExplorer = class {
 		} else if (sel?.kind === "edge") {
 			const e = vm.engine.getEdge(sel.id);
 			if (e) {
-				this.details.innerHTML = this.adapter.edgeDetailsHtml(e, vm.engine);
+				this.details.innerHTML = this.adapter.edgeDetailsHtml(e, vm.engine, this.opts.detailsContext?.());
 				this.details.dataset.kgFor = sel.id;
 				const ask = this.adapter.askEdgePrompt;
 				if (ask) this.addAskButton("Ask AI about this relationship", () => ask(e, vm.engine, this.visibleGraph()));
@@ -31049,6 +31189,18 @@ var GraphExplorer = class {
 		});
 		this.searchInput.addEventListener("blur", () => setTimeout(() => this.hideSearch(), 150));
 		root.addEventListener("keydown", (ev) => this.onKey(ev));
+		this.canvas.addEventListener("pointerup", () => {
+			if (document.activeElement !== this.canvas) this.canvas.focus({ preventScroll: true });
+		});
+		root.addEventListener("pointerup", (ev) => {
+			const t = ev.target;
+			if (this.canvas.contains(t)) return;
+			if (t.closest("input, textarea, select, button, a, [tabindex], [contenteditable]")) return;
+			if (this.root.contains(document.activeElement) && document.activeElement !== document.body) return;
+			const sel = window.getSelection();
+			if (sel && !sel.isCollapsed && this.root.contains(sel.anchorNode)) return;
+			this.canvas.focus({ preventScroll: true });
+		});
 	}
 	onKey(ev) {
 		const t = ev.target;
@@ -31057,7 +31209,13 @@ var GraphExplorer = class {
 		const vm = this.vm;
 		const sel = vm.selection?.kind === "node" ? vm.selection.id : null;
 		let handled = true;
-		switch (ev.key) {
+		switch (ev.key && ev.key !== "Unidentified" ? ev.key : {
+			Slash: "/",
+			Minus: "-",
+			Equal: "=",
+			NumpadAdd: "+",
+			NumpadSubtract: "-"
+		}[ev.code] ?? ev.key) {
 			case "/":
 				this.focusSearch();
 				break;
@@ -31093,7 +31251,7 @@ var GraphExplorer = class {
 				if (sel) vm.collapse(sel);
 				break;
 			case "Enter":
-				if (sel && t === this.canvas) vm.focusOn(sel);
+				if (sel && !t.closest("button, a")) vm.focusOn(sel);
 				else handled = false;
 				break;
 			default: handled = false;
@@ -32077,10 +32235,12 @@ function parseLessonKnowledgeGraph(raw, lesson, known = () => false) {
 		relations: parseRelations(raw.relations, lesson, has, issues),
 		issues
 	};
-	const focus = raw.focus;
-	if (focus !== void 0) {
-		if (isValidId(focus) && has(focus)) result.focus = focus;
-		else issues.push(`focus "${String(focus)}" is not a known concept`);
+	if (raw.mainConcept !== void 0 && raw.focus !== void 0 && raw.mainConcept !== raw.focus) issues.push(`"mainConcept" and the deprecated "focus" disagree; using mainConcept`);
+	const main = raw.mainConcept !== void 0 ? raw.mainConcept : raw.focus;
+	const field = raw.mainConcept !== void 0 ? "mainConcept" : "focus";
+	if (main !== void 0) {
+		if (isValidId(main) && has(main)) result.mainConcept = main;
+		else issues.push(`${field} "${String(main)}" is not a known concept`);
 	}
 	return result;
 }
@@ -32088,7 +32248,7 @@ function parseLessonKnowledgeGraph(raw, lesson, known = () => false) {
 * The concept a lesson teaches at a scene/step, from the concepts' authored
 * `refs` (no extra schema): an exact step reference first, else the nearest
 * earlier step in the same scene, else the scene's own reference (step -1).
-* Ties go to `preferred` (the lesson's main focus), then authored order.
+* Ties go to `preferred` (the lesson's mainConcept), then authored order.
 * Returns null when nothing in the lesson points at that scene.
 */
 function conceptAtPlace(concepts, lessonId, scene, step, preferred) {
@@ -32112,6 +32272,16 @@ function conceptAtPlace(concepts, lessonId, scene, step, preferred) {
 		}
 	});
 	return best ? best.id : null;
+}
+/**
+* The concept a lesson explicitly links to a glossary key (`"glossary": "<key>"`
+* on the concept) — never by label or alias, and only among concepts that
+* lesson references: another lesson may use the same key for something else.
+*/
+function conceptForGlossaryKey$1(kg, lessonId, key) {
+	if (!lessonId || !key) return null;
+	for (const n of kg.allNodes()) if (n.data.glossaryKey === key && n.data.lessons.some((l) => l.lessonId === lessonId)) return n.id;
+	return null;
 }
 /**
 * Validate and merge a runtime update (a tutor/Expert proposal, a personal
@@ -32263,7 +32433,7 @@ function createKnowledgeAdapter(deps) {
 			const cat = CONCEPT_CATEGORIES.find(([k]) => k === d.category)?.[1] ?? d.category;
 			const out = kg.edgesOf(node.id, "out");
 			const inn = kg.edgesOf(node.id, "in");
-			let h = `<div class="kg-details-head"><h3 class="kg-details-title">${escapeHtml$1(d.label)}</h3>` + (cat ? `<span class="kg-chip kg-cat-${escapeHtml$1(classToken(d.category ?? ""))}">${escapeHtml$1(cat)}</span>` : "") + (d.origin === "runtime" ? `<span class="kg-chip kg-chip-runtime" title="Added while the app was running, not from a lesson file">live update</span>` : "") + `</div>`;
+			let h = `<div class="kg-details-head"><h3 class="kg-details-title">${escapeHtml$1(d.label)}</h3>` + (cat ? `<span class="kg-chip kg-cat-${escapeHtml$1(classToken(d.category ?? ""))}">${escapeHtml$1(cat)}</span>` : "") + (d.origin === "runtime" ? `<span class="kg-chip kg-chip-runtime" title="Added while the app was running, not from a lesson file">live update</span>` : "") + (ctx.currentLessonId && d.lessons.length && !d.lessons.some((l) => l.lessonId === ctx.currentLessonId) ? `<span class="kg-chip kg-chip-external" title="Not taught in the open lesson">external</span>` : "") + `</div>`;
 			h += `<div class="kg-details-actions">` + (ctx.isFocus ? "" : `<button type="button" class="kg-btn" data-kg-action="focus">Focus here</button>`) + (ctx.expanded ? `<button type="button" class="kg-btn" data-kg-action="collapse" title="Or double-click the concept">Hide neighbours</button>` : (ctx.hidden ?? 1) > 0 ? `<button type="button" class="kg-btn" data-kg-action="expand" title="Or double-click the concept">` + `Show ${ctx.hidden ?? ""} hidden neighbour${ctx.hidden === 1 ? "" : "s"}`.replace("  ", " ") + `</button>` : `<span class="kg-details-note">All neighbours shown</span>`) + `</div>`;
 			h += d.definition ? `<div class="kg-details-def">${deps.renderMarkdown(d.definition)}</div>` : `<p class="kg-details-empty">No definition authored for this concept.</p>`;
 			if (out.length || inn.length) {
@@ -32274,27 +32444,33 @@ function createKnowledgeAdapter(deps) {
 			h += `<h4 class="kg-details-sub">Lessons</h4>`;
 			if (!d.lessons.length) h += `<p class="kg-details-empty">Not linked to a lesson.</p>`;
 			else {
+				const cur = ctx.currentLessonId ?? null;
+				const lessons = [...d.lessons].sort((a, b) => Number(b.lessonId === cur) - Number(a.lessonId === cur));
 				h += `<ul class="kg-lesson-list">`;
-				for (const l of d.lessons) {
+				for (const l of lessons) {
+					const external = !!cur && l.lessonId !== cur;
 					const places = l.places.length ? l.places : [{
 						scene: 0,
 						step: -1
 					}];
-					h += `<li><span class="kg-lesson-title">${escapeHtml$1(l.lessonTitle)}</span>` + (l.draft ? ` <span class="kg-chip kg-chip-draft">draft</span>` : "") + `<div class="kg-lesson-places">` + places.map((p) => `<button type="button" class="kg-btn kg-btn-nav" data-kg-lesson="${escapeHtml$1(l.lessonId)}" data-kg-scene="${p.scene}" data-kg-step="${p.step}" title="Go to this place in the lesson">${l.places.length ? escapeHtml$1(placeLabel(p)) : "Open lesson"} ↗</button>`).join("") + `</div></li>`;
+					h += `<li class="${external ? "kg-lesson-external" : "kg-lesson-current"}"><span class="kg-lesson-title">${escapeHtml$1(l.lessonTitle)}</span>` + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>` : cur ? ` <span class="kg-chip kg-chip-current">this lesson</span>` : "") + (l.draft ? ` <span class="kg-chip kg-chip-draft">draft</span>` : "") + `<div class="kg-lesson-places">` + places.map((p) => `<button type="button" class="kg-btn kg-btn-nav${external ? " kg-btn-external" : ""}" data-kg-lesson="${escapeHtml$1(l.lessonId)}" data-kg-scene="${p.scene}" data-kg-step="${p.step}" title="${external ? `Leaves this lesson and opens “${escapeHtml$1(l.lessonTitle)}”` : "Go to this place in the lesson"}">${l.places.length ? escapeHtml$1(placeLabel(p)) : "Open lesson"} ${external ? "⇱" : "↗"}</button>`).join("") + `</div></li>`;
 				}
 				h += `</ul>`;
 			}
 			h += `<p class="kg-details-id" title="Stable concept id">${escapeHtml$1(node.id)}</p>`;
 			return h;
 		},
-		edgeDetailsHtml(edge, kg) {
+		edgeDetailsHtml(edge, kg, ctx) {
 			const info = relationInfo(edge.type);
 			const d = edge.data;
 			let h = `<div class="kg-details-head"><h3 class="kg-details-title">Relationship</h3><span class="kg-chip">${escapeHtml$1(edge.type)}</span>` + (d.origin === "runtime" ? `<span class="kg-chip kg-chip-runtime">live update</span>` : "") + `</div>`;
 			h += `<p class="kg-edge-sentence"><button type="button" class="kg-link" data-kg-node="${escapeHtml$1(edge.source)}">${escapeHtml$1(nodeName(kg, edge.source))}</button> <span class="kg-edge-verb">${escapeHtml$1(info.verb)}</span> <button type="button" class="kg-link" data-kg-node="${escapeHtml$1(edge.target)}">${escapeHtml$1(nodeName(kg, edge.target))}</button></p>`;
 			h += `<p class="kg-details-dir">Direction: ${escapeHtml$1(nodeName(kg, edge.source))} → ${escapeHtml$1(nodeName(kg, edge.target))} (read backwards: “${escapeHtml$1(nodeName(kg, edge.target))} ${escapeHtml$1(info.inverse)} ${escapeHtml$1(nodeName(kg, edge.source))}”)</p>`;
 			if (d.description) h += `<div class="kg-details-def">${deps.renderMarkdown(d.description)}</div>`;
-			if (d.lessons.length) h += `<h4 class="kg-details-sub">Asserted by</h4><ul class="kg-lesson-list">` + d.lessons.map((l) => `<li>${escapeHtml$1(lessonTitleOf(kg, edge, l))}</li>`).join("") + `</ul>`;
+			if (d.lessons.length) h += `<h4 class="kg-details-sub">Asserted by</h4><ul class="kg-lesson-list">` + d.lessons.map((l) => {
+				const external = !!ctx?.currentLessonId && l !== ctx.currentLessonId;
+				return `<li>${escapeHtml$1(lessonTitleOf(kg, edge, l))}` + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>` : "") + `</li>`;
+			}).join("") + `</ul>`;
 			return h;
 		},
 		askPrompt(node, kg, view) {
@@ -32712,6 +32888,7 @@ function getGlobalSlot() {
 		} },
 		overview: () => vm.showOverview(40),
 		makeAskButton,
+		detailsContext: () => ({ currentLessonId: currentLessonId() }),
 		scopes: SCOPES,
 		onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
 		emptyText: "No lesson knowledge graphs yet. Lessons add one with a \"knowledgeGraph\" block."
@@ -32738,9 +32915,27 @@ async function openConcept(conceptId, mode = "popup") {
 	await loadGlobalKnowledge();
 	if (!knowledgeStore.hasNode(conceptId)) return false;
 	const slot = getGlobalSlot();
-	slot.explorer.vm.focusOn(conceptId);
+	const vm = slot.explorer.vm;
+	globalFollowedLesson = activeLesson.id;
+	followActiveLesson();
+	if (!vm.inScope(conceptId)) applyScope(vm, "global", null, null);
+	if (vm.focus !== conceptId) vm.focusOn(conceptId);
+	else vm.select({
+		kind: "node",
+		id: conceptId
+	});
 	await setMode(slot, mode === "embedded" ? "popup" : mode);
 	return true;
+}
+/**
+* The concept the CURRENT lesson links to a glossary key — only through an
+* explicit `"glossary": "<key>"` on the concept (never by label or alias), and
+* only within this lesson: another lesson may use the same key for something
+* else. Null when there is none (the tooltip then shows no graph button).
+*/
+function conceptForGlossaryKey(key) {
+	const lessonId = currentLessonId();
+	return lessonId ? conceptForGlossaryKey$1(knowledgeStore, lessonId, key) : null;
 }
 function updateStatusButton() {
 	const btn = document.getElementById("kg-status");
@@ -32827,11 +33022,12 @@ function onLessonLoaded(spec) {
 			openLesson(id, sc, st);
 		} },
 		makeAskButton,
+		detailsContext: () => ({ currentLessonId: currentLessonId() }),
 		scopes: SCOPES,
 		onScope: (id) => applyScope(vm, id, lessonId, focus)
 	});
 	lessonSlot = slot;
-	const focus = parsed.focus ?? parsed.concepts[0].id;
+	const focus = parsed.mainConcept ?? parsed.concepts[0].id;
 	trackForTutor(vm);
 	vm.setScope("local", lessonScope(lessonId));
 	activeLesson.focus = focus;
@@ -32953,6 +33149,7 @@ function setupKnowledgeGraph() {
 		applyUpdate: applyKnowledgeUpdate,
 		openConcept,
 		focusConcept: focusKnowledgeConcept,
+		conceptForGlossaryKey,
 		explorers: () => ({
 			global: globalSlot?.explorer ?? null,
 			lesson: lessonSlot?.explorer ?? null

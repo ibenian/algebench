@@ -1,7 +1,7 @@
 {
   "title": "Parenthesis validation · full stack algorithm",
   "knowledgeGraph": {
-    "focus": "dsa.balanced-brackets",
+    "mainConcept": "dsa.balanced-brackets",
     "concepts": [
       {
         "id": "dsa.balanced-brackets",

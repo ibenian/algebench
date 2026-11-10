@@ -19,6 +19,10 @@ export interface DetailsActions {
     openCrossLink?: (graphType: string, nodeId: string) => void;
 }
 
+/** Host context for details panels: which lesson is open, so references to
+ *  OTHER lessons can be marked as external. */
+export interface DetailsContext { currentLessonId?: string | null }
+
 /** What the explorer currently shows — read when Ask AI is clicked. */
 export interface VisibleGraph {
     focus: string | null;
@@ -43,8 +47,8 @@ export interface GraphTypeAdapter<N, E> {
     /** Short secondary line for search results ("data structure · 2 lessons"). */
     nodeSubtitle(node: GraphNode<N>): string;
     /** Details-panel HTML. Interactive bits carry data-kg-* attributes the explorer wires. */
-    nodeDetailsHtml(node: GraphNode<N>, engine: GraphEngine<N, E>, ctx: { expanded: boolean; isFocus: boolean; hidden?: number }): string;
-    edgeDetailsHtml(edge: GraphEdge<E>, engine: GraphEngine<N, E>): string;
+    nodeDetailsHtml(node: GraphNode<N>, engine: GraphEngine<N, E>, ctx: DetailsContext & { expanded: boolean; isFocus: boolean; hidden?: number }): string;
+    edgeDetailsHtml(edge: GraphEdge<E>, engine: GraphEngine<N, E>, ctx?: DetailsContext): string;
     crossLinks?(node: GraphNode<N>): CrossLink[];
     /** The question an "Ask AI" button sends about a node / edge, with the
      *  graph context: its own relationships plus what is on screen right now. */

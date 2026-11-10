@@ -3487,9 +3487,14 @@
       "type": "object",
       "description": "A lesson's knowledge graph. Shown embedded in the lesson's Doc tab and merged into the global Knowledge Graph (status bar).",
       "properties": {
+        "mainConcept": {
+          "type": "string",
+          "description": "Concept id of what this lesson is mainly about. The default focus whenever nothing more specific applies: a scene/step no concept refers to, a tie between concepts at one place, switching the graph to Local scope, or the global graph's starting point. Defaults to the first concept."
+        },
         "focus": {
           "type": "string",
-          "description": "Concept id the lesson's graph opens on. Defaults to the first concept."
+          "deprecated": true,
+          "description": "Deprecated alias of mainConcept, still accepted. Use mainConcept."
         },
         "concepts": {
           "type": "array",

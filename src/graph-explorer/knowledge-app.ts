@@ -19,7 +19,7 @@ import { GraphViewModel, type PresentationMode } from '/graph-explorer/view-mode
 import { createKnowledgeAdapter } from '/graph-explorer/knowledge-adapter.js';
 import { snapshotKnowledgeView, type KnowledgeGraphContext } from '/graph-explorer/agent-context.js';
 import {
-    applyRuntimeUpdate, conceptAtPlace, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, type RuntimeUpdate,
+    applyRuntimeUpdate, conceptAtPlace, conceptForGlossaryKey as lookupGlossaryConcept, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, type RuntimeUpdate,
     type ConceptData, type KnowledgeGraph, type ParsedLessonGraph, type RelationData,
 } from '/graph-explorer/knowledge-model.js';
 
@@ -335,6 +335,7 @@ function getGlobalSlot(): ExplorerSlot {
         actions: { openLesson: (id, s, t) => { void openLesson(id, s, t); } },
         overview: () => vm.showOverview(40),
         makeAskButton,
+        detailsContext: () => ({ currentLessonId: currentLessonId() }),
         scopes: SCOPES,
         onScope: (id) => applyScope(vm, id, activeLesson.id, activeLesson.focus),
         emptyText: 'No lesson knowledge graphs yet. Lessons add one with a "knowledgeGraph" block.',
@@ -361,9 +362,27 @@ export async function openConcept(conceptId: string, mode: PresentationMode = 'p
     await loadGlobalKnowledge();
     if (!knowledgeStore.hasNode(conceptId)) return false;
     const slot = getGlobalSlot();
-    slot.explorer.vm.focusOn(conceptId);
+    const vm = slot.explorer.vm;
+    // Opened for a specific concept: don't let the "follow the lesson" jump
+    // replace it, but do refresh scope availability and the status line.
+    globalFollowedLesson = activeLesson.id;
+    followActiveLesson();
+    if (!vm.inScope(conceptId)) applyScope(vm, 'global', null, null);
+    if (vm.focus !== conceptId) vm.focusOn(conceptId);
+    else vm.select({ kind: 'node', id: conceptId });
     await setMode(slot, mode === 'embedded' ? 'popup' : mode);
     return true;
+}
+
+/**
+ * The concept the CURRENT lesson links to a glossary key — only through an
+ * explicit `"glossary": "<key>"` on the concept (never by label or alias), and
+ * only within this lesson: another lesson may use the same key for something
+ * else. Null when there is none (the tooltip then shows no graph button).
+ */
+export function conceptForGlossaryKey(key: string): string | null {
+    const lessonId = currentLessonId();
+    return lessonId ? lookupGlossaryConcept(knowledgeStore, lessonId, key) : null;
 }
 
 function updateStatusButton(): void {
@@ -439,11 +458,12 @@ export function onLessonLoaded(spec: unknown): void {
         onRequestMode: (m) => { void setMode(slot, m); },
         actions: { openLesson: (id, sc, st) => { void openLesson(id, sc, st); } },
         makeAskButton,
+        detailsContext: () => ({ currentLessonId: currentLessonId() }),
         scopes: SCOPES,
         onScope: (id) => applyScope(vm, id, lessonId, focus),
     });
     lessonSlot = slot;
-    const focus = parsed.focus ?? parsed.concepts[0]!.id;  // ! — concepts non-empty (checked above)
+    const focus = parsed.mainConcept ?? parsed.concepts[0]!.id;  // ! — concepts non-empty (checked above)
     trackForTutor(vm);
     // A lesson's own graph opens Local; Global is one click away.
     vm.setScope('local', lessonScope(lessonId));
@@ -580,6 +600,7 @@ export function setupKnowledgeGraph(): void {
         applyUpdate: applyKnowledgeUpdate,
         openConcept,
         focusConcept: focusKnowledgeConcept,
+        conceptForGlossaryKey,
         explorers: () => ({ global: globalSlot?.explorer ?? null, lesson: lessonSlot?.explorer ?? null }),
     };
 }

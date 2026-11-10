@@ -89,6 +89,8 @@ export function relationId(source: string, type: string, target: string): string
 
 /** The authored shape (schemas/lesson.schema.json `knowledgeGraph`). */
 export interface RawKnowledgeGraph {
+    mainConcept?: unknown;
+    /** Deprecated alias of mainConcept. */
     focus?: unknown;
     concepts?: unknown;
     relations?: unknown;
@@ -97,7 +99,9 @@ export interface RawKnowledgeGraph {
 export interface ParsedConcept { id: string; data: ConceptData }
 export interface ParsedRelation { id: string; source: string; target: string; type: string; data: RelationData }
 export interface ParsedLessonGraph {
-    focus?: string;
+    /** What the lesson is mainly about: its default focus (`mainConcept`, or the
+     *  deprecated `focus`). Absent when the block names none. */
+    mainConcept?: string;
     concepts: ParsedConcept[];
     relations: ParsedRelation[];
     issues: string[];
@@ -207,10 +211,15 @@ export function parseLessonKnowledgeGraph(raw: unknown, lesson: LessonInfo,
     const has = (id: string) => seen.has(id) || known(id);
     const relations = parseRelations(raw.relations, lesson, has, issues);
     const result: ParsedLessonGraph = { concepts, relations, issues };
-    const focus = raw.focus;
-    if (focus !== undefined) {
-        if (isValidId(focus) && has(focus)) result.focus = focus;
-        else issues.push(`focus "${String(focus)}" is not a known concept`);
+    // `mainConcept`; `focus` is its deprecated alias, still accepted.
+    if (raw.mainConcept !== undefined && raw.focus !== undefined && raw.mainConcept !== raw.focus) {
+        issues.push(`"mainConcept" and the deprecated "focus" disagree; using mainConcept`);
+    }
+    const main = raw.mainConcept !== undefined ? raw.mainConcept : raw.focus;
+    const field = raw.mainConcept !== undefined ? 'mainConcept' : 'focus';
+    if (main !== undefined) {
+        if (isValidId(main) && has(main)) result.mainConcept = main;
+        else issues.push(`${field} "${String(main)}" is not a known concept`);
     }
     return result;
 }
@@ -221,7 +230,7 @@ export function parseLessonKnowledgeGraph(raw: unknown, lesson: LessonInfo,
  * The concept a lesson teaches at a scene/step, from the concepts' authored
  * `refs` (no extra schema): an exact step reference first, else the nearest
  * earlier step in the same scene, else the scene's own reference (step -1).
- * Ties go to `preferred` (the lesson's main focus), then authored order.
+ * Ties go to `preferred` (the lesson's mainConcept), then authored order.
  * Returns null when nothing in the lesson points at that scene.
  */
 export function conceptAtPlace(concepts: ParsedConcept[], lessonId: string, scene: number, step: number,
@@ -243,6 +252,19 @@ export function conceptAtPlace(concepts: ParsedConcept[], lessonId: string, scen
         }
     });
     return best ? (best as { id: string }).id : null;
+}
+
+/**
+ * The concept a lesson explicitly links to a glossary key (`"glossary": "<key>"`
+ * on the concept) — never by label or alias, and only among concepts that
+ * lesson references: another lesson may use the same key for something else.
+ */
+export function conceptForGlossaryKey(kg: KnowledgeGraph, lessonId: string, key: string): string | null {
+    if (!lessonId || !key) return null;
+    for (const n of kg.allNodes()) {
+        if (n.data.glossaryKey === key && n.data.lessons.some((l) => l.lessonId === lessonId)) return n.id;
+    }
+    return null;
 }
 
 // ---------- runtime updates ----------

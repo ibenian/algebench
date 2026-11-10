@@ -1140,7 +1140,12 @@ export interface GlossaryEntry {
  */
 export interface KnowledgeGraph {
   /**
-   * Concept id the lesson's graph opens on. Defaults to the first concept.
+   * Concept id of what this lesson is mainly about. The default focus whenever nothing more specific applies: a scene/step no concept refers to, a tie between concepts at one place, switching the graph to Local scope, or the global graph's starting point. Defaults to the first concept.
+   */
+  mainConcept?: string;
+  /**
+   * @deprecated
+   * Deprecated alias of mainConcept, still accepted. Use mainConcept.
    */
   focus?: string;
   /**

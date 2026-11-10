@@ -5787,7 +5787,10 @@ body:has(.push-array) #legend { display: none; }
     font-size: 12px; border: 1px solid var(--btn-border); border-radius: var(--radius-sm); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer;
 }
 .kg-tb-btn:hover:not(:disabled) { background: var(--btn-hover); }
-.kg-tb-btn:focus-visible, .kg-btn:focus-visible, .kg-link:focus-visible, .kg-canvas:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.kg-tb-btn:focus-visible, .kg-btn:focus-visible, .kg-link:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+/* The canvas takes focus on click so the graph's keys work; the selection
+   ring and focus halo already show where the learner is, so no frame. */
+.kg-canvas:focus, .kg-canvas:focus-visible { outline: none; }
 .kg-tb-btn:disabled { opacity: 0.4; cursor: default; }
 .kg-scope { display: inline-flex; border: 1px solid var(--btn-border); border-radius: var(--radius-sm); overflow: hidden; }
 .kg-scope-btn { height: 26px; padding: 0 6px; font-size: 11px; border: none; background: var(--btn-bg); color: var(--muted-color); cursor: pointer; }
@@ -5855,6 +5858,11 @@ body:has(.push-array) #legend { display: none; }
 .kg-chip { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-full); background: var(--chip-bg); color: var(--text-color); border: 1px solid var(--border-color); }
 .kg-chip-runtime { border-style: dashed; border-color: var(--accent-color); }
 .kg-chip-draft { color: var(--muted-color); }
+/* References to OTHER lessons: clearly marked, so following one is never a surprise. */
+.kg-chip-external { color: var(--page-bg); background: var(--code-builtin); border-color: var(--code-builtin); font-weight: 600; }
+.kg-chip-current { color: var(--muted-color); }
+.kg-lesson-external .kg-lesson-title { color: var(--muted-color); }
+.kg-btn-external { border-style: dashed; border-color: var(--code-builtin); }
 .kg-cat-problem { border-color: var(--code-keyword); }
 .kg-cat-data-structure { border-color: var(--code-builtin); }
 .kg-cat-technique { border-color: var(--code-function); }

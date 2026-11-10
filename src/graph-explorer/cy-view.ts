@@ -59,7 +59,23 @@ function themeColors(el: HTMLElement): Record<string, string> {
         invariant: v('--code-decorator', '#c49bd8'),
         analysis: v('--code-constant', '#d48f6a'),
         font: v('--font-body', 'sans-serif'),
+        // The neon "tube": the accent pushed most of the way to white, so the
+        // core reads as lit even on the light theme.
+        neon: mixHex(v('--accent-color', '#d9a441'), '#ffffff', 0.6),
+        // Neon text: on dark, light text with an accent glow; on paper that
+        // washes out, so dark accent text with a light glow instead.
+        ...(document.documentElement.dataset.theme === 'light'
+            ? { neonText: v('--accent-color', '#9a6d1c'), neonTextGlow: mixHex(v('--accent-color', '#9a6d1c'), '#ffffff', 0.75) }
+            : { neonText: mixHex(v('--accent-color', '#d9a441'), '#ffffff', 0.6), neonTextGlow: v('--accent-color', '#d9a441') }),
     };
+}
+
+/** Mix two #rrggbb colours (t = share of `b`). Falls back to `a` on anything else. */
+function mixHex(a: string, b: string, t: number): string {
+    const p = (h: string) => /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) : null;
+    const x = p(a), y = p(b);
+    if (!x || !y) return a;
+    return '#' + x.map((v, i) => Math.round(v + (y[i]! - v) * t).toString(16).padStart(2, '0')).join('');
 }
 
 export function buildStylesheet(c: Record<string, string>): StylesheetJson {
@@ -69,6 +85,11 @@ export function buildStylesheet(c: Record<string, string>): StylesheetJson {
         // category for colour-blind readers (legend in the details panel).
         { selector: 'node', style: {
             'shape': 'ellipse', 'width': 20, 'height': 20,
+            // Halo (underlay) and highlight (overlay) follow the node's own
+            // outline — Cytoscape offers only ellipse or round-rectangle, so
+            // the round-ish shapes get ellipse and problem nodes (below) get
+            // round-rectangle; never an oval around a box or a box around a dot.
+            'overlay-shape': 'ellipse', 'underlay-shape': 'ellipse',
             'background-color': c.muted!, 'border-width': 2, 'border-color': c.page!,
             'label': 'data(display)', 'color': c.text!, 'font-family': c.font!, 'font-size': 11,
             'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 4,
@@ -77,25 +98,32 @@ export function buildStylesheet(c: Record<string, string>): StylesheetJson {
             'min-zoomed-font-size': 5,
             'transition-property': 'border-color, border-width, background-color', 'transition-duration': 160,
         } },
-        { selector: 'node.cat-problem', style: { 'background-color': c.problem!, 'shape': 'round-rectangle', 'width': 24, 'height': 18 } },
+        { selector: 'node.cat-problem', style: { 'background-color': c.problem!, 'shape': 'round-rectangle', 'width': 24, 'height': 18,
+            'overlay-shape': 'round-rectangle', 'underlay-shape': 'round-rectangle' } as never },
         { selector: 'node.cat-data-structure', style: { 'background-color': c.ds! } },
         { selector: 'node.cat-technique', style: { 'background-color': c.technique!, 'shape': 'round-triangle' } },
         { selector: 'node.cat-invariant', style: { 'background-color': c.invariant!, 'shape': 'diamond', 'width': 22, 'height': 22 } },
         { selector: 'node.cat-analysis', style: { 'background-color': c.analysis!, 'shape': 'round-pentagon' as never } },
         { selector: 'node.runtime', style: { 'border-style': 'dashed', 'border-color': c.accent!, 'border-width': 2 } },
         { selector: 'node.expanded', style: { 'border-color': c.text!, 'border-width': 2 } },
-        // The focus must read at a glance: bigger, an accent ring and halo, a
-        // bold label. Selection uses the TEXT colour instead, so "where I am"
+        // The focus reads as a lit neon tube: a near-white core (border), a
+        // crisp accent ring around it (outline) and a wide soft bloom
+        // (underlay), with a glowing label. Cytoscape has no canvas blur, so
+        // the glow is these three stacked layers; updateFocusGlow() pulses the
+        // ring and bloom. Selection uses the TEXT colour, so "where I am"
         // (focus) and "what I'm inspecting" (selection) never look alike.
         { selector: 'node.focus', style: {
-            'width': 36, 'height': 36, 'border-width': 3, 'border-color': c.accent!,
-            'underlay-color': c.accent!, 'underlay-opacity': 0.28, 'underlay-padding': 9, 'underlay-shape': 'ellipse',
-            'font-weight': 'bold', 'font-size': 13, 'text-margin-y': 6, 'z-index': 10,
+            'width': 34, 'height': 34, 'border-width': 3, 'border-color': c.neon!,
+            'outline-color': c.accent!, 'outline-width': 4, 'outline-offset': 0, 'outline-opacity': 0.9,
+            'underlay-color': c.accent!, 'underlay-opacity': 0.3, 'underlay-padding': 14,
+            'color': c.neonText!, 'text-outline-color': c.neonTextGlow!, 'text-outline-width': 1.6, 'text-outline-opacity': 0.75,
+            'text-background-opacity': 0,
+            'font-weight': 'bold', 'font-size': 13, 'text-margin-y': 9, 'z-index': 10,
         } as never },
         { selector: 'node.cat-problem.focus', style: { 'width': 42, 'height': 30 } },
         { selector: 'node.selected', style: { 'border-color': c.text!, 'border-width': 3,
             'overlay-color': c.text!, 'overlay-opacity': 0.1, 'overlay-padding': 6 } },
-        { selector: 'node.focus.selected', style: { 'border-color': c.accent!, 'border-width': 4 } },
+        { selector: 'node.focus.selected', style: { 'border-color': c.neon!, 'border-width': 4 } },
         { selector: 'node.just-added', style: { 'overlay-color': c.accent!, 'overlay-opacity': 0.3, 'overlay-padding': 12 } },
         { selector: 'edge', style: {
             'width': 1.5, 'line-color': c.muted!, 'target-arrow-color': c.muted!, 'target-arrow-shape': 'triangle',
@@ -121,6 +149,13 @@ export class CytoscapeGraphView<N, E> {
     private viewportTimer: ReturnType<typeof setTimeout> | null = null;
     private flashTimer: ReturnType<typeof setTimeout> | null = null;
     private wheelHandler: ((ev: WheelEvent) => void) | null = null;
+    private currentLayout: { stop(): unknown } | null = null;
+    /** The node currently glowing as the focus, and a token that ends its pulse loop. */
+    private glowNode: NodeSingular | null = null;
+    private glowGen = 0;
+    /** Work deferred while the container has no size (e.g. the Doc tab is hidden). */
+    private pendingLayout = false;
+    private pendingFit = false;
     private readonly container: HTMLElement;
     private readonly vm: GraphViewModel<N, E>;
     private readonly adapter: GraphTypeAdapter<N, E>;
@@ -331,6 +366,9 @@ export class CytoscapeGraphView<N, E> {
     private reveal(ids: string[], anchor?: string): void {
         const cy = this.cy;
         if (!cy) return;
+        // A focus change is under way: followFocus re-lays out and fits, and a
+        // second, earlier fit here would race it.
+        if (this.vm.focus !== null && this.vm.focus !== this.vm.layoutFocus) return;
         const els = cy.collection();
         for (const id of ids) els.merge(cy.getElementById(id));
         els.addClass('just-added');
@@ -359,6 +397,7 @@ export class CytoscapeGraphView<N, E> {
                 el.addClass('selected');
                 if (sel.kind === 'node') el.connectedEdges().addClass('incident');
             }
+            this.updateFocusGlow();
             // "+N" badge: how many neighbours a double-click would reveal.
             cy.nodes().forEach((n) => {
                 const node = vm.engine.getNode(n.id());
@@ -367,6 +406,48 @@ export class CytoscapeGraphView<N, E> {
                 if (n.data('display') !== text) n.data('display', text);
             });
         });
+    }
+
+    /**
+     * The focus glows like the app's other "look here" cue (style.css
+     * `plan-guide-glow`): the accent halo fades from nothing to full and back
+     * every 2.2 s. Cytoscape draws on a canvas, so CSS animations can't reach a
+     * node — the halo's opacity/size are animated here instead. With reduced
+     * motion only the brightness pulses (no size change).
+     */
+    private updateFocusGlow(): void {
+        const cy = this.cy;
+        if (!cy) return;
+        const focus = this.vm.focus;
+        const el = focus ? cy.getElementById(focus) : null;
+        const node = el && el.nonempty() ? (el as NodeSingular) : null;
+        // Same live element already glowing: nothing to do (an element removed
+        // and re-added under the same id is a new element and glows afresh).
+        if (node && node === this.glowNode && !node.removed()) return;
+        // Retire the previous glow: end its loop and drop the animated values.
+        this.glowGen++;
+        const old = this.glowNode;
+        if (old && !old.removed()) { old.stop(false, false); old.removeStyle('underlay-opacity underlay-padding outline-opacity outline-width'); }
+        this.glowNode = node;
+        if (!node) return;
+        // Reduced motion: the halo keeps a fixed size and only its brightness
+        // breathes (a fade, not movement), so the focus still stands out.
+        const still = !this.motion();
+        if (still) node.style({ 'underlay-padding': 16, 'outline-width': 4 });
+        const gen = this.glowGen;
+        const HALF = 1100;                         // 2.2 s per cycle, like plan-guide-glow
+        const pulse = (up: boolean): void => {
+            if (gen !== this.glowGen || this.destroyed || node.removed()) return;
+            // Bright: ring at full strength, bloom wide and strong. Dim: the tube
+            // stays lit (the ring never goes out), only the bloom recedes.
+            const style = still
+                ? (up ? { 'underlay-opacity': 0.5, 'outline-opacity': 1 } : { 'underlay-opacity': 0.14, 'outline-opacity': 0.55 })
+                : (up ? { 'underlay-opacity': 0.48, 'underlay-padding': 20, 'outline-opacity': 1, 'outline-width': 5 }
+                      : { 'underlay-opacity': 0.12, 'underlay-padding': 11, 'outline-opacity': 0.55, 'outline-width': 3 });
+            node.animate({ style } as never,
+                { duration: HALF, easing: 'ease-in-out-sine', queue: false, complete: () => pulse(!up) } as never);
+        };
+        pulse(true);
     }
 
     /** What a double-click on `id` will do, for the hover hint. */
@@ -403,6 +484,13 @@ export class CytoscapeGraphView<N, E> {
             cy.elements().bfs({ roots: cy.getElementById(focus), directed: false,
                 visit: (v, _e, _u, _i, depth) => { dist.set(v.id(), depth); } });
         }
+        // A zero-size box (graph in a hidden tab) would lay everything out on a
+        // point and fit to nothing: do it when the box has a size again.
+        if (!this.hasSize()) { this.pendingLayout = true; return; }
+        // A new focus supersedes any layout or viewport animation still running
+        // (fast navigation), so a stale fit can never land after this one.
+        this.currentLayout?.stop();
+        cy.stop(true, false);
         const layout = cy.layout({
             name: 'concentric',
             concentric: (n: NodeSingular) => (focus ? 100 - (dist.get(n.id()) ?? 50) : n.degree(false)),
@@ -414,7 +502,12 @@ export class CytoscapeGraphView<N, E> {
             animationDuration: 320,
             fit: false,
         } as never);
-        layout.one('layoutstop', () => { this.savePositions(); this.fit(animate); });
+        this.currentLayout = layout;
+        layout.one('layoutstop', () => {
+            if (this.currentLayout === layout) this.currentLayout = null;
+            this.savePositions();
+            this.fit(animate);
+        });
         layout.run();
     }
 
@@ -429,10 +522,17 @@ export class CytoscapeGraphView<N, E> {
         return { zoom, pan: { x: w / 2 - zoom * (bb.x1 + bb.w / 2), y: h / 2 - zoom * (bb.y1 + bb.h / 2) } };
     }
 
+    private hasSize(): boolean {
+        return this.container.clientWidth > 0 && this.container.clientHeight > 0;
+    }
+
     fit(animate = this.motion()): void {
         const cy = this.cy;
+        if (!cy) return;
+        if (!this.hasSize()) { this.pendingFit = true; return; }
         const vp = this.fitViewport();
-        if (!cy || !vp) return;
+        if (!vp) return;
+        cy.stop(true, false);
         if (animate) cy.animate(vp as never, { duration: 220 });
         else cy.viewport(vp);
     }
@@ -456,7 +556,15 @@ export class CytoscapeGraphView<N, E> {
     /** The container changed size (popup ↔ fullscreen): keep the user's view centre. */
     resize(): void {
         const cy = this.cy;
-        if (!cy) return;
+        if (!cy || !this.hasSize()) return;
+        // Catch up on work deferred while the box had no size.
+        if (this.pendingLayout || this.pendingFit) {
+            const layoutToo = this.pendingLayout;
+            this.pendingLayout = this.pendingFit = false;
+            cy.resize();
+            if (layoutToo) this.runLayout(false); else this.fit(false);
+            return;
+        }
         const ext = cy.extent();
         cy.resize();
         const cx = (ext.x1 + ext.x2) / 2, cy0 = (ext.y1 + ext.y2) / 2;

@@ -13,7 +13,7 @@
 // a concept is.
 // ============================================================
 
-import type { GraphTypeAdapter, DetailsActions, VisibleGraph } from '/graph-explorer/graph-type.js';
+import type { GraphTypeAdapter, DetailsActions, DetailsContext, VisibleGraph } from '/graph-explorer/graph-type.js';
 import type { GraphViewModel, PresentationMode } from '/graph-explorer/view-model.js';
 import { CytoscapeGraphView } from '/graph-explorer/cy-view.js';
 
@@ -53,6 +53,8 @@ export interface ExplorerOptions<N, E> {
      *  and applies it with vm.setScope(); the explorer only shows the choice. */
     scopes?: { id: string; label: string; title: string }[];
     onScope?: (id: string) => void;
+    /** Host context for the details panel (e.g. the open lesson, to mark external references). */
+    detailsContext?: () => DetailsContext;
     /** Builds an "Ask AI" button (the host owns the chat); omitted = no button. */
     makeAskButton?: (title: string, getMessage: () => string) => HTMLElement;
 }
@@ -179,6 +181,11 @@ export class GraphExplorer<N, E> {
             // Same Cytoscape instance, new box: resize without resetting the view.
             requestAnimationFrame(() => this.view?.resize());
         }
+        // Popup / fullscreen take keyboard focus so the graph's keys work right
+        // away (the status-bar entry then moves it on to the search box).
+        if (mode !== 'embedded' && !this.root.contains(document.activeElement)) {
+            this.canvas.focus({ preventScroll: true });
+        }
     }
 
     /** Tear down the renderer (closing). The view model keeps all exploration state. */
@@ -267,7 +274,7 @@ export class GraphExplorer<N, E> {
             const n = vm.engine.getNode(sel.id);
             if (n) {
                 this.details.innerHTML = this.adapter.nodeDetailsHtml(n, vm.engine,
-                    { expanded: vm.isExpanded(sel.id), isFocus: vm.focus === sel.id, hidden: vm.hiddenNeighborCount(sel.id) });
+                    { ...this.opts.detailsContext?.(), expanded: vm.isExpanded(sel.id), isFocus: vm.focus === sel.id, hidden: vm.hiddenNeighborCount(sel.id) });
                 this.details.dataset.kgFor = sel.id;
                 const ask = this.adapter.askPrompt;
                 // Read at click time, so the question matches what is on screen then.
@@ -277,7 +284,7 @@ export class GraphExplorer<N, E> {
         } else if (sel?.kind === 'edge') {
             const e = vm.engine.getEdge(sel.id);
             if (e) {
-                this.details.innerHTML = this.adapter.edgeDetailsHtml(e, vm.engine);
+                this.details.innerHTML = this.adapter.edgeDetailsHtml(e, vm.engine, this.opts.detailsContext?.());
                 this.details.dataset.kgFor = sel.id;
                 const ask = this.adapter.askEdgePrompt;
                 if (ask) this.addAskButton('Ask AI about this relationship', () => ask(e, vm.engine, this.visibleGraph()));
@@ -355,6 +362,27 @@ export class GraphExplorer<N, E> {
         });
         this.searchInput.addEventListener('blur', () => setTimeout(() => this.hideSearch(), 150));
         root.addEventListener('keydown', (ev) => this.onKey(ev));
+        // Clicking the canvas must give the graph keyboard focus, or its keys
+        // fall through to the app's own single-letter shortcuts (C opens chat).
+        // Cytoscape's mousedown handler deliberately blurs the active element
+        // (blurActiveDomElement), so focusing on press is undone — take focus
+        // on RELEASE, after Cytoscape has run.
+        this.canvas.addEventListener('pointerup', () => {
+            if (document.activeElement !== this.canvas) this.canvas.focus({ preventScroll: true });
+        });
+        // The keys work anywhere in the panel, not just on the canvas: a click on
+        // a non-control part (details text, toolbar gaps, status line) also
+        // hands keyboard focus to the graph. Controls keep their own focus (the
+        // keys work from them too), and a text selection is never disturbed.
+        root.addEventListener('pointerup', (ev) => {
+            const t = ev.target as Element;
+            if (this.canvas.contains(t)) return;                         // handled above
+            if (t.closest('input, textarea, select, button, a, [tabindex], [contenteditable]')) return;
+            if (this.root.contains(document.activeElement) && document.activeElement !== document.body) return;
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && this.root.contains(sel.anchorNode)) return;
+            this.canvas.focus({ preventScroll: true });
+        });
     }
 
     private onKey(ev: KeyboardEvent): void {
@@ -364,7 +392,10 @@ export class GraphExplorer<N, E> {
         const vm = this.vm;
         const sel = vm.selection?.kind === 'node' ? vm.selection.id : null;
         let handled = true;
-        switch (ev.key) {
+        // Fall back to the physical key for layouts whose ev.key differs.
+        const key = ev.key && ev.key !== 'Unidentified' ? ev.key
+            : ({ Slash: '/', Minus: '-', Equal: '=', NumpadAdd: '+', NumpadSubtract: '-' } as Record<string, string>)[ev.code] ?? ev.key;
+        switch (key) {
             case '/': this.focusSearch(); break;
             case 'ArrowLeft': if (ev.altKey) vm.back(); else handled = false; break;
             case 'ArrowRight': if (ev.altKey) vm.forward(); else handled = false; break;
@@ -374,7 +405,8 @@ export class GraphExplorer<N, E> {
             case 'f': case 'F': this.view?.fit(); break;
             case 'e': case 'E': if (sel) vm.expand(sel); break;
             case 'c': case 'C': if (sel) vm.collapse(sel); break;
-            case 'Enter': if (sel && t === this.canvas) { vm.focusOn(sel); } else handled = false; break;
+            // Enter on a focused button activates the button; anywhere else in the graph it focuses the selection.
+            case 'Enter': if (sel && !t.closest('button, a')) { vm.focusOn(sel); } else handled = false; break;
             default: handled = false;
         }
         if (handled) { ev.preventDefault(); ev.stopPropagation(); }

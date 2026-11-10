@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-    conceptAtPlace, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, relationId, relationInfo,
+    conceptAtPlace, conceptForGlossaryKey, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph, relationId, relationInfo,
 } from '/graph-explorer/knowledge-model.js';
 
 const LESSON = { lessonId: 'draft/demo', lessonTitle: 'Demo', draft: true };
@@ -25,7 +25,7 @@ test('valid concepts and typed, directed relations parse with stable ids', () =>
         relations: [{ source: 'b', target: 'a', type: 'solves', description: 'why' }],
     }, LESSON);
     assert.deepEqual(p.issues, []);
-    assert.equal(p.focus, 'b');
+    assert.equal(p.mainConcept, 'b');
     assert.equal(p.concepts[0]!.data.lessons[0]!.places[0]!.step, -1, 'omitted step = scene base view');
     assert.deepEqual(p.concepts[0]!.data.lessons[0]!.places[1], { scene: 1, step: 2, label: 'here' });
     const r = p.relations[0]!;
@@ -56,9 +56,9 @@ test('malformed entries are dropped with an issue, never thrown', () => {
     assert.deepEqual(p.concepts.map((c) => c.id), ['a', 'r']);
     assert.equal(p.concepts[1]!.data.lessons[0]!.places.length, 0);
     assert.deepEqual(p.relations.map((r) => r.id), ['a|uses|r']);
-    assert.equal(p.focus, undefined);
+    assert.equal(p.mainConcept, undefined);
     for (const frag of ['duplicate concept', 'invalid id', 'missing label', 'unknown concept', 'cannot relate to itself',
-                        'lowercase-kebab', 'duplicate relation', 'focus']) {
+                        'lowercase-kebab', 'duplicate relation', 'is not a known concept']) {
         assert.ok(p.issues.some((m) => m.includes(frag)), `issue mentioning "${frag}"`);
     }
     assert.deepEqual(parseLessonKnowledgeGraph([], LESSON).issues, ['"knowledgeGraph" must be an object']);
@@ -163,7 +163,7 @@ test('demo lesson: the expected concepts and accurate typed relations', () => {
     const labels = p.concepts.map((c) => c.data.label);
     for (const l of ['Sliding Window Maximum', 'Sliding Window', 'Deque', 'Monotonic Deque', 'Monotonic Invariant',
                      'Amortized Analysis', 'Time Complexity']) assert.ok(labels.includes(l), l);
-    assert.equal(p.focus, 'dsa.monotonic-deque');
+    assert.equal(p.mainConcept, 'dsa.monotonic-deque');
     const types = new Set(p.relations.map((r) => r.type));
     assert.ok(types.size >= 5, 'not every connection is a prerequisite');
     assert.ok(p.relations.some((r) => r.id === 'dsa.monotonic-deque|specializes|dsa.deque'));
@@ -192,7 +192,7 @@ test('conceptAtPlace: exact step, else nearest earlier step, else the scene; tie
             { id: 'd', label: 'D', refs: [{ scene: 0, step: 1 }] },
         ],
     }, LESSON);
-    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, LESSON.lessonId, scene, step, p.focus);
+    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, LESSON.lessonId, scene, step, p.mainConcept);
     assert.equal(at(0, -1), 'a', 'scene base view → scene-level ref');
     assert.equal(at(0, 0), 'a', 'no step ref yet → scene-level ref');
     assert.equal(at(0, 1), 'c', 'exact step ref; authored order breaks the tie');
@@ -208,11 +208,39 @@ test('demo lesson: navigation maps scenes/steps to the concept being taught', ()
     const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/sliding-window-maximum.json'), 'utf8'));
     const id = 'draft/sliding-window-maximum';
     const p = parseLessonKnowledgeGraph(spec.knowledgeGraph, { lessonId: id, lessonTitle: spec.title, glossary: spec.glossary });
-    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, id, scene, step, p.focus);
+    const at = (scene: number, step: number) => conceptAtPlace(p.concepts, id, scene, step, p.mainConcept);
     assert.equal(at(0, -1), 'dsa.sliding-window-maximum');
     assert.equal(at(0, 0), 'dsa.sliding-window');
     assert.equal(at(1, -1), 'dsa.monotonic-deque', 'the main concept wins the scene-level tie');
     assert.equal(at(1, 3), 'dsa.monotonic-invariant');
     assert.equal(at(1, 4), 'dsa.monotonic-deque');
     assert.equal(at(2, -1), 'cs.amortized-analysis');
+});
+
+test('glossary key → concept: explicit link only, and only within the current lesson', () => {
+    const kg = createKnowledgeGraph();
+    mergeIntoGraph(kg, parseLessonKnowledgeGraph({
+        concepts: [{ id: 'dsa.deque', label: 'Deque', glossary: 'deque' }, { id: 'x', label: 'Sliding window' }],
+    }, { lessonId: 'one', lessonTitle: 'One', glossary: { deque: { markdown: 'd' } } }));
+    mergeIntoGraph(kg, parseLessonKnowledgeGraph({
+        concepts: [{ id: 'other.window', label: 'Window', glossary: 'window' }],
+    }, { lessonId: 'two', lessonTitle: 'Two', glossary: { window: { markdown: 'w' } } }));
+    assert.equal(conceptForGlossaryKey(kg, 'one', 'deque'), 'dsa.deque');
+    assert.equal(conceptForGlossaryKey(kg, 'one', 'sliding window'), null, 'a matching label is not a link');
+    assert.equal(conceptForGlossaryKey(kg, 'one', 'window'), null, "another lesson's key does not count");
+    assert.equal(conceptForGlossaryKey(kg, 'two', 'window'), 'other.window');
+    assert.equal(conceptForGlossaryKey(kg, '', 'deque'), null);
+});
+
+test('mainConcept: the lesson default focus; the deprecated "focus" alias still works', () => {
+    const concepts = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }];
+    assert.equal(parseLessonKnowledgeGraph({ mainConcept: 'b', concepts }, LESSON).mainConcept, 'b');
+    const legacy = parseLessonKnowledgeGraph({ focus: 'b', concepts }, LESSON);
+    assert.equal(legacy.mainConcept, 'b', 'old lesson files keep working');
+    assert.deepEqual(legacy.issues, []);
+    const both = parseLessonKnowledgeGraph({ mainConcept: 'a', focus: 'b', concepts }, LESSON);
+    assert.equal(both.mainConcept, 'a', 'mainConcept wins');
+    assert.ok(both.issues.some((m) => m.includes('disagree')));
+    const bad = parseLessonKnowledgeGraph({ mainConcept: 'zz', concepts }, LESSON);
+    assert.ok(bad.issues.some((m) => m.startsWith('mainConcept "zz"')));
 });

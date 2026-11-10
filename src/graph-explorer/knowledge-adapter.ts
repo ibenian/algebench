@@ -72,6 +72,9 @@ export function createKnowledgeAdapter(deps: { renderMarkdown: (md: string) => s
                 + `<h3 class="kg-details-title">${escapeHtml(d.label)}</h3>`
                 + (cat ? `<span class="kg-chip kg-cat-${escapeHtml(classToken(d.category ?? ''))}">${escapeHtml(cat)}</span>` : '')
                 + (d.origin === 'runtime' ? `<span class="kg-chip kg-chip-runtime" title="Added while the app was running, not from a lesson file">live update</span>` : '')
+                // Taught only in other lessons: say so up front, not just in the list below.
+                + (ctx.currentLessonId && d.lessons.length && !d.lessons.some((l) => l.lessonId === ctx.currentLessonId)
+                    ? `<span class="kg-chip kg-chip-external" title="Not taught in the open lesson">external</span>` : '')
                 + `</div>`;
             h += `<div class="kg-details-actions">`
                 + (ctx.isFocus ? '' : `<button type="button" class="kg-btn" data-kg-action="focus">Focus here</button>`)
@@ -95,15 +98,24 @@ export function createKnowledgeAdapter(deps: { renderMarkdown: (md: string) => s
             h += `<h4 class="kg-details-sub">Lessons</h4>`;
             if (!d.lessons.length) h += `<p class="kg-details-empty">Not linked to a lesson.</p>`;
             else {
+                // The open lesson first; every other lesson is marked EXTERNAL and
+                // its buttons say they leave the current lesson.
+                const cur = ctx.currentLessonId ?? null;
+                const lessons = [...d.lessons].sort((a, b) => Number(b.lessonId === cur) - Number(a.lessonId === cur));
                 h += `<ul class="kg-lesson-list">`;
-                for (const l of d.lessons) {
+                for (const l of lessons) {
+                    const external = !!cur && l.lessonId !== cur;
                     const places = l.places.length ? l.places : [{ scene: 0, step: -1 }];
-                    h += `<li><span class="kg-lesson-title">${escapeHtml(l.lessonTitle)}</span>`
+                    h += `<li class="${external ? 'kg-lesson-external' : 'kg-lesson-current'}">`
+                        + `<span class="kg-lesson-title">${escapeHtml(l.lessonTitle)}</span>`
+                        + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>`
+                                    : cur ? ` <span class="kg-chip kg-chip-current">this lesson</span>` : '')
                         + (l.draft ? ` <span class="kg-chip kg-chip-draft">draft</span>` : '')
                         + `<div class="kg-lesson-places">`
-                        + places.map((p) => `<button type="button" class="kg-btn kg-btn-nav" data-kg-lesson="${escapeHtml(l.lessonId)}" `
-                            + `data-kg-scene="${p.scene}" data-kg-step="${p.step}" title="Go to this place in the lesson">`
-                            + `${l.places.length ? escapeHtml(placeLabel(p)) : 'Open lesson'} ↗</button>`).join('')
+                        + places.map((p) => `<button type="button" class="kg-btn kg-btn-nav${external ? ' kg-btn-external' : ''}" data-kg-lesson="${escapeHtml(l.lessonId)}" `
+                            + `data-kg-scene="${p.scene}" data-kg-step="${p.step}" `
+                            + `title="${external ? `Leaves this lesson and opens “${escapeHtml(l.lessonTitle)}”` : 'Go to this place in the lesson'}">`
+                            + `${l.places.length ? escapeHtml(placeLabel(p)) : 'Open lesson'} ${external ? '⇱' : '↗'}</button>`).join('')
                         + `</div></li>`;
                 }
                 h += `</ul>`;
@@ -111,7 +123,7 @@ export function createKnowledgeAdapter(deps: { renderMarkdown: (md: string) => s
             h += `<p class="kg-details-id" title="Stable concept id">${escapeHtml(node.id)}</p>`;
             return h;
         },
-        edgeDetailsHtml(edge, kg) {
+        edgeDetailsHtml(edge, kg, ctx) {
             const info = relationInfo(edge.type);
             const d = edge.data;
             let h = `<div class="kg-details-head"><h3 class="kg-details-title">Relationship</h3>`
@@ -127,7 +139,11 @@ export function createKnowledgeAdapter(deps: { renderMarkdown: (md: string) => s
             if (d.description) h += `<div class="kg-details-def">${deps.renderMarkdown(d.description)}</div>`;
             if (d.lessons.length) {
                 h += `<h4 class="kg-details-sub">Asserted by</h4><ul class="kg-lesson-list">`
-                    + d.lessons.map((l) => `<li>${escapeHtml(lessonTitleOf(kg, edge, l))}</li>`).join('') + `</ul>`;
+                    + d.lessons.map((l) => {
+                        const external = !!ctx?.currentLessonId && l !== ctx.currentLessonId;
+                        return `<li>${escapeHtml(lessonTitleOf(kg, edge, l))}`
+                            + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>` : '') + `</li>`;
+                    }).join('') + `</ul>`;
             }
             return h;
         },

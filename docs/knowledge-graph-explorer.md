@@ -155,7 +155,7 @@ the learner had.
 comes from the lesson's existing `refs` — no extra schema
 (`conceptAtPlace`, `knowledge-model.ts`): a concept referenced at exactly that
 step; else the nearest earlier step in the scene; else the scene's own
-reference; ties go to the lesson's main `focus`, then authored order. When the
+reference; ties go to the lesson's `mainConcept`, then authored order. When the
 new place maps to the same concept as the previous one, nothing moves, so the
 learner's own exploration survives steps that stay on one topic. A lesson
 loads focused on the concept of its starting place.
@@ -165,7 +165,21 @@ Back/Forward, `focusKnowledgeConcept`): the visible nodes are re-arranged in
 rings around the new focus and the view re-centres, animated unless reduced
 motion is on. Expand/collapse keep the focus and never re-lay out, so
 exploration stays stable. A view that was closed while the focus moved is
-arranged around the new focus when it reopens (`GraphViewModel.layoutFocus`).
+arranged around the new focus when it reopens (`GraphViewModel.layoutFocus`). Every focus
+change ends with a fit, and a new focus layout cancels any layout or viewport
+animation still running, so fast navigation always settles in frame. A graph
+with no size (the lesson graph while the Doc tab is hidden) defers its layout
+and fit until it is shown again.
+
+**Glossary.** A glossary tooltip shows a Knowledge Graph button when a concept
+of the current lesson explicitly links that glossary key (`"glossary": "<key>"`;
+`conceptForGlossaryKey`) — never by matching labels, and never across lessons.
+It opens the global graph focused on that concept.
+
+**Keys** (focus must be in the graph; clicking the canvas takes it — Cytoscape
+blurs on mousedown, so the explorer focuses on pointer release): `/` search,
+`Enter` focus the selection, `E`/`C` expand/collapse, `Alt+←/→` or
+`Backspace` back/forward, `+`/`−` zoom, `F` fit, `Esc` close.
 
 ### Following the open lesson
 
@@ -202,7 +216,7 @@ A lesson may add an optional, validated `knowledgeGraph` block
 
 ```json
 "knowledgeGraph": {
-  "focus": "dsa.monotonic-deque",
+  "mainConcept": "dsa.monotonic-deque",
   "concepts": [
     { "id": "dsa.monotonic-deque", "label": "Monotonic Deque", "category": "data-structure",
       "glossary": "monotonic deque", "refs": [{ "scene": 1, "step": 4, "label": "Pops at i = 4" }] }
@@ -213,6 +227,10 @@ A lesson may add an optional, validated `knowledgeGraph` block
 }
 ```
 
+- **`mainConcept`** is what the lesson is mainly about — the default focus
+  whenever nothing more specific applies (a place no concept refers to, a tie
+  at one place, switching to Local scope, the global graph's start). Defaults to
+  the first concept. `focus` is accepted as a deprecated alias.
 - **Identity is the explicit `id` only.** The same id in two lessons is one
   concept (lesson references are unioned; first label/definition wins, a label
   disagreement is reported). Similar labels, glossary aliases and shared

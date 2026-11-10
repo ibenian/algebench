@@ -15,7 +15,7 @@
     "amortized analysis": {"term": "Amortized analysis", "markdown": "Bounding the **total** cost of a sequence of operations rather than the worst single operation — here, every index is pushed once and popped at most once."}
   },
   "knowledgeGraph": {
-    "focus": "dsa.monotonic-deque",
+    "mainConcept": "dsa.monotonic-deque",
     "concepts": [
       {
         "id": "dsa.sliding-window-maximum",

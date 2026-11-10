@@ -136,3 +136,23 @@ test('display label carries the hidden-neighbour badge only when there are hidde
     const none = adapter.nodeDetailsHtml(kg.getNode('dsa.deque')!, kg, { expanded: false, isFocus: false, hidden: 0 });
     assert.ok(none.includes('All neighbours shown') && !none.includes('data-kg-action="expand"'));
 });
+
+test('details mark references to other lessons as external; the open lesson is listed first', () => {
+    const kg = createKnowledgeGraph();
+    const a = parseLessonKnowledgeGraph({ concepts: [{ id: 'dq', label: 'Deque', refs: [{ scene: 1 }] }, { id: 'st', label: 'Stack' }],
+        relations: [{ source: 'st', target: 'dq', type: 'specializes' }] }, { lessonId: 'other', lessonTitle: 'Other Lesson' });
+    const b = parseLessonKnowledgeGraph({ concepts: [{ id: 'dq', label: 'Deque', refs: [{ scene: 0, step: 2 }] }] },
+        { lessonId: 'here', lessonTitle: 'This Lesson' });
+    mergeIntoGraph(kg, a); mergeIntoGraph(kg, b);
+    const dq = adapter.nodeDetailsHtml(kg.getNode('dq')!, kg, { expanded: false, isFocus: false, currentLessonId: 'here' });
+    assert.ok(dq.indexOf('This Lesson') < dq.indexOf('Other Lesson'), 'open lesson first');
+    assert.ok(dq.includes('kg-chip-current">this lesson'));
+    assert.equal((dq.match(/kg-chip-external/g) ?? []).length, 1, 'only the other lesson is external (not the concept itself)');
+    assert.ok(dq.includes('Leaves this lesson and opens “Other Lesson”'));
+    const st = adapter.nodeDetailsHtml(kg.getNode('st')!, kg, { expanded: false, isFocus: false, currentLessonId: 'here' });
+    assert.ok(st.includes('title="Not taught in the open lesson">external'), 'a concept from elsewhere is flagged in its header');
+    const edge = adapter.edgeDetailsHtml(kg.getEdge('st|specializes|dq')!, kg, { currentLessonId: 'here' });
+    assert.ok(edge.includes('kg-chip-external'), 'asserted only by another lesson');
+    const noLesson = adapter.nodeDetailsHtml(kg.getNode('dq')!, kg, { expanded: false, isFocus: false });
+    assert.ok(!noLesson.includes('kg-chip-external'), 'no open lesson: nothing is external');
+});
