@@ -269,11 +269,10 @@ export class CytoscapeGraphView<N, E> {
         // Discoverability: pointer cursor + a native tooltip saying what a
         // double-click will do on THIS concept.
         cy.on('mouseover', 'node', (ev) => {
-            this.container.style.cursor = 'pointer';
-            this.container.title = this.dblClickHint(ev.target.id());
+            this.hoverHint('pointer', this.dblClickHint(ev.target.id()));
         });
-        cy.on('mouseover', 'edge', () => { this.container.style.cursor = 'pointer'; this.container.title = 'Click for relationship details'; });
-        cy.on('mouseout', 'node, edge', () => { this.container.style.cursor = ''; this.container.title = ''; });
+        cy.on('mouseover', 'edge', () => this.hoverHint('pointer', 'Click for relationship details'));
+        cy.on('mouseout', 'node, edge', () => this.hoverHint('', ''));
         cy.on('dragfree', 'node', (ev) => { this.vm.savePosition(ev.target.id(), ev.target.position()); });
         cy.on('viewport', () => {
             if (this.viewportTimer) clearTimeout(this.viewportTimer);
@@ -450,6 +449,33 @@ export class CytoscapeGraphView<N, E> {
         pulse(true);
     }
 
+    /**
+     * Cursor + tooltip for what's under the pointer. Set on the container's
+     * PARENT: Cytoscape watches its own container's attributes (a
+     * MutationObserver that calls cy.resize()), so touching them on every
+     * hover made it resize and redraw for nothing.
+     */
+    private hoverHint(cursor: string, title: string): void {
+        const host = this.container.parentElement ?? this.container;
+        host.style.cursor = cursor;
+        host.title = title;
+    }
+
+    /**
+     * Draw now, inside this task. Resizing the canvas element clears it and
+     * Cytoscape only redraws on its next frame, so without this every resize
+     * shows one blank frame — continuous resizing (dragging the grip, a mode
+     * transition) flickers. Uses the renderer's own render(); harmless if a
+     * future Cytoscape drops it.
+     */
+    private renderNow(): void {
+        try {
+            // renderer() is public at runtime but missing from Cytoscape's typings.
+            const r = (this.cy as unknown as { renderer?: () => { render?: (o?: object) => void } } | null)?.renderer?.();
+            r?.render?.({});
+        } catch { /* the next frame will draw */ }
+    }
+
     /** What a double-click on `id` will do, for the hover hint. */
     private dblClickHint(id: string): string {
         const vm = this.vm;
@@ -563,6 +589,7 @@ export class CytoscapeGraphView<N, E> {
             this.pendingLayout = this.pendingFit = false;
             cy.resize();
             if (layoutToo) this.runLayout(false); else this.fit(false);
+            this.renderNow();
             return;
         }
         const ext = cy.extent();
@@ -570,6 +597,7 @@ export class CytoscapeGraphView<N, E> {
         const cx = (ext.x1 + ext.x2) / 2, cy0 = (ext.y1 + ext.y2) / 2;
         const z = cy.zoom();
         cy.pan({ x: this.container.clientWidth / 2 - cx * z, y: this.container.clientHeight / 2 - cy0 * z });
+        this.renderNow();
     }
 
     /** Theme changed: rebuild the stylesheet only. */

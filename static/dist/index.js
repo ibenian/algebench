@@ -30491,17 +30491,10 @@ var CytoscapeGraphView = class {
 			else this.vm.expand(id);
 		});
 		cy.on("mouseover", "node", (ev) => {
-			this.container.style.cursor = "pointer";
-			this.container.title = this.dblClickHint(ev.target.id());
+			this.hoverHint("pointer", this.dblClickHint(ev.target.id()));
 		});
-		cy.on("mouseover", "edge", () => {
-			this.container.style.cursor = "pointer";
-			this.container.title = "Click for relationship details";
-		});
-		cy.on("mouseout", "node, edge", () => {
-			this.container.style.cursor = "";
-			this.container.title = "";
-		});
+		cy.on("mouseover", "edge", () => this.hoverHint("pointer", "Click for relationship details"));
+		cy.on("mouseout", "node, edge", () => this.hoverHint("", ""));
 		cy.on("dragfree", "node", (ev) => {
 			this.vm.savePosition(ev.target.id(), ev.target.position());
 		});
@@ -30704,6 +30697,29 @@ var CytoscapeGraphView = class {
 		};
 		pulse(true);
 	}
+	/**
+	* Cursor + tooltip for what's under the pointer. Set on the container's
+	* PARENT: Cytoscape watches its own container's attributes (a
+	* MutationObserver that calls cy.resize()), so touching them on every
+	* hover made it resize and redraw for nothing.
+	*/
+	hoverHint(cursor, title) {
+		const host = this.container.parentElement ?? this.container;
+		host.style.cursor = cursor;
+		host.title = title;
+	}
+	/**
+	* Draw now, inside this task. Resizing the canvas element clears it and
+	* Cytoscape only redraws on its next frame, so without this every resize
+	* shows one blank frame — continuous resizing (dragging the grip, a mode
+	* transition) flickers. Uses the renderer's own render(); harmless if a
+	* future Cytoscape drops it.
+	*/
+	renderNow() {
+		try {
+			(this.cy?.renderer?.())?.render?.({});
+		} catch {}
+	}
 	/** What a double-click on `id` will do, for the hover hint. */
 	dblClickHint(id) {
 		const vm = this.vm;
@@ -30828,6 +30844,7 @@ var CytoscapeGraphView = class {
 			cy.resize();
 			if (layoutToo) this.runLayout(false);
 			else this.fit(false);
+			this.renderNow();
 			return;
 		}
 		const ext = cy.extent();
@@ -30838,6 +30855,7 @@ var CytoscapeGraphView = class {
 			x: this.container.clientWidth / 2 - cx * z,
 			y: this.container.clientHeight / 2 - cy0 * z
 		});
+		this.renderNow();
 	}
 	/** Theme changed: rebuild the stylesheet only. */
 	restyle() {

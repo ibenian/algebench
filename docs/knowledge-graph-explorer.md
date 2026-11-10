@@ -366,6 +366,14 @@ drawn (plus a quadratic collision check in the placement of many new nodes at
 once), which is why the default view is bounded (`maxVisible` 250, overview of
 the 40 best-connected concepts) and exploration is progressive.
 
+**Resizing without flicker.** Resizing a canvas element clears it, and Cytoscape
+redraws only on its next frame, so each `cy.resize()` shows one blank frame —
+continuous resizing (the grip, a mode transition) flickered. The view draws
+synchronously right after each resize (`renderNow`, the renderer's own
+`render()`); measured 0 of 20 blank frames versus 20 of 20 before. Hover
+cursor/tooltip live on the container's parent, because Cytoscape treats any
+attribute change on its container as a resize.
+
 ## Known limitations
 
 - Only two lessons carry a `knowledgeGraph` block today (the demo and
