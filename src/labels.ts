@@ -237,9 +237,28 @@ export function renderMarkdown(md: string | null | undefined, opts?: RenderOptio
     return restoreGlossaryTerms(_renderMarkdown(text, untrusted), terms);
 }
 
-/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor). */
-function safeHref(href: string | null | undefined): boolean {
-    const h = String(href ?? '').trim();
+// Named character references that can spell part of a scheme. Any other
+// named reference left before the first ':' makes the target unsafe.
+const SCHEME_ENTITIES: Record<string, string> = { colon: ':', tab: '\t', newline: '\n' };
+
+/** Decode the character references a browser would decode in an href attribute. */
+function decodeHrefEntities(s: string): string {
+    return s
+        .replace(/&#x([0-9a-f]+);?/gi, (_m, hex: string) => String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff)))
+        .replace(/&#(\d+);?/g, (_m, dec: string) => String.fromCodePoint(Math.min(parseInt(dec, 10), 0x10ffff)))
+        .replace(/&(colon|tab|newline);/gi, (m, name: string) => SCHEME_ENTITIES[name.toLowerCase()] ?? m);
+}
+
+/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor).
+ *  The href reaches us with HTML entities still encoded, and the browser decodes them only
+ *  when the HTML is inserted, so `java&#x73;cript:` must be decoded before the scheme check.
+ *  Browsers also ignore tabs, newlines and control characters inside the scheme. */
+export function safeHref(href: string | null | undefined): boolean {
+    // eslint-disable-next-line no-control-regex
+    const h = decodeHrefEntities(String(href ?? '')).replace(/[\u0000- \u007f-\u009f]/g, '');
+    const colon = h.indexOf(':');
+    // A named reference we don't decode, ahead of the scheme separator: refuse it.
+    if (colon >= 0 && /&[a-z]/i.test(h.slice(0, colon))) return false;
     const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(h);
     return !scheme || /^(https?|mailto)$/i.test(scheme[1]!);
 }

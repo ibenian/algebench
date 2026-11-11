@@ -1955,9 +1955,23 @@ function renderMarkdown$1(md, opts) {
 	const { text, terms } = extractActiveGlossaryTerms(md);
 	return restoreGlossaryTerms(_renderMarkdown(text, untrusted), terms);
 }
-/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor). */
+var SCHEME_ENTITIES = {
+	colon: ":",
+	tab: "	",
+	newline: "\n"
+};
+/** Decode the character references a browser would decode in an href attribute. */
+function decodeHrefEntities(s) {
+	return s.replace(/&#x([0-9a-f]+);?/gi, (_m, hex) => String.fromCodePoint(Math.min(parseInt(hex, 16), 1114111))).replace(/&#(\d+);?/g, (_m, dec) => String.fromCodePoint(Math.min(parseInt(dec, 10), 1114111))).replace(/&(colon|tab|newline);/gi, (m, name) => SCHEME_ENTITIES[name.toLowerCase()] ?? m);
+}
+/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor).
+*  The href reaches us with HTML entities still encoded, and the browser decodes them only
+*  when the HTML is inserted, so `java&#x73;cript:` must be decoded before the scheme check.
+*  Browsers also ignore tabs, newlines and control characters inside the scheme. */
 function safeHref(href) {
-	const h = String(href ?? "").trim();
+	const h = decodeHrefEntities(String(href ?? "")).replace(/[\u0000- \u007f-\u009f]/g, "");
+	const colon = h.indexOf(":");
+	if (colon >= 0 && /&[a-z]/i.test(h.slice(0, colon))) return false;
 	const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(h);
 	return !scheme || /^(https?|mailto)$/i.test(scheme[1]);
 }
