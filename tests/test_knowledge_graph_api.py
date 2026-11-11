@@ -81,7 +81,7 @@ def test_edits_are_picked_up(tmp_path, monkeypatch):
 def test_real_demo_lessons_are_served():
     out = server.list_lesson_knowledge_graphs()
     ids = {l["id"] for l in out["lessons"]}
-    assert {"draft/sliding-window-maximum", "draft/parenthesis-validation"} <= ids
+    assert "draft/parenthesis-validation" in ids
     assert out["lessonCount"] >= len(ids)
 
 
@@ -94,7 +94,7 @@ def _lesson_validator():
 
 
 def _demo_lesson():
-    path = Path(__file__).parent.parent / "scenes" / "draft" / "sliding-window-maximum.json"
+    path = Path(__file__).parent.parent / "scenes" / "draft" / "parenthesis-validation.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 

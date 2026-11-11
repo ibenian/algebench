@@ -11,15 +11,15 @@ import {
     applyRuntimeUpdate, createKnowledgeGraph, mergeIntoGraph, parseLessonKnowledgeGraph,
     type ConceptData, type KnowledgeGraph, type RelationData,
 } from '/graph-explorer/knowledge-model.js';
-import { SLIDING_WINDOW_MINIMUM_UPDATE } from '/graph-explorer/fixtures/sliding-window-minimum.js';
+import { HTML_TAG_MATCHING_UPDATE } from '/graph-explorer/fixtures/html-tag-matching.js';
 
 const ROOT = join(import.meta.dirname, '..', '..');
-const MIN = 'dsa.sliding-window-minimum';
+const TAGS = 'dsa.html-tag-matching';
 
 /** The store as the app builds it: every real lesson block, concepts first. */
 function lessonStore(): KnowledgeGraph {
     const kg = createKnowledgeGraph();
-    const blocks = ['scenes/draft/sliding-window-maximum.json', 'scenes/draft/parenthesis-validation.json'].map((f) => {
+    const blocks = ['scenes/draft/parenthesis-validation.json'].map((f) => {
         const spec = JSON.parse(readFileSync(join(ROOT, f), 'utf8'));
         return parseLessonKnowledgeGraph(spec.knowledgeGraph, { lessonId: f, lessonTitle: spec.title, glossary: spec.glossary }, () => true);
     });
@@ -39,46 +39,46 @@ function watch(kg: KnowledgeGraph, setup: (vm: GraphViewModel<ConceptData, Relat
 test('a runtime update adds concepts and typed relations, tagged runtime, without lesson JSON', () => {
     const kg = lessonStore();
     const before = kg.nodeCount;
-    const res = applyRuntimeUpdate(kg, SLIDING_WINDOW_MINIMUM_UPDATE);
+    const res = applyRuntimeUpdate(kg, HTML_TAG_MATCHING_UPDATE);
     assert.deepEqual([...res.parseIssues, ...res.issues], []);
     assert.equal(res.conceptsAdded, 1);
     assert.equal(res.relationsAdded, 3);
     assert.equal(kg.nodeCount, before + 1);
-    const node = kg.getNode(MIN)!.data;
+    const node = kg.getNode(TAGS)!.data;
     assert.equal(node.origin, 'runtime');
     assert.deepEqual(node.lessons, [], 'no lesson reference is invented');
-    const solves = kg.getEdge(`dsa.monotonic-deque|solves|${MIN}`)!;
-    assert.equal(solves.type, 'solves');
-    assert.equal(solves.source, 'dsa.monotonic-deque');
-    assert.equal(solves.data.origin, 'runtime');
+    const uses = kg.getEdge(`${TAGS}|uses|dsa.stack`)!;
+    assert.equal(uses.type, 'uses');
+    assert.equal(uses.target, 'dsa.stack');
+    assert.equal(uses.data.origin, 'runtime');
 });
 
 test('every view sharing the store gets ONE incremental patch; nothing is rebuilt', () => {
     const kg = lessonStore();
-    const lesson = watch(kg, (vm) => vm.focusOn('dsa.monotonic-deque'));
+    const lesson = watch(kg, (vm) => vm.focusOn('dsa.stack'));
     const global = watch(kg, (vm) => vm.showOverview(40));
     const enginePatches: GraphPatch<ConceptData, RelationData>[] = [];
     kg.subscribe((p) => enginePatches.push(p));
     const untouched = kg.getNode('dsa.deque');
     const visibleBefore = new Set(lesson.vm.visibleNodes);
 
-    applyRuntimeUpdate(kg, SLIDING_WINDOW_MINIMUM_UPDATE);
+    applyRuntimeUpdate(kg, HTML_TAG_MATCHING_UPDATE);
 
     // Engine: one patch naming exactly the new records.
     assert.equal(enginePatches.length, 1);
     const ep = enginePatches[0]!;
-    assert.deepEqual(ep.nodesAdded, [MIN]);
+    assert.deepEqual(ep.nodesAdded, [TAGS]);
     assert.equal(ep.edgesAdded.length, 3);
     assert.deepEqual([ep.nodesUpdated, ep.nodesRemoved, ep.edgesUpdated, ep.edgesRemoved], [[], [], [], []]);
     assert.equal(kg.getNode('dsa.deque'), untouched, 'unrelated records keep identity (no copy)');
 
-    // Lesson view (focused on Monotonic Deque, 1-hop): the new neighbour appears next to it.
+    // Lesson view (focused on Stack, 1-hop): the new neighbour appears next to it.
     assert.equal(lesson.patches.length, 1);
     const lp = lesson.patches[0]!;
-    assert.deepEqual(lp.nodesAdded, [MIN]);
-    assert.ok(lp.edgesAdded.includes(`dsa.monotonic-deque|solves|${MIN}`));
+    assert.deepEqual(lp.nodesAdded, [TAGS]);
+    assert.ok(lp.edgesAdded.includes(`${TAGS}|uses|dsa.stack`));
     assert.deepEqual([lp.nodesRemoved, lp.edgesRemoved, lp.nodesUpdated], [[], [], []]);
-    assert.equal(lp.anchor, 'dsa.monotonic-deque');
+    assert.equal(lp.anchor, 'dsa.stack');
     for (const id of visibleBefore) assert.ok(lesson.vm.visibleNodes.has(id), `${id} stays visible`);
 
     // Global overview (no focus): the store changed but its bounded view did not grow.
@@ -123,7 +123,7 @@ test('the validation boundary holds for runtime payloads (an Expert proposal is 
 
 test('runtime updates work on an empty store, independent of any lesson', () => {
     const kg = createKnowledgeGraph();
-    const res = applyRuntimeUpdate(kg, SLIDING_WINDOW_MINIMUM_UPDATE);
+    const res = applyRuntimeUpdate(kg, HTML_TAG_MATCHING_UPDATE);
     assert.equal(res.conceptsAdded, 1);
     assert.equal(res.relationsAdded, 0, 'relations to concepts nobody defined are rejected, not fabricated');
     assert.equal(res.parseIssues.length, 3);
@@ -133,7 +133,7 @@ test('the dev demo does not leak into the production bundle or lesson content', 
     const dist = join(ROOT, 'static', 'dist');
     for (const f of readdirSync(dist).filter((n) => n.endsWith('.js'))) {
         const js = readFileSync(join(dist, f), 'utf8');
-        for (const needle of ['dsa.sliding-window-minimum', 'liveUpdateExample', 'SLIDING_WINDOW_MINIMUM_UPDATE']) {
+        for (const needle of ['dsa.html-tag-matching', 'liveUpdateExample', 'HTML_TAG_MATCHING_UPDATE']) {
             assert.equal(js.includes(needle), false, `${needle} found in static/dist/${f}`);
         }
     }

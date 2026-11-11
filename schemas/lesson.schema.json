@@ -3525,7 +3525,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
-          "description": "Stable, globally unique concept id, conventionally namespaced: \"dsa.monotonic-deque\". Reuse the same id in every lesson that teaches the concept."
+          "description": "Stable, globally unique concept id, conventionally namespaced: \"dsa.stack\". Reuse the same id in every lesson that teaches the concept."
         },
         "label": {
           "type": "string",

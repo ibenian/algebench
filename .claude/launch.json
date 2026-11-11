@@ -319,7 +319,7 @@
       "name": "knowledge-graph-demo",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [
-        "scenes/draft/sliding-window-maximum.json",
+        "scenes/draft/parenthesis-validation.json",
         "--port",
         "5766",
         "--debug",

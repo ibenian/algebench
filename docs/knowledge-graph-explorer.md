@@ -5,8 +5,10 @@ A reusable, reactive graph explorer, with one implemented graph type: the
 (**Knowledge Graph**) as a cross-lesson graph, and from a lesson's Doc tab (**Knowledge
 Graph** section) when that lesson has a `knowledgeGraph` block.
 
-Demo lesson: `scenes/draft/sliding-window-maximum.json`
-(`?builtin=draft/sliding-window-maximum`, launch config `knowledge-graph-demo`).
+Demo lesson: `scenes/draft/parenthesis-validation.json`
+(`?builtin=draft/parenthesis-validation`, launch config `knowledge-graph-demo`). Every one
+of its 14 scenes is referenced by a concept, so the focus follows navigation
+through the whole lesson.
 
 ## Architecture
 
@@ -157,7 +159,7 @@ to Global (it never silently shows other lessons' concepts).
 
 The status line follows the scope: Global reports coverage ("knowledge graphs
 from 2 of 36 lessons"), Local counts only the lesson's concepts and names the
-lesson ("4 of 7 concepts shown · local: Sliding Window Maximum").
+lesson ("4 of 14 concepts shown · local: Parenthesis validation").
 
 ### Setting the focus (standard entry point)
 
@@ -248,13 +250,13 @@ A lesson may add an optional, validated `knowledgeGraph` block
 
 ```json
 "knowledgeGraph": {
-  "mainConcept": "dsa.monotonic-deque",
+  "mainConcept": "dsa.balanced-brackets",
   "concepts": [
-    { "id": "dsa.monotonic-deque", "label": "Monotonic Deque", "category": "data-structure",
-      "glossary": "monotonic deque", "refs": [{ "scene": 1, "step": 4, "label": "Pops at i = 4" }] }
+    { "id": "dsa.stack", "label": "Stack", "category": "data-structure",
+      "glossary": "stack", "refs": [{ "scene": 0, "step": 0, "label": "Stack of opener positions" }] }
   ],
   "relations": [
-    { "source": "dsa.monotonic-deque", "target": "dsa.deque", "type": "specializes" }
+    { "source": "dsa.stack", "target": "dsa.deque", "type": "specializes" }
   ]
 }
 ```
@@ -305,26 +307,26 @@ definition, category or relation description, never overwrite lesson-authored
 content — and re-sending the same payload is a no-op.
 
 This is the boundary a future tutor / Expert integration uses: e.g. a learner
-on Sliding Window Maximum asks about Sliding Window Minimum, and the Expert
+on Parenthesis validation asks how HTML checks its tags, and the Expert
 proposes the concept and its relations. The payload is treated as untrusted:
 malformed entries are dropped with an issue, relations must join concepts that
 exist (in the store or the same payload), definitions render as untrusted
 markdown. Neither the Expert integration nor persistence is implemented.
 
 **Dev demo.** That example lives in
-`src/graph-explorer/fixtures/sliding-window-minimum.ts` — used by
+`src/graph-explorer/fixtures/html-tag-matching.ts` — used by
 `runtime-update.test.ts` and never imported by app code, so it is not in the
 bundle (the test checks `static/dist`). To see it live, open the demo lesson's
 graph and run in the DevTools console:
 
 ```js
 algebenchKnowledgeGraph.applyUpdate({
-  concepts: [{ id: "dsa.sliding-window-minimum", label: "Sliding Window Minimum", category: "problem",
-               definition: "The minimum of every length-$k$ window." }],
+  concepts: [{ id: "dsa.html-tag-matching", label: "HTML Tag Matching", category: "problem",
+               definition: "Check that every opening tag is closed by its own closing tag, innermost first." }],
   relations: [
-    { source: "dsa.monotonic-deque", target: "dsa.sliding-window-minimum", type: "solves" },
-    { source: "dsa.sliding-window-minimum", target: "dsa.sliding-window", type: "uses" },
-    { source: "dsa.sliding-window-minimum", target: "dsa.sliding-window-maximum", type: "related-to" }
+    { source: "dsa.html-tag-matching", target: "dsa.stack", type: "uses" },
+    { source: "dsa.html-tag-matching", target: "dsa.lifo-order", type: "uses" },
+    { source: "dsa.html-tag-matching", target: "dsa.balanced-brackets", type: "related-to" }
   ]
 })
 ```

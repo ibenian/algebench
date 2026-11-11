@@ -51,7 +51,7 @@ interface Snapshot { focus: string | null; roots: [string, number][]; selection:
 export interface ViewModelOptions<N> {
     /** Which graph type this context shows ("knowledge"); future: "expression", "code". */
     graphType: string;
-    /** A stable name for the context ("global", "lesson:draft/sliding-window-maximum"). */
+    /** A stable name for the context ("global", "lesson:draft/parenthesis-validation"). */
     contextId: string;
     /** Hop radius used by focusOn() unless told otherwise. Default 1. */
     defaultDepth?: number;

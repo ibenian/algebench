@@ -1162,7 +1162,7 @@ export interface KnowledgeGraph {
  */
 export interface KnowledgeConcept {
   /**
-   * Stable, globally unique concept id, conventionally namespaced: "dsa.monotonic-deque". Reuse the same id in every lesson that teaches the concept.
+   * Stable, globally unique concept id, conventionally namespaced: "dsa.stack". Reuse the same id in every lesson that teaches the concept.
    */
   id: string;
   /**

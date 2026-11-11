@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from backend.agent_tools import build_system_prompt, knowledge_graph_section
 
 KG = {
-    "open": True, "context": "lesson:draft/sliding-window-maximum", "presentation": "embedded", "scope": "local",
+    "open": True, "context": "lesson:draft/parenthesis-validation", "presentation": "embedded", "scope": "local",
     "focus": {"id": "md", "label": "Monotonic Deque", "category": "data-structure", "role": "focus",
               "definition": "A deque of indices kept in decreasing value order."},
     "selected": {"id": "dq", "label": "Deque", "role": "selected", "definition": "double-ended queue"},

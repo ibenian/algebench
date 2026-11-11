@@ -151,35 +151,41 @@ test('every lesson knowledgeGraph block in scenes/ parses without issues', () =>
         assert.deepEqual(p.issues, [], f);
         parsed.push(p);
     }
-    assert.ok(withGraph >= 2, 'the demo lesson and the second lesson carry graphs');
+    assert.ok(withGraph >= 1, 'the demo lesson carries a graph');
     for (const p of parsed) mergeIntoGraph(kg, { concepts: p.concepts, relations: [] });
     for (const p of parsed) assert.deepEqual(mergeIntoGraph(kg, { concepts: [], relations: p.relations }).issues, []);
 });
 
 test('demo lesson: the expected concepts and accurate typed relations', () => {
-    const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/sliding-window-maximum.json'), 'utf8'));
+    const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/parenthesis-validation.json'), 'utf8'));
     const p = parseLessonKnowledgeGraph(spec.knowledgeGraph,
-        { lessonId: 'draft/sliding-window-maximum', lessonTitle: spec.title, draft: true, glossary: spec.glossary });
+        { lessonId: 'draft/parenthesis-validation', lessonTitle: spec.title, draft: true, glossary: spec.glossary });
+    assert.deepEqual(p.issues, []);
     const labels = p.concepts.map((c) => c.data.label);
-    for (const l of ['Sliding Window Maximum', 'Sliding Window', 'Deque', 'Monotonic Deque', 'Monotonic Invariant',
-                     'Amortized Analysis', 'Time Complexity']) assert.ok(labels.includes(l), l);
-    assert.equal(p.mainConcept, 'dsa.monotonic-deque');
+    for (const l of ['Balanced Brackets', 'Stack', 'LIFO Order', 'Matching Pair', 'Nesting Depth', 'Unmatched Closer',
+                     'Empty Stack at the End', 'Bracket Repair', 'Dyck Language', 'Pushdown Automaton']) assert.ok(labels.includes(l), l);
+    assert.equal(p.mainConcept, 'dsa.balanced-brackets');
     const types = new Set(p.relations.map((r) => r.type));
-    assert.ok(types.size >= 5, 'not every connection is a prerequisite');
-    assert.ok(p.relations.some((r) => r.id === 'dsa.monotonic-deque|specializes|dsa.deque'));
-    assert.ok(p.relations.some((r) => r.id === 'dsa.monotonic-deque|maintains|dsa.monotonic-invariant'));
+    assert.ok(types.size >= 6, 'not every connection is a prerequisite');
+    assert.ok(p.relations.some((r) => r.id === 'dsa.stack|specializes|dsa.deque'));
+    assert.ok(p.relations.some((r) => r.id === 'dsa.stack|maintains|dsa.lifo-order'));
+    assert.ok(p.relations.some((r) => r.id === 'dsa.balanced-brackets|prerequisite-of|dsa.bracket-repair'));
     // every concept ref points at a real scene/step of the lesson
     for (const c of p.concepts) {
-        for (const place of c.data.lessons[0]!.places) {
+        for (const place of c.data.lessons[0]?.places ?? []) {
             const scene = spec.scenes[place.scene];
             assert.ok(scene, `${c.id} scene ${place.scene}`);
             assert.ok(place.step < (scene.steps?.length ?? 0), `${c.id} step ${place.step}`);
         }
     }
+    // every scene is taught by some concept, so navigation always has a focus
+    const covered = new Set(p.concepts.flatMap((c) => (c.data.lessons[0]?.places ?? []).map((pl) => pl.scene)));
+    spec.scenes.forEach((_s: unknown, i: number) => assert.ok(covered.has(i), `scene ${i} has a concept`));
     // the glossary-linked definitions resolved
-    assert.ok(p.concepts.find((c) => c.id === 'dsa.monotonic-deque')!.data.definition!.includes('indices'));
+    assert.ok(p.concepts.find((c) => c.id === 'dsa.stack')!.data.definition!.includes('last-in, first-out'));
+    assert.ok(p.concepts.find((c) => c.id === 'cs.dyck-language')!.data.definition!.includes('context-free'));
     assert.equal(spec.knowledgeGraph.liveUpdateExample, undefined, 'no demo payload in production lesson content');
-    assert.ok(!p.concepts.some((c) => c.id === 'dsa.sliding-window-minimum'), 'the demo concept is not lesson content');
+    assert.ok(!p.concepts.some((c) => c.id === 'dsa.html-tag-matching'), 'the demo concept is not lesson content');
 });
 
 test('conceptAtPlace: exact step, else nearest earlier step, else the scene; ties to the main concept', () => {
@@ -205,16 +211,17 @@ test('conceptAtPlace: exact step, else nearest earlier step, else the scene; tie
 });
 
 test('demo lesson: navigation maps scenes/steps to the concept being taught', () => {
-    const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/sliding-window-maximum.json'), 'utf8'));
-    const id = 'draft/sliding-window-maximum';
+    const spec = JSON.parse(readFileSync(join(ROOT, 'scenes/draft/parenthesis-validation.json'), 'utf8'));
+    const id = 'draft/parenthesis-validation';
     const p = parseLessonKnowledgeGraph(spec.knowledgeGraph, { lessonId: id, lessonTitle: spec.title, glossary: spec.glossary });
     const at = (scene: number, step: number) => conceptAtPlace(p.concepts, id, scene, step, p.mainConcept);
-    assert.equal(at(0, -1), 'dsa.sliding-window-maximum');
-    assert.equal(at(0, 0), 'dsa.sliding-window');
-    assert.equal(at(1, -1), 'dsa.monotonic-deque', 'the main concept wins the scene-level tie');
-    assert.equal(at(1, 3), 'dsa.monotonic-invariant');
-    assert.equal(at(1, 4), 'dsa.monotonic-deque');
-    assert.equal(at(2, -1), 'cs.amortized-analysis');
+    assert.equal(at(0, -1), 'dsa.balanced-brackets', 'scene base view → the scene-level ref');
+    assert.equal(at(0, 0), 'dsa.stack', 'the step ref wins once the step is shown');
+    assert.equal(at(2, 0), 'dsa.lifo-order');
+    assert.equal(at(3, 0), 'dsa.unmatched-closer');
+    assert.equal(at(4, 0), 'dsa.empty-stack-at-end');
+    assert.equal(at(8, 0), 'dsa.nesting-depth');
+    assert.equal(at(12, 0), 'dsa.bracket-repair');
 });
 
 test('glossary key → concept: explicit link only, and only within the current lesson', () => {
