@@ -204,6 +204,10 @@
                     <button id="doc-commentate-btn" title="AI commentary on this document">💬 Commentate</button>
                 </div>
                 <div id="explanation-content"></div>
+                <section id="lesson-kg-section" class="hidden" aria-label="Lesson knowledge graph">
+                    <div class="side-section-head" id="lesson-kg-head"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="6" r="2"/><circle cx="19.5" cy="6" r="2"/><circle cx="12" cy="20.5" r="2"/><path d="M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5"/></svg><span class="side-section-title">Knowledge Graph</span><span id="lesson-kg-count" class="lesson-kg-count"></span><span id="lesson-kg-buttons" class="kg-layer-buttons"></span><button id="lesson-kg-toggle" class="side-head-btn side-fold-btn" type="button" aria-expanded="false" aria-controls="lesson-kg-slot"></button></div>
+                    <div id="lesson-kg-slot" class="hidden"></div>
+                </section>
             </div>
             <div id="tab-chat" class="tab-content">
                 <div id="chat-tts-controls">
@@ -324,6 +328,11 @@
             </div>
         </span>
         <span id="debug-status-text"></span>
+        <span id="kg-status" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false"
+              title="Knowledge Graph — explore concepts across lessons" aria-label="Open the Knowledge Graph">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="6" r="2"/><circle cx="19.5" cy="6" r="2"/><circle cx="12" cy="20.5" r="2"/><path d="M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5"/></svg>
+            <span class="kg-status-label">Knowledge Graph</span>
+        </span>
         <span id="about-status" title="About AlgeBench" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="About AlgeBench">
             <span class="about-status-icon">&#9432;</span>
             <span class="about-status-label">AlgeBench</span>

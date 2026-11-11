@@ -214,6 +214,26 @@ function _learnButton(name: string): HTMLButtonElement {
     return btn;
 }
 
+const KG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">'
+    + '<circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="6" r="2"/><circle cx="19.5" cy="6" r="2"/><circle cx="12" cy="20.5" r="2"/>'
+    + '<path d="M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5"/></svg>';
+
+/** "Show in Knowledge Graph": open the graph focused on the concept this term is linked to. */
+function _knowledgeGraphButton(name: string, conceptId: string): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'glossary-learn-btn glossary-kg-btn';
+    btn.innerHTML = KG_ICON;
+    btn.title = `Show ${stripGlossaryMarkers(name)} in the Knowledge Graph`;
+    btn.setAttribute('aria-label', btn.title);
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hideGlossaryTip();
+        void window.algebenchKnowledgeGraph?.openConcept(conceptId, 'popup');
+    });
+    return btn;
+}
+
 function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
     const name = glossaryTermName(key, entry);
     tip.el.innerHTML = '';
@@ -227,6 +247,10 @@ function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
         () => (entry.prompt && stripGlossaryMarkers(entry.prompt)) || `Explain "${name}" in the context of what I'm looking at.`));
     // Only where the plan panel is there to answer it (the main app).
     if (window.algebenchPlanAvailable) head.appendChild(_learnButton(name));
+    // Only where the app has a Knowledge Graph, and only for a term a concept
+    // of this lesson explicitly links to.
+    const conceptId = window.algebenchKnowledgeGraph?.conceptForGlossaryKey(key);
+    if (conceptId) head.appendChild(_knowledgeGraphButton(name, conceptId));
     tip.el.appendChild(head);
     if (entry.markdown) {
         const body = document.createElement('div');

@@ -1,5 +1,304 @@
 {
   "title": "Parenthesis validation · full stack algorithm",
+  "glossary": {
+    "stack": {
+      "term": "Stack",
+      "markdown": "A **last-in, first-out** collection: push and pop both happen at the top, in $O(1)$."
+    },
+    "LIFO": {
+      "term": "LIFO",
+      "aliases": [
+        "last-in, first-out"
+      ],
+      "markdown": "**Last in, first out**: the most recently added item is the first one removed."
+    },
+    "nesting depth": {
+      "term": "Nesting depth",
+      "aliases": [
+        "depth"
+      ],
+      "markdown": "How many brackets are open at a point in the scan. In the validator it is the stack's size."
+    },
+    "Dyck language": {
+      "term": "Dyck language",
+      "markdown": "The set of all balanced bracket strings. It is context-free but not regular: no finite automaton can track arbitrarily deep nesting."
+    }
+  },
+  "knowledgeGraph": {
+    "mainConcept": "dsa.balanced-brackets",
+    "concepts": [
+      {
+        "id": "dsa.balanced-brackets",
+        "label": "Balanced Brackets",
+        "category": "problem",
+        "definition": "Decide whether every opening bracket in a string is closed by the matching bracket, in the right order, with nothing left open.",
+        "refs": [
+          {
+            "scene": 0,
+            "label": "Nested brackets"
+          },
+          {
+            "scene": 1,
+            "label": "Adjacent pairs"
+          }
+        ]
+      },
+      {
+        "id": "dsa.stack",
+        "label": "Stack",
+        "category": "data-structure",
+        "glossary": "stack",
+        "refs": [
+          {
+            "scene": 0,
+            "step": 0,
+            "label": "Stack of opener positions"
+          }
+        ]
+      },
+      {
+        "id": "dsa.lifo-order",
+        "label": "LIFO Order",
+        "category": "invariant",
+        "glossary": "LIFO",
+        "definition": "The most recently pushed opener is the only one a closing bracket may match.",
+        "refs": [
+          {
+            "scene": 2,
+            "step": 0,
+            "label": "Wrong closing order"
+          }
+        ]
+      },
+      {
+        "id": "dsa.bracket-pair",
+        "label": "Matching Pair",
+        "category": "concept",
+        "definition": "Each closer has exactly one opener it can close: `)` closes `(`, `]` closes `[`, `}` closes `{`.",
+        "refs": [
+          {
+            "scene": 1,
+            "step": 0,
+            "label": "Adjacent pairs"
+          }
+        ]
+      },
+      {
+        "id": "dsa.nesting-depth",
+        "label": "Nesting Depth",
+        "category": "concept",
+        "glossary": "nesting depth",
+        "refs": [
+          {
+            "scene": 8,
+            "step": 0,
+            "label": "Deeper nesting"
+          }
+        ]
+      },
+      {
+        "id": "dsa.unmatched-closer",
+        "label": "Unmatched Closer",
+        "category": "failure-case",
+        "definition": "A closing bracket that arrives while the stack is empty has nothing to match, so the scan rejects the input at once.",
+        "refs": [
+          {
+            "scene": 3,
+            "step": 0,
+            "label": "Extra closing bracket"
+          },
+          {
+            "scene": 5,
+            "step": 0,
+            "label": "Closer without opener"
+          }
+        ]
+      },
+      {
+        "id": "dsa.empty-stack-at-end",
+        "label": "Empty Stack at the End",
+        "category": "invariant",
+        "definition": "After the last character the stack must be empty. Any index still on it is an opener that was never closed.",
+        "refs": [
+          {
+            "scene": 4,
+            "step": 0,
+            "label": "Unclosed openers"
+          },
+          {
+            "scene": 7,
+            "step": 0,
+            "label": "Empty input"
+          }
+        ]
+      },
+      {
+        "id": "dsa.skip-non-brackets",
+        "label": "Skipping Other Characters",
+        "category": "technique",
+        "definition": "Characters that are not brackets leave the stack unchanged, so brackets can be checked inside ordinary text, emoji included.",
+        "refs": [
+          {
+            "scene": 6,
+            "step": 0,
+            "label": "Brackets in text"
+          },
+          {
+            "scene": 9,
+            "step": 0,
+            "label": "Unicode character"
+          }
+        ]
+      },
+      {
+        "id": "dsa.bracket-repair",
+        "label": "Bracket Repair",
+        "category": "problem",
+        "definition": "Turn an unbalanced string into a balanced one with insertions and replacements, guided by the same stack scan.",
+        "refs": [
+          {
+            "scene": 10,
+            "label": "Fix mismatched closers"
+          },
+          {
+            "scene": 11,
+            "label": "Fix an extra closer"
+          },
+          {
+            "scene": 12,
+            "label": "Close leftover openers"
+          },
+          {
+            "scene": 13,
+            "label": "Repair brackets in text"
+          }
+        ]
+      },
+      {
+        "id": "cs.single-pass",
+        "label": "Single Left-to-Right Pass",
+        "category": "technique",
+        "definition": "Read each character once, in order, keeping only the state needed to decide."
+      },
+      {
+        "id": "cs.time-complexity",
+        "label": "Time Complexity",
+        "definition": "How running time grows with input size, in big-O notation."
+      },
+      {
+        "id": "dsa.deque",
+        "label": "Deque",
+        "definition": "A double-ended queue: insert and remove at both ends."
+      },
+      {
+        "id": "cs.dyck-language",
+        "label": "Dyck Language",
+        "category": "theory",
+        "glossary": "Dyck language"
+      },
+      {
+        "id": "cs.pushdown-automaton",
+        "label": "Pushdown Automaton",
+        "category": "theory",
+        "definition": "A finite automaton with a stack. Pushdown automata recognize exactly the context-free languages."
+      }
+    ],
+    "relations": [
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "dsa.stack",
+        "type": "uses",
+        "description": "Each opener's position is pushed; each closer pops and checks it."
+      },
+      {
+        "source": "dsa.stack",
+        "target": "dsa.lifo-order",
+        "type": "maintains"
+      },
+      {
+        "source": "dsa.stack",
+        "target": "dsa.nesting-depth",
+        "type": "maintains",
+        "description": "The stack's size is the current nesting depth."
+      },
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "dsa.bracket-pair",
+        "type": "uses",
+        "description": "Each pop checks that the closer matches the popped opener's type."
+      },
+      {
+        "source": "dsa.unmatched-closer",
+        "target": "dsa.balanced-brackets",
+        "type": "part-of",
+        "description": "The early exit: a closer meets an empty stack."
+      },
+      {
+        "source": "dsa.empty-stack-at-end",
+        "target": "dsa.balanced-brackets",
+        "type": "part-of",
+        "description": "The final check: accept only if no opener is left."
+      },
+      {
+        "source": "dsa.skip-non-brackets",
+        "target": "dsa.balanced-brackets",
+        "type": "part-of"
+      },
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "cs.single-pass",
+        "type": "uses"
+      },
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "cs.time-complexity",
+        "type": "measured-by",
+        "description": "One left-to-right pass: $O(n)$ time and $O(n)$ stack space."
+      },
+      {
+        "source": "dsa.stack",
+        "target": "dsa.deque",
+        "type": "specializes",
+        "description": "A deque restricted to one end behaves as a stack."
+      },
+      {
+        "source": "dsa.balanced-brackets",
+        "target": "dsa.bracket-repair",
+        "type": "prerequisite-of",
+        "description": "Repair runs the same scan and fixes each failure the validator would report."
+      },
+      {
+        "source": "dsa.bracket-repair",
+        "target": "dsa.bracket-pair",
+        "type": "uses",
+        "description": "A mismatched closer is replaced by the one that matches the top opener."
+      },
+      {
+        "source": "dsa.bracket-repair",
+        "target": "dsa.empty-stack-at-end",
+        "type": "uses",
+        "description": "Openers left at the end are closed by appending their matching closers."
+      },
+      {
+        "source": "cs.dyck-language",
+        "target": "dsa.balanced-brackets",
+        "type": "related-to",
+        "description": "The balanced strings over `()`, `[]`, `{}` are exactly a Dyck language with three bracket types."
+      },
+      {
+        "source": "dsa.stack",
+        "target": "cs.pushdown-automaton",
+        "type": "part-of",
+        "description": "A pushdown automaton is a finite automaton plus a stack."
+      },
+      {
+        "source": "cs.pushdown-automaton",
+        "target": "cs.dyck-language",
+        "type": "solves",
+        "description": "The validator is a pushdown automaton written as code: it recognizes the Dyck language."
+      }
+    ]
+  },
   "codeFiles": [
     {
       "id": "validator",

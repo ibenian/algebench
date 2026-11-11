@@ -469,6 +469,65 @@ def _demote_markdown_headers(markdown_text):
     return re.sub(r'^(#{1,6})\s+', repl, markdown_text, flags=re.MULTILINE)
 
 
+def _kg_text(value, cap=300):
+    """A client-supplied string, flattened to one line and length-capped."""
+    text = " ".join(str(value).split())
+    return text if len(text) <= cap else text[:cap - 1] + "…"
+
+
+def knowledge_graph_section(kg):
+    """Render ``runtime.knowledgeGraph`` (src/graph-explorer/agent-context.ts)
+    as a prompt section, or '' when absent. Every list is re-capped here: the
+    client bounds it too, but the server must not trust that."""
+    if not isinstance(kg, dict):
+        return ""
+    def concept_line(c):
+        if not isinstance(c, dict) or not c.get('label'):
+            return None
+        facets = [str(c['category'])] if c.get('category') else []
+        if c.get('role'):
+            facets.append(str(c['role']))
+        if c.get('expanded'):
+            facets.append('expanded')
+        facet = f" [{', '.join(facets)}]" if facets else ''
+        return f"{_kg_text(c['label'], 120)}{facet}"
+
+    is_open = bool(kg.get('open'))
+    where = 'lesson panel' if str(kg.get('context', '')).startswith('lesson:') else 'global explorer'
+    status = (f"OPEN now ({_kg_text(kg.get('presentation', ''), 20)}, {where})" if is_open
+              else f"closed — this is the LAST view the learner explored ({where})")
+    lines = [f"\n## Knowledge Graph — {status}",
+             f"- Scope: {_kg_text(kg.get('scope', 'global'), 20)} · "
+             f"{int(kg.get('totalConcepts') or 0)} concepts in the whole graph"]
+    focus = kg.get('focus')
+    if isinstance(focus, dict) and focus.get('label'):
+        lines.append(f"- **Focus**: {concept_line(focus)}"
+                     + (f" — {_kg_text(focus['definition'])}" if focus.get('definition') else ''))
+    sel = kg.get('selected')
+    if isinstance(sel, dict):
+        if sel.get('kind') == 'relation' and sel.get('sentence'):
+            lines.append(f"- **Selected relationship**: {_kg_text(sel['sentence'], 200)}"
+                         + (f" — {_kg_text(sel['description'])}" if sel.get('description') else ''))
+        elif sel.get('label'):
+            lines.append(f"- **Selected concept**: {concept_line(sel)}"
+                         + (f" — {_kg_text(sel['definition'])}" if sel.get('definition') else ''))
+    concepts = [l for l in (concept_line(c) for c in (kg.get('visibleConcepts') or [])[:40]) if l]
+    if concepts:
+        more = int(kg.get('conceptsOmitted') or 0)
+        lines.append(f"- Visible concepts ({len(concepts)}{f' + {more} more' if more else ''}): " + "; ".join(concepts))
+    rels = [_kg_text(r, 200) for r in (kg.get('visibleRelations') or [])[:60] if isinstance(r, str)]
+    if rels:
+        more = int(kg.get('relationsOmitted') or 0)
+        lines.append(f"- Visible relationships{f' (+ {more} more)' if more else ''}:")
+        lines.extend(f"  - {r}" for r in rels)
+    recent = [_kg_text(r, 120) for r in (kg.get('recentFoci') or [])[:5] if isinstance(r, str)]
+    if recent:
+        lines.append(f"- Earlier foci (most recent first): {', '.join(recent)}")
+    lines.append("- Use this to connect explanations to the concepts the learner was exploring. "
+                 "Don't recite the graph unprompted.")
+    return "\n".join(lines)
+
+
 def build_system_prompt(context, agent_memory=None):
     """Build system prompt with full visualization context."""
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
@@ -793,6 +852,13 @@ def build_system_prompt(context, agent_memory=None):
                 if outg: parts.append(f"{indent}- outgoing: {', '.join(outg)}")
         elif gp.get('hasGraph', True):
             parts.append("- No node selected.")
+
+    # Knowledge Graph — what the learner last explored in the concept graph.
+    # Kept after the explorer closes (open=False), so the tutor still knows
+    # which concepts were in focus and around them.
+    kg_section = knowledge_graph_section(runtime.get('knowledgeGraph'))
+    if kg_section:
+        parts.append(kg_section)
 
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:

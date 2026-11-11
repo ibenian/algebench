@@ -167,6 +167,11 @@ interface WindowEventMap {
    * src/view-state-bridge.ts turns into a replaceView rather than a push.
    */
   'algebench:fachange': CustomEvent<{ replace?: boolean } | undefined>;
+  /**
+   * A lesson (or single scene) finished loading — src/scene-loader.ts
+   * loadLesson. The knowledge-graph explorer reads `spec.knowledgeGraph`.
+   */
+  'algebench:lessonload': CustomEvent<{ spec: unknown }>;
 }
 
 // ── gemini-live-tools browser globals ───────────────────────────────────────
@@ -282,6 +287,8 @@ interface AlgeBenchChatRuntimeContext {
   projection?: string;
   proof?: unknown;
   graphPanel?: AlgeBenchGraphPanelState;
+  /** The Knowledge Graph view the learner last looked at (kept after it closes). */
+  knowledgeGraph?: import('/graph-explorer/agent-context.js').KnowledgeGraphContext;
   lastFocusedSurface?: string;
   userViewing?: string[];
   coach?: unknown;
@@ -318,6 +325,23 @@ interface Window {
    */
   __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
   __algebenchGraph?: AlgeBenchGraphController;
+  /**
+   * Knowledge-graph integration handle (src/graph-explorer/knowledge-app.ts):
+   * the shared store and the validated runtime-update entry point that a
+   * future tutor / personal-graph integration calls.
+   */
+  /** src/graph-explorer/knowledge-app.ts — last-viewed Knowledge Graph for the chat context. */
+  algebenchGetKnowledgeGraphState?: () => import('/graph-explorer/agent-context.js').KnowledgeGraphContext | null;
+  algebenchKnowledgeGraph?: {
+    store: import('/graph-explorer/knowledge-model.js').KnowledgeGraph;
+    applyUpdate: (update: { concepts?: unknown; relations?: unknown }) => { issues: string[] };
+    openConcept: (id: string, mode?: import('/graph-explorer/view-model.js').PresentationMode) => Promise<boolean>;
+    /** The current lesson's concept explicitly linked to a glossary key (glossary tooltip button). */
+    conceptForGlossaryKey: (key: string) => string | null;
+    /** The standard way to set the current focus (all explorers that can show it). */
+    focusConcept: (id: string, opts?: { source?: import('/graph-explorer/knowledge-app.js').FocusSource }) => boolean;
+    explorers: () => { global: unknown; lesson: unknown };
+  };
   /**
    * Mermaid, injected as a CDN <script> by src/graph-view.ts's loadMermaidLib()
    * on first use — index.html deliberately does NOT include it, so it is absent

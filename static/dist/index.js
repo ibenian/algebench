@@ -1761,7 +1761,7 @@ var AI_SPARKLE_SVG = "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" width=\"1
 /** Escape text for use in HTML (element content or a quoted attribute).
 *  A plain string replace rather than a DOM round-trip: same result, no
 *  document needed, and static analysis can see it is a sanitizer. */
-function escapeHtml$2(s) {
+function escapeHtml$3(s) {
 	return String(s).replace(/[&<>"']/g, (c) => c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "\"" ? "&quot;" : "&#39;");
 }
 function stripLatex(text) {
@@ -1904,7 +1904,7 @@ function _renderKaTeX(text, displayMode) {
 	for (let i = 0; i < italicSpans.length; i++) italicSpans[i] = restoreMath(italicSpans[i]);
 	return prepped.split(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g).map((seg, i) => {
 		if (i % 2 === 0) {
-			const lines = escapeHtml$2(seg).split(/\\n|\n/);
+			const lines = escapeHtml$3(seg).split(/\\n|\n/);
 			return lines.map((line, li) => {
 				const t = line.trim();
 				const hIdx = t.match(/^\x01H(\d+)\x01$/);
@@ -1918,7 +1918,7 @@ function _renderKaTeX(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${escapeHtml$2(codeSpans[+idx])}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${escapeHtml$3(codeSpans[+idx])}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -1931,7 +1931,7 @@ function _renderKaTeX(text, displayMode) {
 					trust: (ctx) => ctx.command === "\\htmlClass"
 				});
 			} catch (_e) {
-				return escapeHtml$2(seg);
+				return escapeHtml$3(seg);
 			}
 		} else {
 			const tex = seg.slice(1, -1);
@@ -1943,7 +1943,7 @@ function _renderKaTeX(text, displayMode) {
 					trust: (ctx) => ctx.command === "\\htmlClass"
 				});
 			} catch (_e) {
-				return escapeHtml$2(seg);
+				return escapeHtml$3(seg);
 			}
 		}
 	}).join("");
@@ -1955,9 +1955,23 @@ function renderMarkdown$1(md, opts) {
 	const { text, terms } = extractActiveGlossaryTerms(md);
 	return restoreGlossaryTerms(_renderMarkdown(text, untrusted), terms);
 }
-/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor). */
+var SCHEME_ENTITIES = {
+	colon: ":",
+	tab: "	",
+	newline: "\n"
+};
+/** Decode the character references a browser would decode in an href attribute. */
+function decodeHrefEntities(s) {
+	return s.replace(/&#x([0-9a-f]+);?/gi, (_m, hex) => String.fromCodePoint(Math.min(parseInt(hex, 16), 1114111))).replace(/&#(\d+);?/g, (_m, dec) => String.fromCodePoint(Math.min(parseInt(dec, 10), 1114111))).replace(/&(colon|tab|newline);/gi, (m, name) => SCHEME_ENTITIES[name.toLowerCase()] ?? m);
+}
+/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor).
+*  The href reaches us with HTML entities still encoded, and the browser decodes them only
+*  when the HTML is inserted, so `java&#x73;cript:` must be decoded before the scheme check.
+*  Browsers also ignore tabs, newlines and control characters inside the scheme. */
 function safeHref(href) {
-	const h = String(href ?? "").trim();
+	const h = decodeHrefEntities(String(href ?? "")).replace(/[\u0000- \u007f-\u009f]/g, "");
+	const colon = h.indexOf(":");
+	if (colon >= 0 && /&[a-z]/i.test(h.slice(0, colon))) return false;
 	const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(h);
 	return !scheme || /^(https?|mailto)$/i.test(scheme[1]);
 }
@@ -1968,9 +1982,9 @@ function untrustedRenderer() {
 	const r = new marked.Renderer();
 	const link = r.link.bind(r);
 	const image = r.image.bind(r);
-	r.html = (html) => escapeHtml$2(html);
+	r.html = (html) => escapeHtml$3(html);
 	r.link = (href, title, text) => safeHref(href) ? link(href, title, text) : text;
-	r.image = (href, title, text) => safeHref(href) ? image(href, title, text) : escapeHtml$2(text);
+	r.image = (href, title, text) => safeHref(href) ? image(href, title, text) : escapeHtml$3(text);
 	return _untrustedRenderer = r;
 }
 function _renderMarkdown(md, untrusted = false) {
@@ -18368,6 +18382,22 @@ function _learnButton(name) {
 	});
 	return btn;
 }
+var KG_ICON = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><circle cx=\"4.5\" cy=\"6\" r=\"2\"/><circle cx=\"19.5\" cy=\"6\" r=\"2\"/><circle cx=\"12\" cy=\"20.5\" r=\"2\"/><path d=\"M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5\"/></svg>";
+/** "Show in Knowledge Graph": open the graph focused on the concept this term is linked to. */
+function _knowledgeGraphButton(name, conceptId) {
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "glossary-learn-btn glossary-kg-btn";
+	btn.innerHTML = KG_ICON;
+	btn.title = `Show ${stripGlossaryMarkers(name)} in the Knowledge Graph`;
+	btn.setAttribute("aria-label", btn.title);
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		hideGlossaryTip();
+		window.algebenchKnowledgeGraph?.openConcept(conceptId, "popup");
+	});
+	return btn;
+}
 function _fill(tip, key, entry) {
 	const name = glossaryTermName(key, entry);
 	tip.el.innerHTML = "";
@@ -18379,6 +18409,8 @@ function _fill(tip, key, entry) {
 	head.appendChild(title);
 	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt && stripGlossaryMarkers(entry.prompt) || `Explain "${name}" in the context of what I'm looking at.`));
 	if (window.algebenchPlanAvailable) head.appendChild(_learnButton(name));
+	const conceptId = window.algebenchKnowledgeGraph?.conceptForGlossaryKey(key);
+	if (conceptId) head.appendChild(_knowledgeGraphButton(name, conceptId));
 	tip.el.appendChild(head);
 	if (entry.markdown) {
 		const body = document.createElement("div");
@@ -18615,8 +18647,8 @@ function updateTreeHighlight$1() {
 //#endregion
 //#region src/side-sections.ts
 var svg$1 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-var ICON_FOLD = svg$1("M6 9l6 6 6-6");
-var ICON_UNFOLD = svg$1("M6 15l6-6 6 6");
+var ICON_FOLD$1 = svg$1("M6 9l6 6 6-6");
+var ICON_UNFOLD$1 = svg$1("M6 15l6-6 6 6");
 var SECTIONS = [{
 	head: "proof-section-head",
 	host: "proof-panel",
@@ -18630,14 +18662,14 @@ var SECTIONS = [{
 	key: "algebench.foldChat",
 	name: "chat"
 }];
-function loadFolded(key) {
+function loadFolded$1(key) {
 	try {
 		return localStorage.getItem(key) === "1";
 	} catch {
 		return false;
 	}
 }
-function saveFolded(key, folded) {
+function saveFolded$1(key, folded) {
 	try {
 		localStorage.setItem(key, folded ? "1" : "0");
 	} catch {}
@@ -18650,7 +18682,7 @@ function setFolded(w, folded, remember = true) {
 	w.host.classList.toggle(w.sec.cls, folded);
 	w.head.classList.toggle("side-section-folded", folded);
 	if (!folded) w.head.classList.remove("side-unread");
-	if (remember) saveFolded(w.sec.key, folded);
+	if (remember) saveFolded$1(w.sec.key, folded);
 }
 /**
 * At least one shown section stays open: the tab must show something. Fold
@@ -18664,7 +18696,7 @@ function keepOneOpen(changed) {
 }
 /** Re-apply the saved folds: the proof has just been shown again. */
 function restoreSaved() {
-	for (const w of wired) setFolded(w, loadFolded(w.sec.key), false);
+	for (const w of wired) setFolded(w, loadFolded$1(w.sec.key), false);
 	keepOneOpen();
 }
 function refreshButtons() {
@@ -18672,7 +18704,7 @@ function refreshButtons() {
 	for (const w of wired) {
 		const folded = isFolded(w);
 		const alone = shown.length === 1 && shown[0] === w;
-		w.btn.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+		w.btn.innerHTML = folded ? ICON_UNFOLD$1 : ICON_FOLD$1;
 		w.btn.disabled = alone && !folded;
 		w.btn.title = folded ? `Show the ${w.sec.name}` : alone ? `The ${w.sec.name} is the only section open, so it stays open` : `Fold the ${w.sec.name} down to its header`;
 		w.btn.setAttribute("aria-label", w.btn.title);
@@ -18711,7 +18743,7 @@ function wire(sec) {
 	head.addEventListener("click", (e) => {
 		if (!e.target.closest("button")) toggle();
 	});
-	setFolded(w, loadFolded(sec.key), false);
+	setFolded(w, loadFolded$1(sec.key), false);
 }
 /**
 * Unfold the Proof: something navigated to a proof step (a plan step, a link,
@@ -19713,9 +19745,9 @@ function techniqueBadgeHTML(proof) {
 	const t = proof && proof.technique;
 	if (typeof t !== "string" || !t || t === "derivation") return "";
 	const safeClass = sanitizeClassName(t);
-	const label = proofTechniques[t] || escapeHtml$1(t.charAt(0).toUpperCase() + t.slice(1));
+	const label = proofTechniques[t] || escapeHtml$2(t.charAt(0).toUpperCase() + t.slice(1));
 	const hint = proof.techniqueHint;
-	return `<span class="proof-technique-badge technique-${safeClass}"${hint ? ` title="${escapeHtml$1(hint)}"` : ""}>${label}</span>`;
+	return `<span class="proof-technique-badge technique-${safeClass}"${hint ? ` title="${escapeHtml$2(hint)}"` : ""}>${label}</span>`;
 }
 /** Normalize a proof field (single object or array) into an array. */
 function normalizeProofs(proofField) {
@@ -19768,7 +19800,7 @@ function preRenderProofSteps(proof) {
 		const typeClass = `type-${sanitizeClassName(type)}`;
 		let contentHtml = `<div class="proof-step-header">
             <span class="proof-step-number">${i + 1}</span>
-            <span class="proof-step-type ${typeClass}">${escapeHtml$1(type)}</span>
+            <span class="proof-step-type ${typeClass}">${escapeHtml$2(type)}</span>
             <span class="proof-step-label">${renderKaTeX$1(step.label, false)}</span>
             <span class="proof-step-status"></span>
         </div>`;
@@ -19780,7 +19812,7 @@ function preRenderProofSteps(proof) {
                 <span class="proof-justification-text">${renderKaTeX$1(step.justification, false)}</span>
             </div>`;
 		if (step.explanation) contentHtml += `<div class="proof-step-explanation">${renderMarkdown$1(step.explanation)}</div>`;
-		if (step.tags && step.tags.length) contentHtml += `<div class="proof-step-tags">${step.tags.map((t) => `<span class="proof-tag">${escapeHtml$1(t)}</span>`).join("")}</div>`;
+		if (step.tags && step.tags.length) contentHtml += `<div class="proof-step-tags">${step.tags.map((t) => `<span class="proof-tag">${escapeHtml$2(t)}</span>`).join("")}</div>`;
 		div.innerHTML = contentHtml;
 		_injectProofAskButtons(div, step, proof);
 		div.addEventListener("click", () => navigateProof$1(i));
@@ -19894,7 +19926,7 @@ function _injectGoalAskButton(container, proof) {
 	actionsEl.appendChild(btn);
 }
 /** Simple HTML escaper. */
-function escapeHtml$1(s) {
+function escapeHtml$2(s) {
 	if (!s) return "";
 	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -21460,6 +21492,7 @@ async function loadLesson(spec) {
 		setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 		updateDockVisibility$1();
 		loadScene(spec);
+		announceLessonLoad(spec);
 		return;
 	}
 	sceneState.lessonSpec = spec;
@@ -21475,6 +21508,13 @@ async function loadLesson(spec) {
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
 	navigateTo$1(0, -1);
+	announceLessonLoad(spec);
+}
+/** Tell listeners (the knowledge-graph explorer) which lesson is now loaded. */
+function announceLessonLoad(spec) {
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:lessonload", { detail: { spec } }));
+	} catch (_) {}
 }
 var _PROOF_ID_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 var _PROOF_MAX_BYTES$1 = 524288;
@@ -22561,7 +22601,7 @@ var LessonPicker = class {
 			`${l.sceneCount} scene${l.sceneCount === 1 ? "" : "s"}`,
 			`${l.stepCount} step${l.stepCount === 1 ? "" : "s"}`,
 			...l.domains
-		].map(escapeHtml$2).join(" · ");
+		].map(escapeHtml$3).join(" · ");
 		row.innerHTML = `
             <div class="lesson-row-head">
                 <div class="lesson-row-title">${renderKaTeX$1(l.title, false, { glossary: false })}</div>
@@ -25892,6 +25932,7 @@ var _lastFocusedSurface = null;
 function _classifyFocusTarget(target) {
 	const el = target;
 	if (!el || !el.closest) return null;
+	if (el.closest(".kg-explorer, #kg-layer")) return "knowledge graph";
 	if (el.closest("#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip")) return "graph";
 	if (el.closest("#mathbox-container, #mathbox-overlay, canvas")) return "viewport";
 	if (el.closest(".explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts")) return "panel";
@@ -26048,6 +26089,12 @@ function buildChatContext() {
 	} catch (e) {
 		console.warn("[chat] failed to read graph panel state:", e);
 	}
+	if (typeof window.algebenchGetKnowledgeGraphState === "function") try {
+		const kg = window.algebenchGetKnowledgeGraphState();
+		if (kg) runtime.knowledgeGraph = kg;
+	} catch (e) {
+		console.warn("[chat] failed to read knowledge graph state:", e);
+	}
 	if (_lastFocusedSurface) runtime.lastFocusedSurface = _lastFocusedSurface;
 	const viewing = [];
 	const graphActive = runtime.graphPanel && runtime.graphPanel.open;
@@ -26057,6 +26104,7 @@ function buildChatContext() {
 		const proofPanel = document.getElementById("proof-panel");
 		if (proofPanel && !proofPanel.classList.contains("hidden")) viewing.push("proof");
 	} else if (runtime.activeTab === "doc") viewing.push("doc");
+	if (runtime.knowledgeGraph?.open) viewing.push(`knowledge graph (${runtime.knowledgeGraph.presentation})`);
 	runtime.userViewing = viewing;
 	try {
 		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
@@ -29986,6 +30034,3547 @@ function setupObjectPicker() {
 	_canvas.addEventListener("pointerdown", () => hideBtnNow(), { passive: true });
 }
 //#endregion
+//#region src/graph-explorer/graph-type.ts
+/** A class token Cytoscape (and CSS) can take: lowercase, kebab, bounded. */
+function classToken(s) {
+	return s.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "x";
+}
+//#endregion
+//#region src/graph-explorer/cy-elements.ts
+function toCyNode(node, adapter, position) {
+	const label = adapter.nodeLabel(node);
+	const def = {
+		group: "nodes",
+		data: {
+			id: node.id,
+			label,
+			display: label
+		},
+		classes: ["node", ...adapter.nodeClasses(node).map(classToken)].join(" ")
+	};
+	if (position) def.position = {
+		x: position.x,
+		y: position.y
+	};
+	return def;
+}
+/** The drawn label: the concept name, plus "＋N" when N neighbours are hidden. */
+function displayLabel(label, hidden) {
+	return hidden > 0 ? `${label}  ＋${hidden}` : label;
+}
+function toCyEdge(edge, adapter) {
+	return {
+		group: "edges",
+		data: {
+			id: edge.id,
+			source: edge.source,
+			target: edge.target,
+			label: adapter.edgeLabel(edge),
+			relType: edge.type
+		},
+		classes: ["edge", ...adapter.edgeClasses(edge).map(classToken)].join(" ")
+	};
+}
+/**
+* Place `count` new nodes around `anchor` without landing on existing ones:
+* candidate slots on growing rings, skipping any within `minGap` of an
+* occupied point. Existing nodes never move — this is what keeps incremental
+* expansion stable instead of re-running a force layout.
+*/
+function ringPlacement(anchor, count, occupied, opts = {}) {
+	const radius = opts.radius ?? 130;
+	const minGap = opts.minGap ?? 90;
+	const taken = occupied.slice();
+	const out = [];
+	for (let ring = 1; out.length < count && ring <= 12; ring++) {
+		const r = radius * ring;
+		const slots = Math.max(6, Math.floor(2 * Math.PI * r / minGap));
+		const start = (opts.startAngle ?? -Math.PI / 2) + (ring % 2 ? 0 : Math.PI / slots);
+		for (let i = 0; i < slots && out.length < count; i++) {
+			const a = start + 2 * Math.PI * i / slots;
+			const p = {
+				x: anchor.x + r * Math.cos(a),
+				y: anchor.y + r * Math.sin(a) * .8
+			};
+			if (taken.some((q) => (q.x - p.x) ** 2 + (q.y - p.y) ** 2 < minGap * minGap)) continue;
+			taken.push(p);
+			out.push(p);
+		}
+	}
+	while (out.length < count) out.push({
+		x: anchor.x,
+		y: anchor.y + radius * (13 + out.length)
+	});
+	return out;
+}
+//#endregion
+//#region src/graph-explorer/cy-view.ts
+/** Fit never zooms in past this, so a handful of nodes isn't drawn huge. */
+var FIT_MAX_ZOOM = 1.5;
+var cytoscapePromise = null;
+/** Load Cytoscape once (a separate bundle chunk). */
+function loadCytoscape() {
+	if (!cytoscapePromise) {
+		cytoscapePromise = __vitePreload(() => import("./cytoscape.esm.js").then((m) => m.default ?? m), []);
+		cytoscapePromise.catch(() => {
+			cytoscapePromise = null;
+		});
+	}
+	return cytoscapePromise;
+}
+/** Resolve the app's theme tokens into concrete colours Cytoscape can use. */
+function themeColors(el) {
+	const cs = getComputedStyle(el);
+	const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+	return {
+		text: v("--text-color", "#e8e6da"),
+		muted: v("--muted-color", "#97a29a"),
+		panel: v("--panel-bg", "#1e2621"),
+		page: v("--page-bg", "#161c19"),
+		accent: v("--accent-color", "#d9a441"),
+		problem: v("--code-keyword", "#d9a441"),
+		ds: v("--code-builtin", "#8fb8c9"),
+		technique: v("--code-function", "#a9c47f"),
+		invariant: v("--code-decorator", "#c49bd8"),
+		analysis: v("--code-constant", "#d48f6a"),
+		font: v("--font-body", "sans-serif"),
+		neon: mixHex(v("--accent-color", "#d9a441"), "#ffffff", .6),
+		...document.documentElement.dataset.theme === "light" ? {
+			neonText: v("--accent-color", "#9a6d1c"),
+			neonTextGlow: mixHex(v("--accent-color", "#9a6d1c"), "#ffffff", .75)
+		} : {
+			neonText: mixHex(v("--accent-color", "#d9a441"), "#ffffff", .6),
+			neonTextGlow: v("--accent-color", "#d9a441")
+		}
+	};
+}
+/** Mix two #rrggbb colours (t = share of `b`). Falls back to `a` on anything else. */
+function mixHex(a, b, t) {
+	const p = (h) => /^#[0-9a-f]{6}$/i.test(h) ? [
+		1,
+		3,
+		5
+	].map((i) => parseInt(h.slice(i, i + 2), 16)) : null;
+	const x = p(a), y = p(b);
+	if (!x || !y) return a;
+	return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+function buildStylesheet(c) {
+	return [
+		{
+			selector: "node",
+			style: {
+				"shape": "ellipse",
+				"width": 20,
+				"height": 20,
+				"overlay-shape": "ellipse",
+				"underlay-shape": "ellipse",
+				"background-color": c.muted,
+				"border-width": 2,
+				"border-color": c.page,
+				"label": "data(display)",
+				"color": c.text,
+				"font-family": c.font,
+				"font-size": 11,
+				"text-valign": "bottom",
+				"text-halign": "center",
+				"text-margin-y": 4,
+				"text-wrap": "wrap",
+				"text-max-width": "110px",
+				"text-background-color": c.page,
+				"text-background-opacity": .7,
+				"text-background-padding": "1px",
+				"min-zoomed-font-size": 5,
+				"text-events": "yes",
+				"transition-property": "border-color, border-width, background-color",
+				"transition-duration": 160
+			}
+		},
+		{
+			selector: "node.cat-problem",
+			style: {
+				"background-color": c.problem,
+				"shape": "round-rectangle",
+				"width": 24,
+				"height": 18,
+				"overlay-shape": "round-rectangle",
+				"underlay-shape": "round-rectangle"
+			}
+		},
+		{
+			selector: "node.cat-data-structure",
+			style: { "background-color": c.ds }
+		},
+		{
+			selector: "node.cat-technique",
+			style: {
+				"background-color": c.technique,
+				"shape": "round-triangle"
+			}
+		},
+		{
+			selector: "node.cat-invariant",
+			style: {
+				"background-color": c.invariant,
+				"shape": "diamond",
+				"width": 22,
+				"height": 22
+			}
+		},
+		{
+			selector: "node.cat-analysis",
+			style: {
+				"background-color": c.analysis,
+				"shape": "round-pentagon"
+			}
+		},
+		{
+			selector: "node.runtime",
+			style: {
+				"border-style": "dashed",
+				"border-color": c.accent,
+				"border-width": 2
+			}
+		},
+		{
+			selector: "node.expanded",
+			style: {
+				"border-color": c.text,
+				"border-width": 2
+			}
+		},
+		{
+			selector: "node.focus",
+			style: {
+				"width": 34,
+				"height": 34,
+				"border-width": 3,
+				"border-color": c.neon,
+				"outline-color": c.accent,
+				"outline-width": 4,
+				"outline-offset": 0,
+				"outline-opacity": .9,
+				"underlay-color": c.accent,
+				"underlay-opacity": .3,
+				"underlay-padding": 14,
+				"color": c.neonText,
+				"text-outline-color": c.neonTextGlow,
+				"text-outline-width": 1.6,
+				"text-outline-opacity": .75,
+				"text-background-opacity": 0,
+				"font-weight": "bold",
+				"font-size": 13,
+				"text-margin-y": 9,
+				"z-index": 10
+			}
+		},
+		{
+			selector: "node.cat-problem.focus",
+			style: {
+				"width": 42,
+				"height": 30
+			}
+		},
+		{
+			selector: "node.selected",
+			style: {
+				"border-color": c.text,
+				"border-width": 3,
+				"overlay-color": c.text,
+				"overlay-opacity": .1,
+				"overlay-padding": 6
+			}
+		},
+		{
+			selector: "node.focus.selected",
+			style: {
+				"border-color": c.neon,
+				"border-width": 4
+			}
+		},
+		{
+			selector: "node.just-added",
+			style: {
+				"overlay-color": c.accent,
+				"overlay-opacity": .3,
+				"overlay-padding": 12
+			}
+		},
+		{
+			selector: "edge",
+			style: {
+				"width": 1.5,
+				"line-color": c.muted,
+				"target-arrow-color": c.muted,
+				"target-arrow-shape": "triangle",
+				"arrow-scale": 1,
+				"curve-style": "bezier",
+				"label": "data(label)",
+				"font-size": 9,
+				"color": c.muted,
+				"text-rotation": "autorotate",
+				"text-background-color": c.page,
+				"text-background-opacity": .85,
+				"text-background-padding": "2px",
+				"font-family": c.font,
+				"min-zoomed-font-size": 7,
+				"text-events": "yes",
+				"transition-property": "line-color, width",
+				"transition-duration": 160
+			}
+		},
+		{
+			selector: "edge.kind-analysis",
+			style: { "line-style": "dashed" }
+		},
+		{
+			selector: "edge.kind-association",
+			style: {
+				"line-style": "dotted",
+				"target-arrow-shape": "none"
+			}
+		},
+		{
+			selector: "edge.kind-structural",
+			style: { "target-arrow-shape": "triangle-backcurve" }
+		},
+		{
+			selector: "edge.runtime",
+			style: {
+				"line-color": c.accent,
+				"target-arrow-color": c.accent
+			}
+		},
+		{
+			selector: "edge.incident",
+			style: {
+				"line-color": c.text,
+				"target-arrow-color": c.text,
+				"width": 2.2,
+				"color": c.text
+			}
+		},
+		{
+			selector: "edge.selected",
+			style: {
+				"line-color": c.accent,
+				"target-arrow-color": c.accent,
+				"width": 3,
+				"color": c.accent
+			}
+		}
+	];
+}
+var CytoscapeGraphView = class {
+	constructor(container, vm, adapter, opts = {}) {
+		this.cy = null;
+		this.unsubs = [];
+		this.destroyed = false;
+		this.viewportTimer = null;
+		this.flashTimer = null;
+		this.wheelHandler = null;
+		this.currentLayout = null;
+		this.glowNode = null;
+		this.glowGen = 0;
+		this.hoverNode = null;
+		this.hoverResetTimer = null;
+		this.pendingLayout = false;
+		this.pendingFit = false;
+		this.lastPatchStats = {
+			added: 0,
+			removed: 0,
+			updated: 0,
+			ms: 0
+		};
+		this.container = container;
+		this.vm = vm;
+		this.adapter = adapter;
+		this.opts = opts;
+	}
+	get core() {
+		return this.cy;
+	}
+	get isReady() {
+		return !!this.cy;
+	}
+	motion() {
+		return !(this.opts.reducedMotion?.() ?? false);
+	}
+	/** Create the Cytoscape instance from the view model's current state. */
+	async init() {
+		const cytoscape = await loadCytoscape();
+		if (this.destroyed) return;
+		const vm = this.vm;
+		const engine = vm.engine;
+		const missing = [];
+		const elements = [];
+		for (const id of vm.visibleNodes) {
+			const n = engine.getNode(id);
+			if (!n) continue;
+			const pos = vm.positions.get(id);
+			if (!pos) missing.push(id);
+			elements.push(toCyNode(n, this.adapter, pos));
+		}
+		for (const id of vm.visibleEdges) {
+			const e = engine.getEdge(id);
+			if (e) elements.push(toCyEdge(e, this.adapter));
+		}
+		const cy = cytoscape({
+			container: this.container,
+			elements,
+			style: buildStylesheet(themeColors(this.container)),
+			layout: { name: "preset" },
+			minZoom: .15,
+			maxZoom: 5,
+			userZoomingEnabled: false,
+			boxSelectionEnabled: false,
+			selectionType: "single",
+			autounselectify: true
+		});
+		this.cy = cy;
+		this.wireEvents(cy);
+		this.unsubs.push(vm.events.on("view", (p) => this.applyPatch(p)));
+		this.unsubs.push(vm.events.on("state", () => {
+			this.syncState();
+			this.followFocus();
+		}));
+		let relaidOut = false;
+		if (vm.focus !== null && vm.focus !== vm.layoutFocus && cy.nodes().nonempty()) relaidOut = true;
+		else if (missing.length === cy.nodes().length) relaidOut = true;
+		else if (missing.length) this.placeAround(missing, vm.focus ?? void 0);
+		if (relaidOut) this.runLayout(false);
+		else if (vm.viewport) cy.viewport({
+			zoom: vm.viewport.zoom,
+			pan: vm.viewport.pan
+		});
+		else this.fit(false);
+		this.syncState();
+		this.opts.onZoom?.(Math.round(cy.zoom() * 100));
+		this.opts.onReady?.();
+	}
+	/**
+	* Wheel gestures, matching the semantic-graph view: a trackpad two-finger
+	* scroll (pixel deltas, no Ctrl) PANS; a pinch (Ctrl+wheel), Ctrl+scroll
+	* or a mouse wheel (line/page deltas) ZOOMS around the cursor.
+	*/
+	wireWheel(cy) {
+		this.wheelHandler = (ev) => {
+			ev.preventDefault();
+			if (!ev.ctrlKey && ev.deltaMode === 0) {
+				cy.panBy({
+					x: -ev.deltaX,
+					y: -ev.deltaY
+				});
+				return;
+			}
+			const delta = -ev.deltaY * (ev.deltaMode === 1 ? .05 : ev.deltaMode ? 1 : .002) * (ev.ctrlKey ? 10 : 1);
+			const rect = this.container.getBoundingClientRect();
+			const level = Math.max(cy.minZoom(), Math.min(cy.maxZoom(), cy.zoom() * Math.pow(2, delta)));
+			cy.zoom({
+				level,
+				renderedPosition: {
+					x: ev.clientX - rect.left,
+					y: ev.clientY - rect.top
+				}
+			});
+		};
+		this.container.addEventListener("wheel", this.wheelHandler, { passive: false });
+	}
+	wireEvents(cy) {
+		this.wireWheel(cy);
+		cy.on("dbltap", (ev) => {
+			if (ev.target === cy) this.fit();
+		});
+		cy.on("zoom", () => {
+			this.opts.onZoom?.(Math.round(cy.zoom() * 100));
+		});
+		cy.on("tap", "node", (ev) => {
+			this.vm.select({
+				kind: "node",
+				id: ev.target.id()
+			});
+		});
+		cy.on("tap", "edge", (ev) => {
+			this.vm.select({
+				kind: "edge",
+				id: ev.target.id()
+			});
+		});
+		cy.on("tap", (ev) => {
+			if (ev.target === cy) this.vm.select(null);
+		});
+		cy.on("dbltap", "node", (ev) => {
+			const id = ev.target.id();
+			if (this.vm.isExpanded(id)) this.vm.collapse(id);
+			else this.vm.expand(id);
+		});
+		cy.on("mouseover", "node", (ev) => {
+			this.hoverNode = ev.target.id();
+			this.hoverHint("pointer", this.dblClickHint(this.hoverNode));
+		});
+		cy.on("mouseover", "edge", () => {
+			if (this.hoverNode) {
+				this.hoverHint("pointer", null);
+				return;
+			}
+			this.hoverHint("pointer", "Click for relationship details");
+		});
+		cy.on("mouseout", "node", (ev) => {
+			if (this.hoverNode === ev.target.id()) this.hoverNode = null;
+			this.hoverHint("", "");
+		});
+		cy.on("mouseout", "edge", () => this.hoverHint("", ""));
+		const host = this.container.parentElement ?? this.container;
+		cy.on("tapstart", (ev) => {
+			if (ev.target === cy) host.classList.add("kg-grabbing");
+		});
+		cy.on("grab", "node", () => host.classList.add("kg-grabbing"));
+		cy.on("tapend free", () => host.classList.remove("kg-grabbing"));
+		cy.on("dragfree", "node", (ev) => {
+			this.vm.savePosition(ev.target.id(), ev.target.position());
+		});
+		cy.on("viewport", () => {
+			if (this.viewportTimer) clearTimeout(this.viewportTimer);
+			this.viewportTimer = setTimeout(() => {
+				if (this.cy) this.vm.saveViewport({
+					zoom: this.cy.zoom(),
+					pan: this.cy.pan()
+				});
+			}, 120);
+		});
+	}
+	savePositions(nodes = this.cy?.nodes()) {
+		nodes?.forEach((n) => {
+			this.vm.savePosition(n.id(), n.position());
+		});
+	}
+	/** Apply one incremental change. Never rebuilds the graph. */
+	applyPatch(p) {
+		const cy = this.cy;
+		if (!cy) return;
+		const t0 = performance.now();
+		const engine = this.vm.engine;
+		const added = [];
+		cy.batch(() => {
+			for (const id of p.edgesRemoved) cy.getElementById(id).remove();
+			for (const id of p.nodesRemoved) cy.getElementById(id).remove();
+			const defs = [];
+			for (const id of p.nodesAdded) {
+				const n = engine.getNode(id);
+				if (!n || cy.getElementById(id).nonempty()) continue;
+				defs.push(toCyNode(n, this.adapter, this.vm.positions.get(id)));
+				added.push(id);
+			}
+			for (const id of p.edgesAdded) {
+				const e = engine.getEdge(id);
+				if (!e || cy.getElementById(id).nonempty()) continue;
+				defs.push(toCyEdge(e, this.adapter));
+			}
+			if (defs.length) cy.add(defs);
+			for (const id of p.nodesUpdated) {
+				const n = engine.getNode(id);
+				const el = cy.getElementById(id);
+				if (!n || el.empty()) continue;
+				const def = toCyNode(n, this.adapter);
+				el.data(def.data);
+				el.classes(def.classes);
+			}
+			for (const id of p.edgesUpdated) {
+				const e = engine.getEdge(id);
+				const el = cy.getElementById(id);
+				if (!e || el.empty()) continue;
+				const def = toCyEdge(e, this.adapter);
+				el.data({ label: def.data.label });
+				el.classes(def.classes);
+			}
+		});
+		const unplaced = added.filter((id) => !this.vm.positions.has(id));
+		if (unplaced.length) this.placeAround(unplaced, p.anchor);
+		this.syncState();
+		if (added.length) this.reveal(added, p.anchor);
+		this.lastPatchStats = {
+			added: added.length,
+			removed: p.nodesRemoved.length,
+			updated: p.nodesUpdated.length,
+			ms: performance.now() - t0
+		};
+	}
+	/** Position `ids` around `anchor` (or the graph's centre) without moving anything else. */
+	placeAround(ids, anchor) {
+		const cy = this.cy;
+		if (!cy) return;
+		const set = new Set(ids);
+		const occupied = [];
+		cy.nodes().forEach((n) => {
+			if (!set.has(n.id())) occupied.push(n.position());
+		});
+		let center = {
+			x: 0,
+			y: 0
+		};
+		const a = anchor ? cy.getElementById(anchor) : null;
+		if (a && a.nonempty() && !set.has(anchor)) center = a.position();
+		else if (occupied.length) {
+			const bb = cy.nodes().filter((n) => !set.has(n.id())).boundingBox();
+			center = {
+				x: (bb.x1 + bb.x2) / 2,
+				y: (bb.y1 + bb.y2) / 2
+			};
+		}
+		const pts = ringPlacement(center, ids.length, occupied);
+		cy.batch(() => {
+			ids.forEach((id, i) => {
+				const el = cy.getElementById(id);
+				if (el.nonempty()) el.position(pts[i]);
+			});
+		});
+		for (const id of ids) {
+			const el = cy.getElementById(id);
+			if (el.nonempty()) this.vm.savePosition(id, el.position());
+		}
+	}
+	/** Briefly mark new nodes and make sure they are on screen. */
+	reveal(ids, anchor) {
+		const cy = this.cy;
+		if (!cy) return;
+		if (this.vm.focus !== null && this.vm.focus !== this.vm.layoutFocus) return;
+		const els = cy.collection();
+		for (const id of ids) els.merge(cy.getElementById(id));
+		els.addClass("just-added");
+		if (this.flashTimer) clearTimeout(this.flashTimer);
+		this.flashTimer = setTimeout(() => {
+			this.cy?.nodes(".just-added").removeClass("just-added");
+		}, 1400);
+		const target = anchor ? els.union(cy.getElementById(anchor)) : els;
+		const ext = cy.extent();
+		const bb = target.boundingBox();
+		if (bb.x1 >= ext.x1 && bb.x2 <= ext.x2 && bb.y1 >= ext.y1 && bb.y2 <= ext.y2) return;
+		this.fit();
+	}
+	/** Reflect focus / selection / expansion as classes. */
+	syncState() {
+		const cy = this.cy;
+		if (!cy) return;
+		const vm = this.vm;
+		cy.batch(() => {
+			cy.elements(".selected, .focus, .expanded, .incident").removeClass("selected focus expanded incident");
+			if (vm.focus) cy.getElementById(vm.focus).addClass("focus");
+			for (const [id, d] of vm.roots) if (d > 0) cy.getElementById(id).addClass("expanded");
+			const sel = vm.selection;
+			if (sel) {
+				const el = cy.getElementById(sel.id);
+				el.addClass("selected");
+				if (sel.kind === "node") el.connectedEdges().addClass("incident");
+			}
+			this.updateFocusGlow();
+			cy.nodes().forEach((n) => {
+				const node = vm.engine.getNode(n.id());
+				if (!node) return;
+				const text = displayLabel(this.adapter.nodeLabel(node), vm.hiddenNeighborCount(n.id()));
+				if (n.data("display") !== text) n.data("display", text);
+			});
+		});
+	}
+	/**
+	* The focus glows like the app's other "look here" cue (style.css
+	* `plan-guide-glow`): the accent halo fades from nothing to full and back
+	* every 2.2 s. Cytoscape draws on a canvas, so CSS animations can't reach a
+	* node — the halo's opacity/size are animated here instead. With reduced
+	* motion only the brightness pulses (no size change).
+	*/
+	updateFocusGlow() {
+		const cy = this.cy;
+		if (!cy) return;
+		const focus = this.vm.focus;
+		const el = focus ? cy.getElementById(focus) : null;
+		const node = el && el.nonempty() ? el : null;
+		if (node && node === this.glowNode && !node.removed()) return;
+		this.glowGen++;
+		const old = this.glowNode;
+		if (old && !old.removed()) {
+			old.stop(false, false);
+			old.removeStyle("underlay-opacity underlay-padding outline-opacity outline-width");
+		}
+		this.glowNode = node;
+		if (!node) return;
+		const still = !this.motion();
+		if (still) node.style({
+			"underlay-padding": 16,
+			"outline-width": 4
+		});
+		const gen = this.glowGen;
+		const HALF = 1100;
+		const pulse = (up) => {
+			if (gen !== this.glowGen || this.destroyed || node.removed()) return;
+			const style = still ? up ? {
+				"underlay-opacity": .5,
+				"outline-opacity": 1
+			} : {
+				"underlay-opacity": .14,
+				"outline-opacity": .55
+			} : up ? {
+				"underlay-opacity": .48,
+				"underlay-padding": 20,
+				"outline-opacity": 1,
+				"outline-width": 5
+			} : {
+				"underlay-opacity": .12,
+				"underlay-padding": 11,
+				"outline-opacity": .55,
+				"outline-width": 3
+			};
+			node.animate({ style }, {
+				duration: HALF,
+				easing: "ease-in-out-sine",
+				queue: false,
+				complete: () => pulse(!up)
+			});
+		};
+		pulse(true);
+	}
+	/**
+	* Cursor + tooltip for what's under the pointer. Set on the container's
+	* PARENT: Cytoscape watches its own container's attributes (a
+	* MutationObserver that calls cy.resize()), so touching them on every
+	* hover made it resize and redraw for nothing.
+	*/
+	hoverHint(cursor, title) {
+		const host = this.container.parentElement ?? this.container;
+		if (this.hoverResetTimer) {
+			clearTimeout(this.hoverResetTimer);
+			this.hoverResetTimer = null;
+		}
+		if (!cursor) {
+			this.hoverResetTimer = setTimeout(() => {
+				this.hoverResetTimer = null;
+				host.style.cursor = "";
+				host.title = "";
+			}, 180);
+			return;
+		}
+		host.style.cursor = cursor;
+		if (title !== null) host.title = title;
+	}
+	/**
+	* Draw now, inside this task. Resizing the canvas element clears it and
+	* Cytoscape only redraws on its next frame, so without this every resize
+	* shows one blank frame — continuous resizing (dragging the grip, a mode
+	* transition) flickers. Uses the renderer's own render(); harmless if a
+	* future Cytoscape drops it.
+	*/
+	renderNow() {
+		try {
+			(this.cy?.renderer?.())?.render?.({});
+		} catch {}
+	}
+	/** What a double-click on `id` will do, for the hover hint. */
+	dblClickHint(id) {
+		const vm = this.vm;
+		const hidden = vm.hiddenNeighborCount(id);
+		if (vm.isExpanded(id)) return "Click to inspect · double-click to hide its neighbours";
+		if (hidden > 0) return `Click to inspect · double-click to show ${hidden} more concept${hidden === 1 ? "" : "s"}`;
+		return "Click to inspect · all neighbours are already shown";
+	}
+	/** Full layout of what is visible (explicit user action, or first render). */
+	/**
+	* The focus changed (navigation, search, Focus here, Back/Forward, a tutor
+	* call): re-arrange the visible nodes in rings around the new focus and
+	* bring it to the centre, animated unless reduced motion is on. Expanding
+	* or collapsing keeps the focus and never triggers this, so incremental
+	* exploration stays stable.
+	*/
+	followFocus() {
+		const vm = this.vm;
+		if (!this.cy || vm.focus === vm.layoutFocus) return;
+		if (vm.focus === null) {
+			vm.layoutFocus = null;
+			return;
+		}
+		this.runLayout();
+	}
+	runLayout(animate = this.motion()) {
+		const cy = this.cy;
+		if (!cy || cy.nodes().empty()) return;
+		const focus = this.vm.focus;
+		this.vm.layoutFocus = focus;
+		const dist = /* @__PURE__ */ new Map();
+		if (focus && cy.getElementById(focus).nonempty()) cy.elements().bfs({
+			roots: cy.getElementById(focus),
+			directed: false,
+			visit: (v, _e, _u, _i, depth) => {
+				dist.set(v.id(), depth);
+			}
+		});
+		if (!this.hasSize()) {
+			this.pendingLayout = true;
+			return;
+		}
+		this.currentLayout?.stop();
+		cy.stop(true, false);
+		const layout = cy.layout({
+			name: "concentric",
+			concentric: (n) => focus ? 100 - (dist.get(n.id()) ?? 50) : n.degree(false),
+			levelWidth: () => 1,
+			minNodeSpacing: 70,
+			spacingFactor: 1.05,
+			avoidOverlap: true,
+			animate,
+			animationDuration: 320,
+			fit: false
+		});
+		this.currentLayout = layout;
+		layout.one("layoutstop", () => {
+			if (this.currentLayout === layout) this.currentLayout = null;
+			this.savePositions();
+			this.fit(animate);
+		});
+		layout.run();
+	}
+	/** The fit viewport: whole graph, 40px padding (as the semantic-graph
+	*  view), but never above FIT_MAX_ZOOM so a small graph isn't blown up. */
+	fitViewport() {
+		const cy = this.cy;
+		if (!cy || cy.elements().empty()) return null;
+		const bb = cy.elements().boundingBox(), w = cy.width(), h = cy.height();
+		const zoom = Math.max(cy.minZoom(), Math.min((w - 80) / Math.max(bb.w, 1), (h - 80) / Math.max(bb.h, 1), FIT_MAX_ZOOM));
+		return {
+			zoom,
+			pan: {
+				x: w / 2 - zoom * (bb.x1 + bb.w / 2),
+				y: h / 2 - zoom * (bb.y1 + bb.h / 2)
+			}
+		};
+	}
+	hasSize() {
+		return this.container.clientWidth > 0 && this.container.clientHeight > 0;
+	}
+	fit(animate = this.motion()) {
+		const cy = this.cy;
+		if (!cy) return;
+		if (!this.hasSize()) {
+			this.pendingFit = true;
+			return;
+		}
+		const vp = this.fitViewport();
+		if (!vp) return;
+		cy.stop(true, false);
+		if (animate) cy.animate(vp, { duration: 220 });
+		else cy.viewport(vp);
+	}
+	zoomBy(factor) {
+		const cy = this.cy;
+		if (!cy) return;
+		const w = this.container.clientWidth, h = this.container.clientHeight;
+		cy.zoom({
+			level: Math.max(cy.minZoom(), Math.min(cy.maxZoom(), cy.zoom() * factor)),
+			renderedPosition: {
+				x: w / 2,
+				y: h / 2
+			}
+		});
+	}
+	/** Pan so `id` is centred (keyboard/search navigation). */
+	centerOn(id) {
+		const cy = this.cy;
+		const el = cy?.getElementById(id);
+		if (!cy || !el || el.empty()) return;
+		if (this.motion()) cy.animate({ center: { eles: el } }, { duration: 220 });
+		else cy.center(el);
+	}
+	/** The container changed size (popup ↔ fullscreen): keep the user's view centre. */
+	resize() {
+		const cy = this.cy;
+		if (!cy || !this.hasSize()) return;
+		if (this.pendingLayout || this.pendingFit) {
+			const layoutToo = this.pendingLayout;
+			this.pendingLayout = this.pendingFit = false;
+			cy.resize();
+			if (layoutToo) this.runLayout(false);
+			else this.fit(false);
+			this.renderNow();
+			return;
+		}
+		const ext = cy.extent();
+		cy.resize();
+		const cx = (ext.x1 + ext.x2) / 2, cy0 = (ext.y1 + ext.y2) / 2;
+		const z = cy.zoom();
+		cy.pan({
+			x: this.container.clientWidth / 2 - cx * z,
+			y: this.container.clientHeight / 2 - cy0 * z
+		});
+		this.renderNow();
+	}
+	/** Theme changed: rebuild the stylesheet only. */
+	restyle() {
+		this.cy?.style(buildStylesheet(themeColors(this.container)));
+	}
+	/** Release Cytoscape and every listener. The view model is untouched. */
+	destroy() {
+		this.destroyed = true;
+		for (const u of this.unsubs.splice(0)) u();
+		if (this.viewportTimer) clearTimeout(this.viewportTimer);
+		if (this.flashTimer) clearTimeout(this.flashTimer);
+		if (this.hoverResetTimer) clearTimeout(this.hoverResetTimer);
+		if (this.wheelHandler) {
+			this.container.removeEventListener("wheel", this.wheelHandler);
+			this.wheelHandler = null;
+		}
+		if (this.cy) {
+			this.vm.saveViewport({
+				zoom: this.cy.zoom(),
+				pan: this.cy.pan()
+			});
+			this.savePositions();
+			this.cy.destroy();
+			this.cy = null;
+		}
+	}
+};
+//#endregion
+//#region src/graph-explorer/explorer.ts
+var esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+var ICON = {
+	back: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 18l-6-6 6-6\"/></svg>",
+	forward: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18l6-6-6-6\"/></svg>",
+	overview: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><circle cx=\"4.5\" cy=\"6\" r=\"2\"/><circle cx=\"19.5\" cy=\"6\" r=\"2\"/><circle cx=\"12\" cy=\"20.5\" r=\"2\"/><path d=\"M6.3 7l3.6 3.2M17.7 7l-3.6 3.2M12 15v3.5\"/></svg>",
+	fit: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5\"/></svg>",
+	layout: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"7.5\" stroke-dasharray=\"2.5 2.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.6\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"4.5\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"18.5\" cy=\"15.8\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"5.5\" cy=\"15.8\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+	popup: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><rect x=\"11\" y=\"11\" width=\"8\" height=\"8\" rx=\"1\"/></svg>",
+	full: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5\"/><path d=\"M9 9l-5-5M15 9l5-5M9 15l-5 5M15 15l5 5\"/></svg>",
+	dock: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 14h18\"/></svg>",
+	close: "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg>"
+};
+var MODE_META = {
+	embedded: {
+		icon: ICON.dock,
+		title: "Back to the lesson panel"
+	},
+	popup: {
+		icon: ICON.popup,
+		title: "Compact popup"
+	},
+	fullscreen: {
+		icon: ICON.full,
+		title: "Expand to fullscreen"
+	},
+	closed: {
+		icon: ICON.close,
+		title: "Close the graph"
+	}
+};
+var GraphExplorer = class {
+	constructor(opts) {
+		this.view = null;
+		this.viewInit = null;
+		this.unsubs = [];
+		this.resizeObs = null;
+		this.themeObs = null;
+		this.resizeFrame = 0;
+		this.fitUntil = 0;
+		this.statusExtra = "";
+		this.lastMountedMode = null;
+		this.searchHits = [];
+		this.searchIndex = -1;
+		this.reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+		this.modesHost = null;
+		this.opts = opts;
+		this.vm = opts.vm;
+		this.adapter = opts.adapter;
+		const root = document.createElement("div");
+		root.className = "kg-explorer";
+		root.setAttribute("role", "region");
+		root.setAttribute("aria-label", opts.label);
+		root.dataset.graphType = opts.vm.graphType;
+		root.innerHTML = `
+            <div class="kg-toolbar" role="toolbar" aria-label="Graph controls">
+                <div class="kg-search">
+                    <input type="search" class="kg-search-input" placeholder="Search concepts…" autocomplete="off"
+                           aria-label="Search concepts" aria-autocomplete="list" aria-expanded="false" role="combobox">
+                    <ul class="kg-search-results hidden" role="listbox" aria-label="Matching concepts"></ul>
+                </div>
+                ${opts.scopes?.length ? `<span class="kg-scope" role="radiogroup" aria-label="Scope">${opts.scopes.map((sc) => `<button type="button" class="kg-scope-btn" role="radio" aria-checked="false" data-kg-scope="${esc(sc.id)}" title="${esc(sc.title)}">${esc(sc.label)}</button>`).join("")}</span>` : ""}
+                <button type="button" class="kg-tb-btn" data-kg-tb="back" title="Previous focus (Alt+←)" aria-label="Previous focus">${ICON.back}</button>
+                <button type="button" class="kg-tb-btn" data-kg-tb="forward" title="Next focus (Alt+→)" aria-label="Next focus">${ICON.forward}</button>
+                ${opts.overview ? `<button type="button" class="kg-tb-btn" data-kg-tb="overview" title="Overview of the best-connected concepts" aria-label="Overview">${ICON.overview}</button>` : ""}
+                <button type="button" class="kg-tb-btn" data-kg-tb="layout" title="Arrange nodes in rings around the focus" aria-label="Arrange around the focus">${ICON.layout}</button>
+                <span class="kg-depth" role="group" aria-label="Neighbourhood depth">
+                    <button type="button" class="kg-tb-btn" data-kg-tb="depth-" title="Fewer hops around the focus" aria-label="Decrease depth">−</button>
+                    <span class="kg-depth-label" aria-live="polite">1-hop</span>
+                    <button type="button" class="kg-tb-btn" data-kg-tb="depth+" title="More hops around the focus" aria-label="Increase depth">+</button>
+                </span>
+                <span class="kg-tb-sep"></span>
+                <span class="kg-zoom" role="group" aria-label="Zoom">
+                    <button type="button" class="kg-tb-btn" data-kg-tb="zoom-" title="Zoom out (−)" aria-label="Zoom out">−</button>
+                    <span class="kg-zoom-level" title="Double-click to fit" aria-live="polite">100%</span>
+                    <button type="button" class="kg-tb-btn" data-kg-tb="zoom+" title="Zoom in (+)" aria-label="Zoom in">+</button>
+                    <button type="button" class="kg-tb-btn" data-kg-tb="fit" title="Zoom to fit (F, or double-click the background)" aria-label="Zoom to fit">${ICON.fit}</button>
+                </span>
+                <span class="kg-tb-extras"></span>
+                <span class="kg-tb-spacer"></span>
+                <span class="kg-tb-modes"></span>
+            </div>
+            <div class="kg-body">
+                <div class="kg-canvas-wrap">
+                    <div class="kg-canvas" tabindex="0" aria-label="Graph canvas. Click a concept to inspect it; double-click to expand. The details panel lists every relationship as a button."></div>
+                    <div class="kg-overlay" aria-live="polite"></div>
+                </div>
+                <aside class="kg-details" aria-label="Details" aria-live="polite"></aside>
+            </div>
+            <div class="kg-statusline" aria-live="polite"></div>`;
+		this.root = root;
+		this.canvas = root.querySelector(".kg-canvas");
+		this.details = root.querySelector(".kg-details");
+		this.status = root.querySelector(".kg-statusline");
+		this.overlay = root.querySelector(".kg-overlay");
+		this.searchInput = root.querySelector(".kg-search-input");
+		this.results = root.querySelector(".kg-search-results");
+		this.depthLabel = root.querySelector(".kg-depth-label");
+		const extras = root.querySelector(".kg-tb-extras");
+		for (const el of opts.toolbarExtras ?? []) extras.appendChild(el);
+		this.renderModeButtons();
+		this.wire();
+		this.unsubs.push(this.vm.events.on("state", () => this.renderChrome()));
+		this.unsubs.push(this.vm.events.on("view", () => this.renderChrome()));
+		this.renderChrome();
+	}
+	get cyView() {
+		return this.view;
+	}
+	/** Put the explorer into `host` (moving it if it lives elsewhere) and make sure it renders. */
+	async mount(host, mode) {
+		if (this.root.parentElement !== host) host.appendChild(this.root);
+		this.root.dataset.mode = mode;
+		this.vm.setPresentation(mode);
+		this.renderModeButtons();
+		this.observe();
+		if (!this.view) {
+			this.overlay.innerHTML = "<div class=\"kg-loading\"><span class=\"kg-spinner\" aria-hidden=\"true\"></span>Loading graph…</div>";
+			const zoomLabel = this.root.querySelector(".kg-zoom-level");
+			this.view = new CytoscapeGraphView(this.canvas, this.vm, this.adapter, {
+				reducedMotion: this.reducedMotion,
+				onZoom: (pct) => {
+					zoomLabel.textContent = `${pct}%`;
+				}
+			});
+			this.viewInit = this.view.init().catch((err) => {
+				console.error("[graph-explorer] failed to start the renderer", err);
+				this.view = null;
+				this.overlay.innerHTML = "<div class=\"kg-error\" role=\"alert\">The graph renderer failed to load.</div>";
+			});
+			await this.viewInit;
+			this.renderChrome();
+		} else {
+			await this.viewInit;
+			const modeChanged = this.lastMountedMode !== null && this.lastMountedMode !== mode;
+			if (modeChanged) this.fitUntil = performance.now() + 600;
+			requestAnimationFrame(() => {
+				this.view?.resize();
+				if (modeChanged) this.view?.fit(false);
+			});
+		}
+		this.lastMountedMode = mode;
+		if (mode !== "embedded" && !this.root.contains(document.activeElement)) this.canvas.focus({ preventScroll: true });
+	}
+	/** Tear down the renderer (closing). The view model keeps all exploration state. */
+	unmount() {
+		this.view?.destroy();
+		this.view = null;
+		this.viewInit = null;
+		this.resizeObs?.disconnect();
+		this.resizeObs = null;
+		this.themeObs?.disconnect();
+		this.themeObs = null;
+		this.root.remove();
+		this.vm.setPresentation("closed");
+	}
+	/** Permanently dispose (explorer + its listeners). */
+	dispose() {
+		this.unmount();
+		for (const u of this.unsubs.splice(0)) u();
+	}
+	/** Enable/disable one scope choice (e.g. Local when the lesson has no graph). */
+	setScopeAvailable(id, available, title) {
+		const b = this.root.querySelector(`[data-kg-scope="${CSS.escape(id)}"]`);
+		if (!b) return;
+		b.disabled = !available;
+		if (title) b.title = title;
+	}
+	/** Host text after the counts; a function is re-read on every render (so it can follow scope). */
+	setStatusExtra(html) {
+		this.statusExtra = html;
+		this.renderChrome();
+	}
+	focusSearch() {
+		this.searchInput.focus();
+		this.searchInput.select();
+	}
+	observe() {
+		if (!this.resizeObs && typeof ResizeObserver === "function") {
+			this.resizeObs = new ResizeObserver(() => {
+				cancelAnimationFrame(this.resizeFrame);
+				this.resizeFrame = requestAnimationFrame(() => {
+					this.view?.resize();
+					if (performance.now() < this.fitUntil) this.view?.fit(false);
+				});
+			});
+			this.resizeObs.observe(this.canvas);
+		}
+		if (!this.themeObs) {
+			this.themeObs = new MutationObserver(() => this.view?.restyle());
+			this.themeObs.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ["data-theme", "data-palette"]
+			});
+		}
+	}
+	setModeButtonsHost(host) {
+		const h = host;
+		if (h === this.modesHost) return;
+		const old = this.modesHost;
+		if (old && old.kgRequestMode === this.opts.onRequestMode) {
+			old.innerHTML = "";
+			old.kgRequestMode = void 0;
+		}
+		this.modesHost = h;
+		if (h) {
+			h.kgRequestMode = this.opts.onRequestMode;
+			if (!h.dataset.kgModesWired) {
+				h.dataset.kgModesWired = "1";
+				h.addEventListener("click", (ev) => {
+					const b = ev.target.closest("[data-kg-mode]");
+					if (!b) return;
+					ev.stopPropagation();
+					h.kgRequestMode?.(b.dataset.kgMode);
+				});
+			}
+		}
+		this.renderModeButtons();
+	}
+	renderModeButtons() {
+		const inToolbar = this.root.querySelector(".kg-tb-modes");
+		if (this.modesHost) {
+			inToolbar.innerHTML = "";
+			this.modesHost.kgRequestMode = this.opts.onRequestMode;
+		}
+		const box = this.modesHost ?? inToolbar;
+		const cur = this.vm.presentation;
+		box.innerHTML = [
+			"embedded",
+			"popup",
+			"fullscreen",
+			"closed"
+		].filter((m) => this.opts.modes.includes(m)).map((m) => {
+			const on = m === cur;
+			const title = on ? `${MODE_META[m].title} (current)` : MODE_META[m].title;
+			return `<button type="button" class="kg-tb-btn kg-mode-btn${on ? " active" : ""}" data-kg-mode="${m}" aria-pressed="${m === "closed" ? "false" : String(on)}" title="${esc(title)}" aria-label="${esc(title)}">${MODE_META[m].icon}</button>`;
+		}).join("");
+	}
+	renderChrome() {
+		const vm = this.vm;
+		const back = this.root.querySelector("[data-kg-tb=\"back\"]");
+		back.disabled = !vm.canGoBack;
+		for (const b of this.root.querySelectorAll("[data-kg-scope]")) {
+			const on = b.dataset.kgScope === vm.scopeId;
+			b.classList.toggle("active", on);
+			b.setAttribute("aria-checked", String(on));
+		}
+		this.root.querySelector("[data-kg-tb=\"forward\"]").disabled = !vm.canGoForward;
+		this.root.querySelector(".kg-depth").classList.toggle("kg-disabled", vm.focus === null);
+		this.depthLabel.textContent = vm.focus === null ? "overview" : `${vm.focusDepth}-hop`;
+		this.renderDetails();
+		const shown = vm.visibleNodes.size;
+		const total = vm.scopedNodeCount();
+		let s = `${shown} of ${total} concept${total === 1 ? "" : "s"} shown · ${vm.visibleEdges.size} relationship${vm.visibleEdges.size === 1 ? "" : "s"}`;
+		if (vm.truncated) s += ` · <span class="kg-warn">limited to ${vm.maxVisible} — focus or search to see more</span>`;
+		const extra = typeof this.statusExtra === "function" ? this.statusExtra() : this.statusExtra;
+		if (extra) s += ` · ${extra}`;
+		this.status.innerHTML = s;
+		if (this.view?.isReady) this.overlay.innerHTML = shown ? "" : `<div class="kg-empty">${esc((typeof this.opts.emptyText === "function" ? this.opts.emptyText() : this.opts.emptyText) ?? "Nothing to show yet. Search for a concept to start exploring.")}</div>`;
+	}
+	renderDetails() {
+		const vm = this.vm;
+		const sel = vm.selection;
+		if (sel?.kind === "node") {
+			const n = vm.engine.getNode(sel.id);
+			if (n) {
+				this.details.innerHTML = this.adapter.nodeDetailsHtml(n, vm.engine, {
+					...this.opts.detailsContext?.(),
+					expanded: vm.isExpanded(sel.id),
+					isFocus: vm.focus === sel.id,
+					hidden: vm.hiddenNeighborCount(sel.id)
+				});
+				this.details.dataset.kgFor = sel.id;
+				const ask = this.adapter.askPrompt;
+				if (ask) this.addAskButton(`Ask AI about ${this.adapter.nodeLabel(n)}`, () => ask(n, vm.engine, this.visibleGraph()));
+				return;
+			}
+		} else if (sel?.kind === "edge") {
+			const e = vm.engine.getEdge(sel.id);
+			if (e) {
+				this.details.innerHTML = this.adapter.edgeDetailsHtml(e, vm.engine, this.opts.detailsContext?.());
+				this.details.dataset.kgFor = sel.id;
+				const ask = this.adapter.askEdgePrompt;
+				if (ask) this.addAskButton("Ask AI about this relationship", () => ask(e, vm.engine, this.visibleGraph()));
+				return;
+			}
+		}
+		delete this.details.dataset.kgFor;
+		this.details.innerHTML = "<p class=\"kg-details-hint\">Select a concept or relationship to see its details.</p><p class=\"kg-details-hint kg-kbd-hint\">Keys: <kbd>/</kbd> search · <kbd>Enter</kbd> focus selected · <kbd>]</kbd>/<kbd>[</kbd> or double-click: show/hide neighbours (＋N = hidden) · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward · <kbd>F</kbd> fit</p>" + this.legendHtml();
+	}
+	visibleGraph() {
+		return {
+			focus: this.vm.focus,
+			nodes: this.vm.visibleNodes,
+			edges: this.vm.visibleEdges
+		};
+	}
+	addAskButton(title, getMessage) {
+		const head = this.details.querySelector(".kg-details-head");
+		if (!head || !this.opts.makeAskButton) return;
+		head.appendChild(this.opts.makeAskButton(title, getMessage));
+	}
+	legendHtml() {
+		const lg = this.adapter.legend();
+		return `<div class="kg-legend"><div class="kg-legend-title">Legend</div>` + lg.nodes.map(([cls, label]) => `<div class="kg-legend-row"><span class="kg-swatch kg-swatch-node ${esc(cls)}"></span>${esc(label)}</div>`).join("") + lg.edges.map(([cls, label]) => `<div class="kg-legend-row"><span class="kg-swatch kg-swatch-edge ${esc(cls)}"></span>${esc(label)}</div>`).join("") + `</div>`;
+	}
+	wire() {
+		const root = this.root;
+		root.addEventListener("click", (ev) => {
+			const t = ev.target;
+			const tb = t.closest("[data-kg-tb]");
+			if (tb) {
+				this.toolbarAction(tb.dataset.kgTb);
+				return;
+			}
+			const scope = t.closest("[data-kg-scope]");
+			if (scope) {
+				if (!scope.disabled) this.opts.onScope?.(scope.dataset.kgScope);
+				return;
+			}
+			const mode = t.closest("[data-kg-mode]");
+			if (mode) {
+				this.opts.onRequestMode(mode.dataset.kgMode);
+				return;
+			}
+			const hit = t.closest(".kg-search-results [data-kg-hit]");
+			if (hit) {
+				this.pickSearch(hit.dataset.kgHit);
+				return;
+			}
+			if (!t.closest(".kg-details")) return;
+			const nodeBtn = t.closest("[data-kg-node]");
+			if (nodeBtn) {
+				this.selectAndShow(nodeBtn.dataset.kgNode);
+				return;
+			}
+			const edgeBtn = t.closest("[data-kg-edge]");
+			if (edgeBtn) {
+				this.vm.select({
+					kind: "edge",
+					id: edgeBtn.dataset.kgEdge
+				});
+				return;
+			}
+			const nav = t.closest("[data-kg-lesson]");
+			if (nav) {
+				this.opts.actions?.openLesson?.(nav.dataset.kgLesson, Number(nav.dataset.kgScene), Number(nav.dataset.kgStep));
+				return;
+			}
+			const act = t.closest("[data-kg-action]");
+			if (act) this.detailsAction(act.dataset.kgAction);
+		});
+		this.root.querySelector(".kg-zoom-level").addEventListener("dblclick", () => this.view?.fit());
+		this.searchInput.addEventListener("input", () => this.runSearch());
+		this.searchInput.addEventListener("keydown", (ev) => {
+			if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+				ev.preventDefault();
+				if (!this.searchHits.length) return;
+				const d = ev.key === "ArrowDown" ? 1 : -1;
+				this.searchIndex = (this.searchIndex + d + this.searchHits.length) % this.searchHits.length;
+				this.renderSearch();
+			} else if (ev.key === "Enter") {
+				ev.preventDefault();
+				const id = this.searchHits[Math.max(0, this.searchIndex)];
+				if (id) this.pickSearch(id);
+			} else if (ev.key === "Escape") {
+				if (this.searchInput.value) {
+					ev.stopPropagation();
+					this.searchInput.value = "";
+					this.runSearch();
+				}
+			}
+		});
+		this.searchInput.addEventListener("blur", () => setTimeout(() => this.hideSearch(), 150));
+		root.addEventListener("keydown", (ev) => this.onKey(ev));
+		this.canvas.addEventListener("pointerup", () => {
+			if (document.activeElement !== this.canvas) this.canvas.focus({ preventScroll: true });
+		});
+		root.addEventListener("pointerup", (ev) => {
+			const t = ev.target;
+			if (this.canvas.contains(t)) return;
+			if (t.closest("input, textarea, select, button, a, [tabindex], [contenteditable]")) return;
+			if (this.root.contains(document.activeElement) && document.activeElement !== document.body) return;
+			const sel = window.getSelection();
+			if (sel && !sel.isCollapsed && this.root.contains(sel.anchorNode)) return;
+			this.canvas.focus({ preventScroll: true });
+		});
+	}
+	onKey(ev) {
+		const t = ev.target;
+		if (t.closest("input, textarea, select")) return;
+		if (ev.metaKey || ev.ctrlKey) return;
+		const vm = this.vm;
+		const sel = vm.selection?.kind === "node" ? vm.selection.id : null;
+		let handled = true;
+		switch (ev.key && ev.key !== "Unidentified" ? ev.key : {
+			Slash: "/",
+			Minus: "-",
+			Equal: "=",
+			NumpadAdd: "+",
+			NumpadSubtract: "-",
+			BracketRight: "]",
+			BracketLeft: "["
+		}[ev.code] ?? ev.key) {
+			case "/":
+				this.focusSearch();
+				break;
+			case "ArrowLeft":
+				if (ev.altKey) vm.back();
+				else handled = false;
+				break;
+			case "ArrowRight":
+				if (ev.altKey) vm.forward();
+				else handled = false;
+				break;
+			case "Backspace":
+				vm.back();
+				break;
+			case "+":
+			case "=":
+				this.view?.zoomBy(1.2);
+				break;
+			case "-":
+			case "_":
+				this.view?.zoomBy(1 / 1.2);
+				break;
+			case "f":
+			case "F":
+				this.view?.fit();
+				break;
+			case "]":
+				if (sel) vm.expand(sel);
+				break;
+			case "[":
+				if (sel) vm.collapse(sel);
+				break;
+			case "Enter":
+				if (sel && !t.closest("button, a")) vm.focusOn(sel);
+				else handled = false;
+				break;
+			default: handled = false;
+		}
+		if (handled) {
+			ev.preventDefault();
+			ev.stopPropagation();
+		}
+	}
+	toolbarAction(action) {
+		const vm = this.vm;
+		switch (action) {
+			case "back":
+				vm.back();
+				break;
+			case "forward":
+				vm.forward();
+				break;
+			case "overview":
+				this.opts.overview?.();
+				break;
+			case "depth-":
+				vm.setFocusDepth(vm.focusDepth - 1);
+				break;
+			case "depth+":
+				vm.setFocusDepth(vm.focusDepth + 1);
+				break;
+			case "zoom-":
+				this.view?.zoomBy(1 / 1.2);
+				break;
+			case "zoom+":
+				this.view?.zoomBy(1.2);
+				break;
+			case "fit":
+				this.view?.fit();
+				break;
+			case "layout": this.view?.runLayout();
+		}
+	}
+	detailsAction(action) {
+		const sel = this.vm.selection;
+		if (sel?.kind !== "node") return;
+		if (action === "focus") this.vm.focusOn(sel.id);
+		else if (action === "expand") this.vm.expand(sel.id);
+		else if (action === "collapse") this.vm.collapse(sel.id);
+	}
+	/** Select a node; if it is not on screen, bring it in by focusing it. */
+	selectAndShow(id) {
+		if (!this.vm.visibleNodes.has(id)) this.vm.focusOn(id);
+		else {
+			this.vm.select({
+				kind: "node",
+				id
+			});
+			this.view?.centerOn(id);
+		}
+	}
+	runSearch() {
+		this.searchHits = this.vm.search(this.searchInput.value);
+		this.searchIndex = this.searchHits.length ? 0 : -1;
+		this.renderSearch();
+	}
+	renderSearch() {
+		if (!this.searchInput.value.trim()) {
+			this.hideSearch();
+			return;
+		}
+		const items = this.searchHits.map((id, i) => {
+			const n = this.vm.engine.getNode(id);
+			return `<li role="option" class="kg-hit${i === this.searchIndex ? " active" : ""}" data-kg-hit="${esc(id)}" aria-selected="${i === this.searchIndex}"><span class="kg-hit-label">${esc(this.adapter.nodeLabel(n))}</span><span class="kg-hit-sub">${esc(this.adapter.nodeSubtitle(n))}</span></li>`;
+		});
+		this.results.innerHTML = items.length ? items.join("") : "<li class=\"kg-hit-none\">No matching concept</li>";
+		this.results.classList.remove("hidden");
+		this.searchInput.setAttribute("aria-expanded", "true");
+	}
+	hideSearch() {
+		this.results.classList.add("hidden");
+		this.searchInput.setAttribute("aria-expanded", "false");
+	}
+	pickSearch(id) {
+		this.vm.focusOn(id);
+		this.searchInput.value = "";
+		this.hideSearch();
+		this.canvas.focus();
+	}
+};
+//#endregion
+//#region src/graph-explorer/emitter.ts
+var Emitter = class {
+	constructor() {
+		this.handlers = /* @__PURE__ */ new Map();
+	}
+	on(event, fn) {
+		let set = this.handlers.get(event);
+		if (!set) this.handlers.set(event, set = /* @__PURE__ */ new Set());
+		set.add(fn);
+		return () => {
+			set.delete(fn);
+		};
+	}
+	emit(event, payload) {
+		const set = this.handlers.get(event);
+		if (!set) return;
+		for (const fn of [...set]) try {
+			fn(payload);
+		} catch (err) {
+			console.error("[graph-explorer] handler failed", err);
+		}
+	}
+	listenerCount(event) {
+		if (event !== void 0) return this.handlers.get(event)?.size ?? 0;
+		let n = 0;
+		for (const s of this.handlers.values()) n += s.size;
+		return n;
+	}
+	clear() {
+		this.handlers.clear();
+	}
+};
+//#endregion
+//#region src/graph-explorer/view-model.ts
+var HISTORY_MAX = 50;
+var GraphViewModel = class {
+	constructor(engine, opts) {
+		this.events = new Emitter();
+		this.focus = null;
+		this.selection = null;
+		this.presentation = "closed";
+		this.viewport = null;
+		this.layoutFocus = null;
+		this.positions = /* @__PURE__ */ new Map();
+		this.roots = /* @__PURE__ */ new Map();
+		this.hiddenRelationTypes = /* @__PURE__ */ new Set();
+		this.scopeId = "global";
+		this.scopeFn = null;
+		this.truncated = false;
+		this._visibleNodes = /* @__PURE__ */ new Set();
+		this._visibleEdges = /* @__PURE__ */ new Set();
+		this.history = [];
+		this.future = [];
+		this.edgeShown = (e) => !this.hiddenRelationTypes.has(e.type) && this.inScope(e.source) && this.inScope(e.target);
+		this.engine = engine;
+		this.graphType = opts.graphType;
+		this.contextId = opts.contextId;
+		this.defaultDepth = opts.defaultDepth ?? 1;
+		this.maxVisible = opts.maxVisible ?? 250;
+		this.searchText = opts.searchText ?? ((n) => n.id.toLowerCase());
+		this.unsubscribe = engine.subscribe((p) => this.onEnginePatch(p));
+	}
+	get visibleNodes() {
+		return this._visibleNodes;
+	}
+	get visibleEdges() {
+		return this._visibleEdges;
+	}
+	get canGoBack() {
+		return this.history.length > 0;
+	}
+	get canGoForward() {
+		return this.future.length > 0;
+	}
+	/** Earlier foci, most recent first (deduplicated) — what the learner looked at before. */
+	recentFoci(limit = 5) {
+		const out = [];
+		for (let i = this.history.length - 1; i >= 0 && out.length < limit; i--) {
+			const f = this.history[i].focus;
+			if (f && f !== this.focus && !out.includes(f) && this.engine.hasNode(f)) out.push(f);
+		}
+		return out;
+	}
+	get historyLength() {
+		return this.history.length;
+	}
+	isExpanded(id) {
+		return (this.roots.get(id) ?? 0) > 0;
+	}
+	/** Neighbours of `id` (through shown relation types) not currently visible —
+	*  what an expand would add. Drives the "+N" affordance. */
+	hiddenNeighborCount(id) {
+		const seen = /* @__PURE__ */ new Set();
+		for (const e of this.engine.edgesOf(id)) {
+			if (!this.edgeShown(e)) continue;
+			const other = e.source === id ? e.target : e.source;
+			if (other !== id && !this._visibleNodes.has(other)) seen.add(other);
+		}
+		return seen.size;
+	}
+	/** Centre the view on `id` with a `depth`-hop neighbourhood. Previous view goes on the history. */
+	focusOn(id, depth = this.defaultDepth) {
+		if (!this.engine.hasNode(id)) return false;
+		this.pushHistory();
+		this.focus = id;
+		this.roots.clear();
+		this.roots.set(id, Math.max(0, depth));
+		this.selection = {
+			kind: "node",
+			id
+		};
+		this.recompute(id);
+		this.emitState("focus");
+		return true;
+	}
+	/** Grow the neighbourhood around `id` (default: one more hop than it has). */
+	expand(id, depth) {
+		if (!this.engine.hasNode(id)) return false;
+		const cur = this.roots.get(id) ?? 0;
+		const next = Math.max(cur, depth ?? cur + 1);
+		if (next === cur && this.roots.has(id)) return false;
+		this.roots.set(id, next);
+		this.recompute(id);
+		this.emitState("expansion");
+		return true;
+	}
+	/**
+	* Undo an expansion. Nodes still reached by another expanded neighbourhood
+	* (or the focus) stay — visibility is recomputed as the union, not
+	* subtracted. Collapsing the focus shrinks it to depth 0 (it stays shown).
+	*/
+	collapse(id) {
+		if (!this.roots.has(id)) return false;
+		if (id === this.focus) {
+			if (this.roots.get(id) === 0) return false;
+			this.roots.set(id, 0);
+		} else this.roots.delete(id);
+		this.recompute(id);
+		this.emitState("expansion");
+		return true;
+	}
+	/** Change the focus neighbourhood's radius (1-hop, 2-hop, …). */
+	setFocusDepth(depth) {
+		if (this.focus === null) return false;
+		const d = Math.max(0, Math.min(6, Math.floor(depth)));
+		if (this.roots.get(this.focus) === d) return false;
+		this.defaultDepth = Math.max(1, d);
+		this.roots.set(this.focus, d);
+		this.recompute(this.focus);
+		this.emitState("expansion");
+		return true;
+	}
+	get focusDepth() {
+		return this.focus === null ? 0 : this.roots.get(this.focus) ?? 0;
+	}
+	/**
+	* A bounded overview: the `limit` best-connected nodes (optionally only
+	* those passing `filter`), with the edges between them. No focus.
+	*/
+	showOverview(limit = 40, filter) {
+		this.pushHistory();
+		const ranked = [];
+		for (const n of this.engine.allNodes()) {
+			if (filter && !filter(n) || !this.inScope(n.id)) continue;
+			ranked.push([n.id, this.engine.degree(n.id)]);
+		}
+		ranked.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+		this.focus = null;
+		this.selection = null;
+		this.roots.clear();
+		for (const [id] of ranked.slice(0, Math.min(limit, this.maxVisible))) this.roots.set(id, 0);
+		this.recompute();
+		this.emitState("focus");
+	}
+	/**
+	* Drop the focus and selection but keep what is on screen (the old focus's
+	* neighbourhood stays as an ordinary expansion). Used when the learner moves
+	* to a lesson the focused concept doesn't belong to. Goes on the history,
+	* so Back restores it. Returns false when there was nothing to clear.
+	*/
+	clearFocus() {
+		if (this.focus === null && this.selection === null) return false;
+		this.pushHistory();
+		this.focus = null;
+		this.selection = null;
+		this.recompute();
+		this.emitState("focus");
+		return true;
+	}
+	/** Return to the view before the last focusOn / showOverview. */
+	back() {
+		const snap = this.history.pop();
+		if (!snap) return false;
+		this.future.push(this.snapshot());
+		this.restore(snap);
+		return true;
+	}
+	/** Undo a back(): return to the view back() left. */
+	forward() {
+		const snap = this.future.pop();
+		if (!snap) return false;
+		this.history.push(this.snapshot());
+		this.restore(snap);
+		return true;
+	}
+	snapshot() {
+		return {
+			focus: this.focus,
+			roots: [...this.roots],
+			selection: this.selection
+		};
+	}
+	restore(snap) {
+		this.focus = snap.focus && this.engine.hasNode(snap.focus) ? snap.focus : null;
+		this.roots.clear();
+		for (const [id, d] of snap.roots) if (this.engine.hasNode(id)) this.roots.set(id, d);
+		this.selection = this.withFocusFallback(this.validSelection(snap.selection));
+		this.recompute(this.focus ?? void 0);
+		this.emitState("history");
+	}
+	/**
+	* Select a node or edge. With a focus, "nothing" means the focus: the
+	* focused concept is selected by default (so the keys and details act on
+	* it), and clicking anything else selects that instead.
+	*/
+	select(sel) {
+		const next = this.withFocusFallback(this.validSelection(sel));
+		if (next?.kind === this.selection?.kind && next?.id === this.selection?.id) return;
+		this.selection = next;
+		this.emitState("selection");
+	}
+	setRelationTypeVisible(type, visible) {
+		if (visible ? !this.hiddenRelationTypes.delete(type) : this.hiddenRelationTypes.has(type)) return;
+		if (!visible) this.hiddenRelationTypes.add(type);
+		this.recompute();
+		this.emitState("filter");
+	}
+	/**
+	* Restrict what may be shown to a scope (e.g. "local" = the open lesson's
+	* concepts). Presentation-only: the engine is untouched and switching back
+	* restores the full neighbourhoods. Roots outside the scope stay recorded
+	* but contribute nothing until the scope includes them again.
+	*/
+	setScope(id, predicate) {
+		if (id === this.scopeId && predicate === this.scopeFn) return;
+		this.scopeId = id;
+		this.scopeFn = predicate;
+		if (this.selection?.kind === "node" && !this.inScope(this.selection.id)) {
+			const f = this.withFocusFallback(null);
+			this.selection = f && this.inScope(f.id) ? f : null;
+		}
+		this.recompute(this.focus ?? void 0);
+		this.emitState("filter");
+	}
+	/** Case-insensitive substring search, best (prefix) matches first. */
+	search(query, limit = 12) {
+		const q = query.trim().toLowerCase();
+		if (!q) return [];
+		const hits = [];
+		for (const n of this.engine.allNodes()) {
+			if (!this.inScope(n.id)) continue;
+			const at = this.searchText(n).indexOf(q);
+			if (at >= 0) hits.push([n.id, at === 0 ? 0 : 1]);
+		}
+		hits.sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
+		return hits.slice(0, limit).map(([id]) => id);
+	}
+	setPresentation(mode) {
+		if (mode === this.presentation) return;
+		this.presentation = mode;
+		this.emitState("presentation");
+	}
+	saveViewport(v) {
+		this.viewport = {
+			zoom: v.zoom,
+			pan: {
+				x: v.pan.x,
+				y: v.pan.y
+			}
+		};
+	}
+	savePosition(id, p) {
+		this.positions.set(id, {
+			x: p.x,
+			y: p.y
+		});
+	}
+	/** Stop listening to the engine. The instance is unusable afterwards. */
+	dispose() {
+		this.unsubscribe();
+		this.events.clear();
+	}
+	withFocusFallback(sel) {
+		if (sel) return sel;
+		return this.focus !== null && this.engine.hasNode(this.focus) ? {
+			kind: "node",
+			id: this.focus
+		} : null;
+	}
+	validSelection(sel) {
+		if (!sel) return null;
+		if (sel.kind === "node" ? !this.engine.hasNode(sel.id) : !this.engine.hasEdge(sel.id)) return null;
+		return {
+			kind: sel.kind,
+			id: sel.id
+		};
+	}
+	/** A new navigation: remember the current view and drop the forward trail. */
+	pushHistory() {
+		this.future.length = 0;
+		if (this.focus === null && this.roots.size === 0) return;
+		this.history.push(this.snapshot());
+		if (this.history.length > HISTORY_MAX) this.history.shift();
+	}
+	emitState(reason) {
+		this.events.emit("state", { reason });
+	}
+	inScope(id) {
+		return !this.scopeFn || this.scopeFn(id);
+	}
+	/** How many concepts the current scope covers (the whole graph for Global). */
+	scopedNodeCount() {
+		if (!this.scopeFn) return this.engine.nodeCount;
+		let n = 0;
+		for (const node of this.engine.allNodes()) if (this.scopeFn(node.id)) n++;
+		return n;
+	}
+	/** The visible node set: union of every root's neighbourhood, capped. */
+	computeVisibleNodes() {
+		const vis = /* @__PURE__ */ new Set();
+		this.truncated = false;
+		const roots = [...this.roots].sort((a, b) => (a[0] === this.focus ? -1 : b[0] === this.focus ? 1 : 0) || b[1] - a[1]);
+		for (const [id] of roots) {
+			if (!this.inScope(id)) continue;
+			if (vis.size >= this.maxVisible) {
+				this.truncated = true;
+				break;
+			}
+			vis.add(id);
+		}
+		for (const [id, depth] of roots) {
+			if (depth <= 0 || !this.inScope(id)) continue;
+			const { nodes, truncated } = this.engine.neighborhood([id], depth, {
+				limit: this.maxVisible,
+				edgeFilter: this.edgeShown
+			});
+			for (const n of nodes.keys()) {
+				if (vis.has(n)) continue;
+				if (vis.size >= this.maxVisible) {
+					this.truncated = true;
+					break;
+				}
+				vis.add(n);
+			}
+			if (truncated) this.truncated = true;
+		}
+		return vis;
+	}
+	computeVisibleEdges(nodes) {
+		const out = /* @__PURE__ */ new Set();
+		for (const id of nodes) for (const e of this.engine.edgesOf(id, "out")) if (nodes.has(e.target) && this.edgeShown(e)) out.add(e.id);
+		return out;
+	}
+	/** Recompute the visible subgraph and publish the difference. */
+	recompute(anchor, updatedNodes = [], updatedEdges = []) {
+		const nodes = this.computeVisibleNodes();
+		const edges = this.computeVisibleEdges(nodes);
+		const patch = {
+			nodesAdded: [...nodes].filter((n) => !this._visibleNodes.has(n)),
+			nodesRemoved: [...this._visibleNodes].filter((n) => !nodes.has(n)),
+			nodesUpdated: updatedNodes.filter((n) => nodes.has(n) && this._visibleNodes.has(n)),
+			edgesAdded: [...edges].filter((e) => !this._visibleEdges.has(e)),
+			edgesRemoved: [...this._visibleEdges].filter((e) => !edges.has(e)),
+			edgesUpdated: updatedEdges.filter((e) => edges.has(e) && this._visibleEdges.has(e))
+		};
+		if (anchor !== void 0) patch.anchor = anchor;
+		this._visibleNodes = nodes;
+		this._visibleEdges = edges;
+		for (const n of patch.nodesRemoved) this.positions.delete(n);
+		if (patch.nodesAdded.length || patch.nodesRemoved.length || patch.nodesUpdated.length || patch.edgesAdded.length || patch.edgesRemoved.length || patch.edgesUpdated.length) this.events.emit("view", patch);
+	}
+	/** A data mutation: keep focus/roots/selection valid, then re-derive the view. */
+	onEnginePatch(p) {
+		let stateChanged = false;
+		for (const n of p.nodesRemoved) {
+			if (this.roots.delete(n.id)) stateChanged = true;
+			if (this.focus === n.id) {
+				this.focus = null;
+				stateChanged = true;
+			}
+		}
+		if (this.selection && !this.validSelection(this.selection)) {
+			this.selection = this.withFocusFallback(null);
+			stateChanged = true;
+		}
+		let anchor;
+		for (const id of p.edgesAdded) {
+			const e = this.engine.getEdge(id);
+			if (!e) continue;
+			if (this._visibleNodes.has(e.source)) {
+				anchor = e.source;
+				break;
+			}
+			if (this._visibleNodes.has(e.target)) {
+				anchor = e.target;
+				break;
+			}
+		}
+		this.recompute(anchor, p.nodesUpdated, p.edgesUpdated);
+		if (stateChanged || p.nodesUpdated.length || p.edgesUpdated.length) this.emitState("data");
+	}
+};
+//#endregion
+//#region src/graph-explorer/graph-engine.ts
+var GraphValidationError = class extends Error {};
+var ID_MAX = 256;
+/** A stable id: non-empty, trimmed, bounded, no control characters. */
+function isValidId(id) {
+	return typeof id === "string" && id.length > 0 && id.length <= ID_MAX && id.trim() === id && !/[\u0000-\u001f\u007f]/.test(id);
+}
+function emptyPending() {
+	return {
+		nodesAdded: /* @__PURE__ */ new Set(),
+		nodesUpdated: /* @__PURE__ */ new Set(),
+		nodesRemoved: /* @__PURE__ */ new Map(),
+		edgesAdded: /* @__PURE__ */ new Set(),
+		edgesUpdated: /* @__PURE__ */ new Set(),
+		edgesRemoved: /* @__PURE__ */ new Map()
+	};
+}
+function isEmptyPatch(p) {
+	return !p.nodesAdded.length && !p.nodesUpdated.length && !p.nodesRemoved.length && !p.edgesAdded.length && !p.edgesUpdated.length && !p.edgesRemoved.length;
+}
+var GraphEngine = class {
+	constructor() {
+		this.nodes = /* @__PURE__ */ new Map();
+		this.edges = /* @__PURE__ */ new Map();
+		this.outIdx = /* @__PURE__ */ new Map();
+		this.inIdx = /* @__PURE__ */ new Map();
+		this.listeners = /* @__PURE__ */ new Set();
+		this.pending = null;
+		this.batchDepth = 0;
+		this.revision = 0;
+	}
+	get nodeCount() {
+		return this.nodes.size;
+	}
+	get edgeCount() {
+		return this.edges.size;
+	}
+	hasNode(id) {
+		return this.nodes.has(id);
+	}
+	hasEdge(id) {
+		return this.edges.has(id);
+	}
+	getNode(id) {
+		return this.nodes.get(id);
+	}
+	getEdge(id) {
+		return this.edges.get(id);
+	}
+	/** Live iterators — do not mutate the engine while iterating. */
+	allNodes() {
+		return this.nodes.values();
+	}
+	allEdges() {
+		return this.edges.values();
+	}
+	/** Edge ids incident to `id` in the given direction. */
+	edgeIdsOf(id, dir = "both") {
+		const out = dir !== "in" ? this.outIdx.get(id) : void 0;
+		const inn = dir !== "out" ? this.inIdx.get(id) : void 0;
+		const ids = [];
+		if (out) for (const e of out) ids.push(e);
+		if (inn) {
+			for (const e of inn) if (!out || !out.has(e)) ids.push(e);
+		}
+		return ids;
+	}
+	edgesOf(id, dir = "both") {
+		return this.edgeIdsOf(id, dir).map((e) => this.edges.get(e));
+	}
+	degree(id) {
+		return (this.outIdx.get(id)?.size ?? 0) + (this.inIdx.get(id)?.size ?? 0);
+	}
+	/** Distinct neighbour ids one hop away. */
+	neighbors(id, dir = "both") {
+		const seen = /* @__PURE__ */ new Set();
+		for (const e of this.edgesOf(id, dir)) {
+			const other = e.source === id ? e.target : e.source;
+			if (other !== id) seen.add(other);
+		}
+		return [...seen];
+	}
+	/**
+	* Breadth-first neighbourhood: every node within `depth` hops of any seed,
+	* mapped to its hop distance. Cycles and shared neighbours are visited once.
+	* Stops adding nodes at `limit` (returned `truncated` says so) so a caller
+	* can bound what it renders on a dense graph.
+	*/
+	neighborhood(seeds, depth, opts = {}) {
+		const dir = opts.dir ?? "both";
+		const limit = opts.limit ?? Infinity;
+		const dist = /* @__PURE__ */ new Map();
+		let frontier = [];
+		let truncated = false;
+		for (const s of seeds) {
+			if (!this.nodes.has(s) || dist.has(s)) continue;
+			if (dist.size >= limit) {
+				truncated = true;
+				break;
+			}
+			dist.set(s, 0);
+			frontier.push(s);
+		}
+		for (let d = 1; d <= depth && frontier.length && !truncated; d++) {
+			const next = [];
+			for (const id of frontier) {
+				for (const e of this.edgesOf(id, dir)) {
+					if (opts.edgeFilter && !opts.edgeFilter(e)) continue;
+					const other = e.source === id ? e.target : e.source;
+					if (dist.has(other)) continue;
+					if (dist.size >= limit) {
+						truncated = true;
+						break;
+					}
+					dist.set(other, d);
+					next.push(other);
+				}
+				if (truncated) break;
+			}
+			frontier = next;
+		}
+		return {
+			nodes: dist,
+			truncated
+		};
+	}
+	/** Listen for patches. Returns the unsubscribe function. */
+	subscribe(fn) {
+		this.listeners.add(fn);
+		return () => {
+			this.listeners.delete(fn);
+		};
+	}
+	get listenerCount() {
+		return this.listeners.size;
+	}
+	/** Run `fn` with all its mutations delivered as one patch. Nests. */
+	batch(fn) {
+		this.batchDepth++;
+		try {
+			return fn();
+		} finally {
+			this.batchDepth--;
+			if (this.batchDepth === 0) this.flush();
+		}
+	}
+	patch() {
+		if (!this.pending) this.pending = emptyPending();
+		return this.pending;
+	}
+	flush() {
+		const q = this.pending;
+		this.pending = null;
+		if (!q) return;
+		const p = {
+			nodesAdded: [...q.nodesAdded],
+			nodesUpdated: [...q.nodesUpdated],
+			nodesRemoved: [...q.nodesRemoved.values()],
+			edgesAdded: [...q.edgesAdded],
+			edgesUpdated: [...q.edgesUpdated],
+			edgesRemoved: [...q.edgesRemoved.values()]
+		};
+		if (isEmptyPatch(p)) return;
+		for (const fn of [...this.listeners]) try {
+			fn(p);
+		} catch (err) {
+			console.error("[graph-engine] listener failed", err);
+		}
+	}
+	touched() {
+		this.revision++;
+		if (this.batchDepth === 0) this.flush();
+	}
+	/** Add a node. A duplicate id is an error — use upsertNode to merge. */
+	addNode(id, data) {
+		if (!isValidId(id)) throw new GraphValidationError(`invalid node id: ${JSON.stringify(id)}`);
+		if (this.nodes.has(id)) throw new GraphValidationError(`duplicate node id: ${id}`);
+		const node = {
+			id,
+			data
+		};
+		this.nodes.set(id, node);
+		this.notePatch("nodesAdded", id);
+		this.touched();
+		return node;
+	}
+	/** Replace a node's data. Returns false when the node does not exist. */
+	updateNode(id, data) {
+		const node = this.nodes.get(id);
+		if (!node) return false;
+		node.data = data;
+		this.notePatch("nodesUpdated", id);
+		this.touched();
+		return true;
+	}
+	/**
+	* Add the node, or — when the id exists — combine via `merge(existing, incoming)`.
+	* Returns 'added' | 'updated' | 'unchanged' (merge returned the same object).
+	*/
+	upsertNode(id, data, merge) {
+		const node = this.nodes.get(id);
+		if (!node) {
+			this.addNode(id, data);
+			return "added";
+		}
+		const merged = merge(node.data, data);
+		if (merged === node.data) return "unchanged";
+		this.updateNode(id, merged);
+		return "updated";
+	}
+	/** Remove a node and every edge touching it. */
+	removeNode(id) {
+		const node = this.nodes.get(id);
+		if (!node) return false;
+		this.batch(() => {
+			for (const e of this.edgeIdsOf(id)) this.removeEdge(e);
+			this.nodes.delete(id);
+			this.outIdx.delete(id);
+			this.inIdx.delete(id);
+			const p = this.patch();
+			if (!p.nodesAdded.delete(id)) p.nodesRemoved.set(id, node);
+			p.nodesUpdated.delete(id);
+			this.revision++;
+		});
+		return true;
+	}
+	/** Add a directed edge. Both endpoints must exist; the id must be new. */
+	addEdge(edge) {
+		const { id, source, target, type } = edge;
+		if (!isValidId(id)) throw new GraphValidationError(`invalid edge id: ${JSON.stringify(id)}`);
+		if (this.edges.has(id)) throw new GraphValidationError(`duplicate edge id: ${id}`);
+		if (!this.nodes.has(source)) throw new GraphValidationError(`edge ${id}: unknown source ${source}`);
+		if (!this.nodes.has(target)) throw new GraphValidationError(`edge ${id}: unknown target ${target}`);
+		if (typeof type !== "string" || !type) throw new GraphValidationError(`edge ${id}: missing type`);
+		const rec = {
+			id,
+			source,
+			target,
+			type,
+			data: edge.data
+		};
+		this.edges.set(id, rec);
+		let o = this.outIdx.get(source);
+		if (!o) this.outIdx.set(source, o = /* @__PURE__ */ new Set());
+		let i = this.inIdx.get(target);
+		if (!i) this.inIdx.set(target, i = /* @__PURE__ */ new Set());
+		o.add(id);
+		i.add(id);
+		this.notePatch("edgesAdded", id);
+		this.touched();
+		return rec;
+	}
+	updateEdge(id, data) {
+		const edge = this.edges.get(id);
+		if (!edge) return false;
+		edge.data = data;
+		this.notePatch("edgesUpdated", id);
+		this.touched();
+		return true;
+	}
+	upsertEdge(edge, merge) {
+		const cur = this.edges.get(edge.id);
+		if (!cur) {
+			this.addEdge(edge);
+			return "added";
+		}
+		if (cur.source !== edge.source || cur.target !== edge.target || cur.type !== edge.type) throw new GraphValidationError(`edge ${edge.id}: id reused for a different relationship`);
+		const merged = merge(cur.data, edge.data);
+		if (merged === cur.data) return "unchanged";
+		this.updateEdge(edge.id, merged);
+		return "updated";
+	}
+	removeEdge(id) {
+		const edge = this.edges.get(id);
+		if (!edge) return false;
+		this.edges.delete(id);
+		this.outIdx.get(edge.source)?.delete(id);
+		this.inIdx.get(edge.target)?.delete(id);
+		const p = this.patch();
+		if (!p.edgesAdded.delete(id)) p.edgesRemoved.set(id, edge);
+		p.edgesUpdated.delete(id);
+		this.touched();
+		return true;
+	}
+	/** Drop everything (one patch). */
+	clear() {
+		this.batch(() => {
+			for (const id of [...this.nodes.keys()]) this.removeNode(id);
+		});
+	}
+	notePatch(kind, id) {
+		const p = this.patch();
+		if (kind === "nodesUpdated" && p.nodesAdded.has(id)) return;
+		if (kind === "edgesUpdated" && p.edgesAdded.has(id)) return;
+		p[kind].add(id);
+	}
+};
+//#endregion
+//#region src/graph-explorer/knowledge-model.ts
+function createKnowledgeGraph() {
+	return new GraphEngine();
+}
+var RELATION_TYPES = {
+	"prerequisite-of": {
+		verb: "is a prerequisite of",
+		inverse: "requires",
+		kind: "dependency"
+	},
+	"specializes": {
+		verb: "specializes",
+		inverse: "is generalized by",
+		kind: "structural"
+	},
+	"part-of": {
+		verb: "is part of",
+		inverse: "has part",
+		kind: "structural"
+	},
+	"uses": {
+		verb: "uses",
+		inverse: "is used by",
+		kind: "dependency"
+	},
+	"maintains": {
+		verb: "maintains",
+		inverse: "is maintained by",
+		kind: "structural"
+	},
+	"solves": {
+		verb: "solves",
+		inverse: "is solved by",
+		kind: "dependency"
+	},
+	"analyzed-by": {
+		verb: "is analyzed by",
+		inverse: "analyzes",
+		kind: "analysis"
+	},
+	"measured-by": {
+		verb: "is measured by",
+		inverse: "measures",
+		kind: "analysis"
+	},
+	"related-to": {
+		verb: "is related to",
+		inverse: "is related to",
+		kind: "association"
+	}
+};
+function relationInfo(type) {
+	return RELATION_TYPES[type] ?? {
+		verb: type.replace(/-/g, " "),
+		inverse: `(${type.replace(/-/g, " ")}) from`,
+		kind: "association"
+	};
+}
+var RELATION_TYPE_RE = /^[a-z][a-z0-9-]{0,47}$/;
+/** The stable id of a relation, derived from its endpoints and type. */
+function relationId(source, type, target) {
+	return `${source}|${type}|${target}`;
+}
+var str = (v, max = 4e3) => typeof v === "string" && v.trim() ? v.trim().slice(0, max) : void 0;
+var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+function parsePlaces(raw, issues, where) {
+	if (raw === void 0) return [];
+	if (!Array.isArray(raw)) {
+		issues.push(`${where}: "refs" must be an array`);
+		return [];
+	}
+	const out = [];
+	for (const r of raw) {
+		if (!isObj(r) || !Number.isInteger(r.scene) || r.scene < 0) {
+			issues.push(`${where}: ref needs a non-negative integer "scene"`);
+			continue;
+		}
+		const step = r.step === void 0 ? -1 : r.step;
+		if (!Number.isInteger(step) || step < -1) {
+			issues.push(`${where}: bad ref "step"`);
+			continue;
+		}
+		const label = str(r.label, 200);
+		out.push({
+			scene: r.scene,
+			step,
+			...label ? { label } : {}
+		});
+	}
+	return out;
+}
+function parseConcepts(raw, lesson, issues, seen) {
+	if (raw === void 0) return [];
+	if (!Array.isArray(raw)) {
+		issues.push("\"concepts\" must be an array");
+		return [];
+	}
+	const out = [];
+	for (const c of raw) {
+		if (!isObj(c)) {
+			issues.push("concept entry is not an object");
+			continue;
+		}
+		const id = c.id;
+		if (!isValidId(id)) {
+			issues.push(`concept with invalid id ${JSON.stringify(id)}`);
+			continue;
+		}
+		if (seen.has(id)) {
+			issues.push(`duplicate concept id "${id}" in one lesson (first kept)`);
+			continue;
+		}
+		const label = str(c.label, 200);
+		if (!label) {
+			issues.push(`concept "${id}": missing label`);
+			continue;
+		}
+		seen.add(id);
+		const glossaryKey = str(c.glossary, 200);
+		let definition = str(c.definition);
+		if (!definition && glossaryKey) {
+			const entry = lesson.glossary?.[glossaryKey];
+			if (entry && typeof entry.markdown === "string") definition = entry.markdown;
+			else issues.push(`concept "${id}": glossary key "${glossaryKey}" not found`);
+		}
+		const category = str(c.category, 80);
+		const data = {
+			label,
+			lessons: [{
+				lessonId: lesson.lessonId,
+				lessonTitle: lesson.lessonTitle,
+				draft: !!lesson.draft,
+				places: parsePlaces(c.refs, issues, `concept "${id}"`)
+			}],
+			origin: "lesson"
+		};
+		if (category) data.category = category;
+		if (definition) data.definition = definition;
+		if (glossaryKey) data.glossaryKey = glossaryKey;
+		out.push({
+			id,
+			data
+		});
+	}
+	return out;
+}
+function parseRelations(raw, lesson, known, issues) {
+	if (raw === void 0) return [];
+	if (!Array.isArray(raw)) {
+		issues.push("\"relations\" must be an array");
+		return [];
+	}
+	const out = [];
+	const seen = /* @__PURE__ */ new Set();
+	for (const r of raw) {
+		if (!isObj(r)) {
+			issues.push("relation entry is not an object");
+			continue;
+		}
+		const { source, target, type } = r;
+		if (!isValidId(source) || !isValidId(target)) {
+			issues.push("relation needs string \"source\" and \"target\" ids");
+			continue;
+		}
+		if (typeof type !== "string" || !RELATION_TYPE_RE.test(type)) {
+			issues.push(`relation ${source} → ${target}: "type" must be a lowercase-kebab relation type`);
+			continue;
+		}
+		if (source === target) {
+			issues.push(`relation ${source} → ${target}: a concept cannot relate to itself`);
+			continue;
+		}
+		if (!known(source) || !known(target)) {
+			issues.push(`relation ${source} -${type}-> ${target}: unknown concept id (relations never create concepts)`);
+			continue;
+		}
+		const id = relationId(source, type, target);
+		if (seen.has(id)) {
+			issues.push(`duplicate relation ${id}`);
+			continue;
+		}
+		seen.add(id);
+		const description = str(r.description, 1e3);
+		out.push({
+			id,
+			source,
+			target,
+			type,
+			data: {
+				lessons: [lesson.lessonId],
+				origin: "lesson",
+				...description ? { description } : {}
+			}
+		});
+	}
+	return out;
+}
+/**
+* Validate a lesson's `knowledgeGraph` block. Never throws; anything malformed
+* is dropped and described in `issues`. `known` lets relations point at
+* concepts defined by OTHER lessons already in the store.
+*/
+function parseLessonKnowledgeGraph(raw, lesson, known = () => false) {
+	const issues = [];
+	if (raw === void 0 || raw === null) return {
+		concepts: [],
+		relations: [],
+		issues
+	};
+	if (!isObj(raw)) return {
+		concepts: [],
+		relations: [],
+		issues: ["\"knowledgeGraph\" must be an object"]
+	};
+	const seen = /* @__PURE__ */ new Set();
+	const concepts = parseConcepts(raw.concepts, lesson, issues, seen);
+	const has = (id) => seen.has(id) || known(id);
+	const result = {
+		concepts,
+		relations: parseRelations(raw.relations, lesson, has, issues),
+		issues
+	};
+	if (raw.mainConcept !== void 0 && raw.focus !== void 0 && raw.mainConcept !== raw.focus) issues.push(`"mainConcept" and the deprecated "focus" disagree; using mainConcept`);
+	const main = raw.mainConcept !== void 0 ? raw.mainConcept : raw.focus;
+	const field = raw.mainConcept !== void 0 ? "mainConcept" : "focus";
+	if (main !== void 0) {
+		if (isValidId(main) && has(main)) result.mainConcept = main;
+		else issues.push(`${field} "${String(main)}" is not a known concept`);
+	}
+	return result;
+}
+/**
+* The concept a lesson teaches at a scene/step, from the concepts' authored
+* `refs` (no extra schema): an exact step reference first, else the nearest
+* earlier step in the same scene, else the scene's own reference (step -1).
+* Ties go to `preferred` (the lesson's mainConcept), then authored order.
+* Returns null when nothing in the lesson points at that scene.
+*/
+function conceptAtPlace(concepts, lessonId, scene, step, preferred) {
+	let best = null;
+	concepts.forEach((c, order) => {
+		const ref = c.data.lessons.find((l) => l.lessonId === lessonId);
+		if (!ref) return;
+		for (const p of ref.places) {
+			if (p.scene !== scene) continue;
+			let rank;
+			if (p.step === step) rank = 0;
+			else if (p.step >= 0 && p.step < step) rank = 1 + (step - p.step);
+			else if (p.step === -1) rank = 1e3;
+			else continue;
+			if (c.id === preferred) rank -= .5;
+			if (!best || rank < best.rank || rank === best.rank && order < best.order) best = {
+				id: c.id,
+				rank,
+				order
+			};
+		}
+	});
+	return best ? best.id : null;
+}
+/**
+* The concept a lesson explicitly links to a glossary key (`"glossary": "<key>"`
+* on the concept) — never by label or alias, and only among concepts that
+* lesson references: another lesson may use the same key for something else.
+*/
+function conceptForGlossaryKey$1(kg, lessonId, key) {
+	if (!lessonId || !key) return null;
+	for (const n of kg.allNodes()) if (n.data.glossaryKey === key && n.data.lessons.some((l) => l.lessonId === lessonId)) return n.id;
+	return null;
+}
+/**
+* Validate and merge a runtime update (a tutor/Expert proposal, a personal
+* graph, a dev check) into the store in ONE batch, so every view gets one
+* incremental patch. Same validation as lesson content: malformed entries are
+* dropped with an issue, relations may only join concepts that exist (already
+* in the store or in this update), nothing is inferred. Runtime records carry
+* no lesson reference and are tagged `origin: "runtime"`.
+*
+* An existing concept id is merged, not replaced (lesson-authored label and
+* definition win; a runtime update can fill what is missing).
+*/
+function applyRuntimeUpdate(kg, update) {
+	const p = parseLessonKnowledgeGraph(update, {
+		lessonId: "runtime",
+		lessonTitle: "Runtime update"
+	}, (id) => kg.hasNode(id));
+	for (const c of p.concepts) {
+		c.data.lessons = [];
+		c.data.origin = "runtime";
+	}
+	for (const r of p.relations) {
+		r.data.lessons = [];
+		r.data.origin = "runtime";
+	}
+	return {
+		...mergeIntoGraph(kg, p),
+		parseIssues: p.issues
+	};
+}
+function mergeLessonRefs(a, b) {
+	const out = a.slice();
+	for (const ref of b) {
+		const i = out.findIndex((r) => r.lessonId === ref.lessonId);
+		if (i < 0) {
+			out.push(ref);
+			continue;
+		}
+		const cur = out[i];
+		const places = cur.places.slice();
+		for (const p of ref.places) if (!places.some((q) => q.scene === p.scene && q.step === p.step)) places.push(p);
+		out[i] = {
+			...cur,
+			places
+		};
+	}
+	return out;
+}
+/** Combine two records of the SAME concept id. The first definition and label win. */
+function mergeConcept(existing, incoming) {
+	const lessons = mergeLessonRefs(existing.lessons, incoming.lessons);
+	if (!(lessons.length !== existing.lessons.length || lessons.some((l, i) => l.places.length !== existing.lessons[i].places.length) || !existing.definition && !!incoming.definition || !existing.category && !!incoming.category)) return existing;
+	return {
+		...existing,
+		lessons,
+		definition: existing.definition ?? incoming.definition,
+		category: existing.category ?? incoming.category,
+		glossaryKey: existing.glossaryKey ?? incoming.glossaryKey
+	};
+}
+function mergeRelation(existing, incoming) {
+	const add = incoming.lessons.filter((l) => !existing.lessons.includes(l));
+	if (!add.length && (existing.description || !incoming.description)) return existing;
+	return {
+		...existing,
+		lessons: [...existing.lessons, ...add],
+		description: existing.description ?? incoming.description
+	};
+}
+/**
+* Merge parsed concepts/relations into the store in ONE engine batch (one
+* patch to subscribers). A concept already present (same id) is merged; a
+* label disagreement between lessons is reported, not silently overwritten.
+*/
+function mergeIntoGraph(kg, parsed) {
+	const res = {
+		conceptsAdded: 0,
+		conceptsMerged: 0,
+		relationsAdded: 0,
+		issues: []
+	};
+	kg.batch(() => {
+		for (const c of parsed.concepts) {
+			const cur = kg.getNode(c.id);
+			if (cur && cur.data.label !== c.data.label) res.issues.push(`concept "${c.id}" is labelled "${cur.data.label}" elsewhere; keeping that label`);
+			if (kg.upsertNode(c.id, c.data, mergeConcept) === "added") res.conceptsAdded++;
+			else res.conceptsMerged++;
+		}
+		for (const r of parsed.relations) {
+			if (!kg.hasNode(r.source) || !kg.hasNode(r.target)) {
+				res.issues.push(`relation ${r.id}: endpoint missing`);
+				continue;
+			}
+			if (kg.upsertEdge(r, mergeRelation) === "added") res.relationsAdded++;
+		}
+	});
+	return res;
+}
+/** Text a search matches against: label, id, category. */
+function conceptSearchText(id, c) {
+	return `${c.label} ${id} ${c.category ?? ""}`.toLowerCase();
+}
+//#endregion
+//#region src/graph-explorer/knowledge-adapter.ts
+function escapeHtml$1(s) {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+/** Categories with a dedicated colour; anything else is drawn neutrally. */
+var CONCEPT_CATEGORIES = [
+	["problem", "Problem"],
+	["data-structure", "Data structure"],
+	["technique", "Technique"],
+	["invariant", "Invariant / property"],
+	["analysis", "Analysis"]
+];
+var placeLabel = (p) => `Scene ${p.scene + 1}${p.step >= 0 ? ` · Step ${p.step + 1}` : ""}${p.label ? ` — ${p.label}` : ""}`;
+function createKnowledgeAdapter(deps) {
+	const nodeName = (kg, id) => kg.getNode(id)?.data.label ?? id;
+	const relationRow = (kg, e, from) => {
+		const outgoing = e.source === from;
+		const other = outgoing ? e.target : e.source;
+		const info = relationInfo(e.type);
+		const verb = outgoing ? info.verb : info.inverse;
+		return `<li class="kg-rel-row"><button type="button" class="kg-link kg-rel-verb" data-kg-edge="${escapeHtml$1(e.id)}" title="Relationship details">${escapeHtml$1(verb)}</button> <button type="button" class="kg-link kg-rel-node" data-kg-node="${escapeHtml$1(other)}" title="Select ${escapeHtml$1(nodeName(kg, other))}">${escapeHtml$1(nodeName(kg, other))}</button></li>`;
+	};
+	return {
+		type: "knowledge",
+		title: "Knowledge Graph",
+		nodeLabel: (n) => n.data.label,
+		nodeClasses: (n) => [
+			"concept",
+			`cat-${classToken(n.data.category ?? "other")}`,
+			...n.data.origin === "runtime" ? ["runtime"] : []
+		],
+		edgeLabel: (e) => relationInfo(e.type).verb,
+		edgeClasses: (e) => [
+			`kind-${relationInfo(e.type).kind}`,
+			`rel-${classToken(e.type)}`,
+			...e.data.origin === "runtime" ? ["runtime"] : []
+		],
+		searchText: (n) => conceptSearchText(n.id, n.data),
+		nodeSubtitle: (n) => {
+			const cat = CONCEPT_CATEGORIES.find(([k]) => k === n.data.category)?.[1] ?? n.data.category ?? "concept";
+			const k = n.data.lessons.length;
+			return `${cat} · ${k} lesson${k === 1 ? "" : "s"}`;
+		},
+		nodeDetailsHtml(node, kg, ctx) {
+			const d = node.data;
+			const cat = CONCEPT_CATEGORIES.find(([k]) => k === d.category)?.[1] ?? d.category;
+			const out = kg.edgesOf(node.id, "out");
+			const inn = kg.edgesOf(node.id, "in");
+			let h = `<div class="kg-details-head"><h3 class="kg-details-title">${escapeHtml$1(d.label)}</h3>` + (cat ? `<span class="kg-chip kg-cat-${escapeHtml$1(classToken(d.category ?? ""))}">${escapeHtml$1(cat)}</span>` : "") + (d.origin === "runtime" ? `<span class="kg-chip kg-chip-runtime" title="Added while the app was running, not from a lesson file">live update</span>` : "") + (ctx.currentLessonId && d.lessons.length && !d.lessons.some((l) => l.lessonId === ctx.currentLessonId) ? `<span class="kg-chip kg-chip-external" title="Not taught in the open lesson">external</span>` : "") + `</div>`;
+			h += `<div class="kg-details-actions">` + (ctx.isFocus ? "" : `<button type="button" class="kg-btn" data-kg-action="focus">Focus here</button>`) + (ctx.expanded ? `<button type="button" class="kg-btn" data-kg-action="collapse" title="Or double-click the concept">Hide neighbours</button>` : (ctx.hidden ?? 1) > 0 ? `<button type="button" class="kg-btn" data-kg-action="expand" title="Or double-click the concept">` + `Show ${ctx.hidden ?? ""} hidden neighbour${ctx.hidden === 1 ? "" : "s"}`.replace("  ", " ") + `</button>` : `<span class="kg-details-note">All neighbours shown</span>`) + `</div>`;
+			h += d.definition ? `<div class="kg-details-def">${deps.renderMarkdown(d.definition)}</div>` : `<p class="kg-details-empty">No definition authored for this concept.</p>`;
+			if (out.length || inn.length) {
+				h += `<h4 class="kg-details-sub">Relationships</h4>`;
+				if (out.length) h += `<div class="kg-dir-label">Outgoing</div><ul class="kg-rel-list">${out.map((e) => relationRow(kg, e, node.id)).join("")}</ul>`;
+				if (inn.length) h += `<div class="kg-dir-label">Incoming</div><ul class="kg-rel-list">${inn.map((e) => relationRow(kg, e, node.id)).join("")}</ul>`;
+			} else h += `<p class="kg-details-empty">No relationships recorded.</p>`;
+			h += `<h4 class="kg-details-sub">Lessons</h4>`;
+			if (!d.lessons.length) h += `<p class="kg-details-empty">Not linked to a lesson.</p>`;
+			else {
+				const cur = ctx.currentLessonId ?? null;
+				const lessons = [...d.lessons].sort((a, b) => Number(b.lessonId === cur) - Number(a.lessonId === cur));
+				h += `<ul class="kg-lesson-list">`;
+				for (const l of lessons) {
+					const external = !!cur && l.lessonId !== cur;
+					const places = l.places.length ? l.places : [{
+						scene: 0,
+						step: -1
+					}];
+					h += `<li class="${external ? "kg-lesson-external" : "kg-lesson-current"}"><span class="kg-lesson-title">${escapeHtml$1(l.lessonTitle)}</span>` + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>` : cur ? ` <span class="kg-chip kg-chip-current">this lesson</span>` : "") + (l.draft ? ` <span class="kg-chip kg-chip-draft">draft</span>` : "") + `<div class="kg-lesson-places">` + places.map((p) => `<button type="button" class="kg-btn kg-btn-nav${external ? " kg-btn-external" : ""}" data-kg-lesson="${escapeHtml$1(l.lessonId)}" data-kg-scene="${p.scene}" data-kg-step="${p.step}" title="${external ? `Leaves this lesson and opens “${escapeHtml$1(l.lessonTitle)}”` : "Go to this place in the lesson"}">${l.places.length ? escapeHtml$1(placeLabel(p)) : "Open lesson"} ${external ? "⇱" : "↗"}</button>`).join("") + `</div></li>`;
+				}
+				h += `</ul>`;
+			}
+			h += `<p class="kg-details-id" title="Stable concept id">${escapeHtml$1(node.id)}</p>`;
+			return h;
+		},
+		edgeDetailsHtml(edge, kg, ctx) {
+			const info = relationInfo(edge.type);
+			const d = edge.data;
+			let h = `<div class="kg-details-head"><h3 class="kg-details-title">Relationship</h3><span class="kg-chip">${escapeHtml$1(edge.type)}</span>` + (d.origin === "runtime" ? `<span class="kg-chip kg-chip-runtime">live update</span>` : "") + `</div>`;
+			h += `<p class="kg-edge-sentence"><button type="button" class="kg-link" data-kg-node="${escapeHtml$1(edge.source)}">${escapeHtml$1(nodeName(kg, edge.source))}</button> <span class="kg-edge-verb">${escapeHtml$1(info.verb)}</span> <button type="button" class="kg-link" data-kg-node="${escapeHtml$1(edge.target)}">${escapeHtml$1(nodeName(kg, edge.target))}</button></p>`;
+			h += `<p class="kg-details-dir">Direction: ${escapeHtml$1(nodeName(kg, edge.source))} → ${escapeHtml$1(nodeName(kg, edge.target))} (read backwards: “${escapeHtml$1(nodeName(kg, edge.target))} ${escapeHtml$1(info.inverse)} ${escapeHtml$1(nodeName(kg, edge.source))}”)</p>`;
+			if (d.description) h += `<div class="kg-details-def">${deps.renderMarkdown(d.description)}</div>`;
+			if (d.lessons.length) h += `<h4 class="kg-details-sub">Asserted by</h4><ul class="kg-lesson-list">` + d.lessons.map((l) => {
+				const external = !!ctx?.currentLessonId && l !== ctx.currentLessonId;
+				return `<li>${escapeHtml$1(lessonTitleOf(kg, edge, l))}` + (external ? ` <span class="kg-chip kg-chip-external" title="Taught in another lesson">external</span>` : "") + `</li>`;
+			}).join("") + `</ul>`;
+			return h;
+		},
+		askPrompt(node, kg, view) {
+			const d = node.data;
+			const rels = kg.edgesOf(node.id).map((e) => sentence(kg, e));
+			let q = `Explain the concept "${d.label}".`;
+			if (rels.length) q += `\nIts relationships in the knowledge graph: ${rels.slice(0, 12).join("; ")}.`;
+			q += visibleContext(kg, view, node.id);
+			q += `\nHow does "${d.label}" connect to the other concepts I'm looking at?`;
+			return q;
+		},
+		askEdgePrompt(edge, kg, view) {
+			const a = nodeName(kg, edge.source), b = nodeName(kg, edge.target);
+			return `Explain why "${a}" ${relationInfo(edge.type).verb} "${b}".` + (edge.data.description ? ` (The lesson says: ${edge.data.description})` : "") + visibleContext(kg, view);
+		},
+		crossLinks: (n) => (n.data.links ?? []).map((l) => ({
+			graphType: l.graphType,
+			nodeId: l.nodeId,
+			label: l.label ?? l.nodeId
+		})),
+		legend: () => ({
+			nodes: CONCEPT_CATEGORIES.map(([k, label]) => [`cat-${k}`, label]),
+			edges: [
+				["kind-structural", "structural (specializes, part of, maintains)"],
+				["kind-dependency", "dependency (uses, solves, prerequisite of)"],
+				["kind-analysis", "analysis (analyzed by, measured by)"],
+				["kind-association", "association (related to)"]
+			]
+		})
+	};
+}
+/** "A uses B" — a relation as a sentence, read source → target. */
+function sentence(kg, e) {
+	const name = (id) => kg.getNode(id)?.data.label ?? id;
+	return `${name(e.source)} ${relationInfo(e.type).verb} ${name(e.target)}`;
+}
+var ASK_MAX_CONCEPTS = 30;
+var ASK_MAX_RELATIONS = 40;
+/**
+* The part of the graph on screen, for the tutor: the focus, every visible
+* concept and the visible relationships among them (bounded so a large view
+* can't flood the prompt; the cut is stated, not silent).
+*/
+function visibleContext(kg, view, exclude) {
+	const name = (id) => kg.getNode(id)?.data.label ?? id;
+	const ids = [...view.nodes].filter((id) => id !== exclude && kg.hasNode(id));
+	if (!ids.length) return "";
+	ids.sort((x, y) => x === view.focus ? -1 : y === view.focus ? 1 : name(x).localeCompare(name(y)));
+	let s = `\nOther concepts visible in my knowledge graph: ${ids.slice(0, ASK_MAX_CONCEPTS).map((id) => id === view.focus ? `${name(id)} (focus)` : name(id)).join(", ")}` + (ids.length > ASK_MAX_CONCEPTS ? ` and ${ids.length - ASK_MAX_CONCEPTS} more` : "") + ".";
+	const rels = [...view.edges].map((id) => kg.getEdge(id)).filter((e) => !!e);
+	if (rels.length) s += `\nVisible relationships: ${rels.slice(0, ASK_MAX_RELATIONS).map((e) => sentence(kg, e)).join("; ")}` + (rels.length > ASK_MAX_RELATIONS ? `; and ${rels.length - ASK_MAX_RELATIONS} more` : "") + ".";
+	return s;
+}
+/** The title of a lesson id, read off either endpoint's lesson refs. */
+function lessonTitleOf(kg, edge, lessonId) {
+	for (const id of [edge.source, edge.target]) {
+		const ref = kg.getNode(id)?.data.lessons.find((l) => l.lessonId === lessonId);
+		if (ref) return ref.lessonTitle;
+	}
+	return lessonId;
+}
+Object.keys(RELATION_TYPES);
+var DEF_MAX = 300;
+var clip = (s, n) => s === void 0 ? void 0 : s.length > n ? s.slice(0, n - 1) + "…" : s;
+function concept(kg, id, extra = {}) {
+	const n = kg.getNode(id);
+	if (!n) return null;
+	const c = {
+		id,
+		label: n.data.label,
+		...extra
+	};
+	if (n.data.category) c.category = n.data.category;
+	if (n.data.lessons.length) c.lessons = n.data.lessons.map((l) => l.lessonTitle);
+	return c;
+}
+/** One relation as a sentence, read source → target. */
+function relationSentence(kg, id) {
+	const e = kg.getEdge(id);
+	if (!e) return null;
+	const name = (n) => kg.getNode(n)?.data.label ?? n;
+	return `${name(e.source)} ${relationInfo(e.type).verb} ${name(e.target)}`;
+}
+function snapshotKnowledgeView(vm, open, now = /* @__PURE__ */ new Date()) {
+	const kg = vm.engine;
+	const def = (id) => clip(kg.getNode(id)?.data.definition, DEF_MAX);
+	const focus = vm.focus ? concept(kg, vm.focus, {
+		role: "focus",
+		definition: def(vm.focus)
+	}) : null;
+	let selected = null;
+	const sel = vm.selection;
+	if (sel?.kind === "node" && sel.id !== vm.focus) selected = concept(kg, sel.id, {
+		role: "selected",
+		definition: def(sel.id)
+	});
+	else if (sel?.kind === "edge") {
+		const sentence = relationSentence(kg, sel.id);
+		if (sentence) {
+			const d = kg.getEdge(sel.id)?.data.description;
+			selected = {
+				kind: "relation",
+				sentence,
+				...d ? { description: clip(d, DEF_MAX) } : {}
+			};
+		}
+	}
+	const rank = (id) => id === vm.focus ? 0 : vm.isExpanded(id) ? 1 : 2;
+	const label = (id) => kg.getNode(id)?.data.label ?? id;
+	const ids = [...vm.visibleNodes].sort((a, b) => rank(a) - rank(b) || label(a).localeCompare(label(b)));
+	const visibleConcepts = [];
+	for (const id of ids.slice(0, 40)) {
+		const extra = {};
+		if (id === vm.focus) extra.role = "focus";
+		else if (sel?.kind === "node" && sel.id === id) extra.role = "selected";
+		if (vm.isExpanded(id)) extra.expanded = true;
+		const c = concept(kg, id, extra);
+		if (c) {
+			delete c.lessons;
+			visibleConcepts.push(c);
+		}
+	}
+	const rels = [...vm.visibleEdges].map((id) => relationSentence(kg, id)).filter((s) => !!s).sort();
+	return {
+		open,
+		context: vm.contextId,
+		presentation: vm.presentation,
+		scope: vm.scopeId,
+		focus,
+		selected,
+		visibleConcepts,
+		visibleRelations: rels.slice(0, 60),
+		conceptsOmitted: Math.max(0, ids.length - 40),
+		relationsOmitted: Math.max(0, rels.length - 60),
+		recentFoci: vm.recentFoci(5).map(label),
+		totalConcepts: kg.nodeCount,
+		at: now.toISOString()
+	};
+}
+//#endregion
+//#region src/graph-explorer/knowledge-app.ts
+/** The single, app-wide knowledge store. Every explorer reads it; lessons and
+*  runtime integrations write it. */
+var knowledgeStore = createKnowledgeGraph();
+var adapter = createKnowledgeAdapter({ renderMarkdown: (md) => renderMarkdown$1(md, {
+	glossary: false,
+	untrusted: true
+}) });
+var coverage = {
+	lessonsWithGraph: 0,
+	lessonCount: 0,
+	loaded: false,
+	failed: false
+};
+var globalLoad = null;
+var globalSlot = null;
+var lessonSlot = null;
+var layer = null;
+var layerPanel = null;
+/** Which explorer currently occupies the popup/fullscreen layer. */
+var layerOwner = null;
+/** Fetch every lesson's knowledge block once and merge it into the store. */
+function loadGlobalKnowledge() {
+	if (!globalLoad) globalLoad = (async () => {
+		try {
+			const resp = await fetch("/api/knowledge-graph", { cache: "no-store" });
+			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+			const data = await resp.json();
+			const issues = [];
+			const parsed = data.lessons.map((l) => ({
+				l,
+				p: parseLessonKnowledgeGraph(l.knowledgeGraph, {
+					lessonId: l.id,
+					lessonTitle: l.title,
+					draft: l.draft,
+					glossary: l.glossary ?? {}
+				}, () => true)
+			}));
+			knowledgeStore.batch(() => {
+				for (const { p } of parsed) issues.push(...mergeIntoGraph(knowledgeStore, {
+					concepts: p.concepts,
+					relations: []
+				}).issues);
+				for (const { l, p } of parsed) {
+					issues.push(...p.issues.map((m) => `${l.id}: ${m}`));
+					issues.push(...mergeIntoGraph(knowledgeStore, {
+						concepts: [],
+						relations: p.relations
+					}).issues.map((m) => `${l.id}: ${m}`));
+				}
+			});
+			if (issues.length) console.warn("[knowledge-graph] data issues:\n  " + issues.join("\n  "));
+			coverage.lessonsWithGraph = data.lessons.length;
+			coverage.lessonCount = data.lessonCount;
+			coverage.loaded = true;
+		} catch (err) {
+			coverage.failed = true;
+			console.error("[knowledge-graph] failed to load", err);
+			globalLoad = null;
+		}
+		updateCoverageText();
+	})();
+	return globalLoad;
+}
+/** The lesson on screen, as the global graph sees it. */
+var activeLesson = {
+	id: null,
+	title: "",
+	focus: null,
+	placeFocus: null
+};
+/** The lesson the global graph last re-focused for — it follows each newly opened lesson once. */
+var globalFollowedLesson = null;
+/** A lesson opened FROM the graph: keep the graph on the concept the learner came from. */
+var openedFromGraph = null;
+function coverageText() {
+	if (coverage.failed) return "<span class=\"kg-warn\">Lesson knowledge failed to load</span>";
+	if (!coverage.loaded) return "loading lesson knowledge…";
+	let s = `knowledge graphs from ${coverage.lessonsWithGraph} of ${coverage.lessonCount} lessons`;
+	if (activeLesson.id && !activeLesson.focus) {
+		const esc = activeLesson.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		s += ` · <span class="kg-warn">the current lesson${esc ? ` (${esc})` : ""} has no knowledge graph yet</span>`;
+	}
+	return s;
+}
+/**
+* Re-centre the global graph on the open lesson's main concept — once per
+* newly opened lesson, so it "picks up" the lesson without fighting the
+* learner's own exploration afterwards. The previous view stays on Back.
+*/
+function followActiveLesson() {
+	if (!globalSlot) return;
+	const vm = globalSlot.explorer.vm;
+	if (vm.scopeId === "local") applyScope(vm, "local", activeLesson.id, activeLesson.focus);
+	if (!activeLesson.focus) clearForeignFocus();
+	if (activeLesson.focus && activeLesson.id !== globalFollowedLesson && knowledgeStore.hasNode(activeLesson.focus)) {
+		globalFollowedLesson = activeLesson.id;
+		const target = activeLesson.placeFocus && knowledgeStore.hasNode(activeLesson.placeFocus) ? activeLesson.placeFocus : activeLesson.focus;
+		vm.focusOn(target);
+	} else if (vm.visibleNodes.size === 0 && vm.scopeId !== "local") vm.showOverview(40);
+	globalSlot.explorer.setStatusExtra(() => statusText(vm));
+}
+/**
+* The view the learner most recently worked in — focus, selection, visible
+* concepts. Only user-visible activity counts (not background data patches or
+* the hidden lesson graph's initial focus), and it is kept after the explorer
+* closes: the tutor keeps knowing what was explored, flagged `open: false`.
+*/
+var lastViewed = null;
+function trackForTutor(vm) {
+	vm.events.on("state", ({ reason }) => {
+		if (reason !== "data" && vm.presentation !== "closed") lastViewed = vm;
+		if ((reason === "focus" || reason === "history") && vm.focus && !syncingFocus) {
+			syncingFocus = true;
+			try {
+				for (const slot of [lessonSlot, globalSlot]) {
+					const other = slot?.explorer.vm;
+					if (other && other !== vm && other.focus !== vm.focus && other.inScope(vm.focus)) other.focusOn(vm.focus);
+				}
+			} finally {
+				syncingFocus = false;
+			}
+		}
+	});
+}
+/** Guards the focus sync above against echoing back and forth. */
+var syncingFocus = false;
+/** `runtime.knowledgeGraph` for the chat context; null until a graph was opened. */
+function getKnowledgeGraphContext() {
+	if (!lastViewed) return null;
+	try {
+		return snapshotKnowledgeView(lastViewed, lastViewed.presentation !== "closed");
+	} catch (err) {
+		console.warn("[knowledge-graph] context snapshot failed", err);
+		return null;
+	}
+}
+var SCOPE_TITLES = {
+	local: "Local — only this lesson's concepts",
+	global: "Global — concepts from every lesson"
+};
+var SCOPES = [{
+	id: "local",
+	label: "Local",
+	title: SCOPE_TITLES.local
+}, {
+	id: "global",
+	label: "Global",
+	title: SCOPE_TITLES.global
+}];
+/**
+* Local scope membership: concepts the lesson references, plus runtime
+* additions linked to one of them (a concept proposed while studying the
+* lesson belongs with it). Read live from the store, so updates are classified
+* as they arrive.
+*/
+function lessonScope(lessonId) {
+	const taught = (id) => !!knowledgeStore.getNode(id)?.data.lessons.some((l) => l.lessonId === lessonId);
+	return (id) => {
+		const n = knowledgeStore.getNode(id);
+		if (!n) return false;
+		if (n.data.lessons.some((l) => l.lessonId === lessonId)) return true;
+		return n.data.origin === "runtime" && knowledgeStore.neighbors(id).some(taught);
+	};
+}
+/** Switch a view's scope; if its focus falls outside (or nothing is left), re-centre on `fallbackFocus`. */
+function applyScope(vm, scopeId, lessonId, fallbackFocus) {
+	if (scopeId === "local") {
+		vm.setScope("local", lessonId ? lessonScope(lessonId) : () => false);
+		if ((vm.focus !== null && !vm.inScope(vm.focus) || vm.visibleNodes.size === 0) && fallbackFocus && vm.inScope(fallbackFocus)) vm.focusOn(fallbackFocus);
+	} else vm.setScope("global", null);
+}
+/**
+* The status-line context for a view: Local names the open lesson (and says
+* when it has no knowledge graph); Global shows how much of the catalogue the
+* graph covers.
+*/
+function statusText(vm) {
+	if (vm.scopeId !== "local") return coverageText();
+	const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	const title = activeLesson.title ? esc(activeLesson.title) : "this lesson";
+	return activeLesson.focus ? `local: ${title}` : `local: ${title} — <span class="kg-warn">no knowledge graph yet</span>`;
+}
+function updateCoverageText() {
+	if (globalSlot) {
+		const vm = globalSlot.explorer.vm;
+		globalSlot.explorer.setStatusExtra(() => statusText(vm));
+	}
+	if (lessonSlot) {
+		const vm = lessonSlot.explorer.vm;
+		lessonSlot.explorer.setStatusExtra(() => statusText(vm));
+	}
+}
+function currentLessonId() {
+	return builtinIdFromPath(state.currentSceneSourcePath) ?? (state.currentSceneSourcePath ? `local:${state.currentSceneSourcePath}` : null);
+}
+async function openLesson(lessonId, scene, step) {
+	if (lessonId !== currentLessonId()) {
+		if (lessonId.startsWith("local:")) return;
+		openedFromGraph = lessonId;
+		if (!await loadBuiltinScene(lessonId)) return;
+	}
+	navigateTo$1(scene, step);
+	if (layerOwner && layerOwner.explorer.vm.presentation === "fullscreen") setMode(layerOwner, layerOwner.home ? "embedded" : "popup");
+}
+/**
+* The app's standard sparkle Ask-AI button. The reply lands in the chat tab,
+* which a fullscreen graph covers — so asking steps the graph down to its
+* compact form first, with its exploration intact.
+*/
+function makeAskButton(title, getMessage) {
+	const btn = makeAiAskButton("ai-ask-btn kg-ask-btn", title, getMessage);
+	btn.addEventListener("click", () => {
+		const owner = layerOwner;
+		if (owner && owner.explorer.vm.presentation === "fullscreen") setMode(owner, owner.home ? "embedded" : "popup");
+	}, true);
+	return btn;
+}
+var POPUP_POS_KEY = "algebench.kgPopupPos";
+var POPUP_SIZE_KEY = "algebench.kgPopupSize";
+var POPUP_MIN = {
+	w: 380,
+	h: 260
+};
+/**
+* Follow one pointer drag on `el` until it really ends. A release outside the
+* browser window may never deliver pointerup (capture is just lost), so the
+* drag also ends on lostpointercapture, on a move with no button held, and on
+* window blur — otherwise it "sticks" and follows the pointer when it comes
+* back. `end` always runs exactly once, with the last known position.
+*/
+function trackDrag(el, start, move, end) {
+	let x = start.clientX, y = start.clientY, done = false;
+	try {
+		el.setPointerCapture(start.pointerId);
+	} catch {}
+	const finish = () => {
+		if (done) return;
+		done = true;
+		el.removeEventListener("pointermove", onMove);
+		el.removeEventListener("pointerup", onUp);
+		el.removeEventListener("pointercancel", finish);
+		el.removeEventListener("lostpointercapture", finish);
+		window.removeEventListener("blur", finish);
+		try {
+			if (el.hasPointerCapture(start.pointerId)) el.releasePointerCapture(start.pointerId);
+		} catch {}
+		end(x, y);
+	};
+	const onMove = (e) => {
+		if (e.pointerId !== start.pointerId) return;
+		if (e.buttons === 0) {
+			finish();
+			return;
+		}
+		x = e.clientX;
+		y = e.clientY;
+		move(x, y);
+	};
+	const onUp = (e) => {
+		if (e.pointerId !== start.pointerId) return;
+		x = e.clientX;
+		y = e.clientY;
+		finish();
+	};
+	el.addEventListener("pointermove", onMove);
+	el.addEventListener("pointerup", onUp);
+	el.addEventListener("pointercancel", finish);
+	el.addEventListener("lostpointercapture", finish);
+	window.addEventListener("blur", finish);
+}
+function loadPopupSize() {
+	try {
+		const p = JSON.parse(localStorage.getItem(POPUP_SIZE_KEY) || "null");
+		return p && Number.isFinite(p.w) && Number.isFinite(p.h) ? {
+			w: p.w,
+			h: p.h
+		} : null;
+	} catch {
+		return null;
+	}
+}
+/** Size the popup, within the minimum and what fits right/below its top-left. */
+function sizePopup(panel, w, h, remember) {
+	const r = panel.getBoundingClientRect();
+	const cw = Math.max(POPUP_MIN.w, Math.min(window.innerWidth - r.left - 4, w));
+	const ch = Math.max(POPUP_MIN.h, Math.min(window.innerHeight - r.top - 26, h));
+	panel.style.setProperty("--kg-w", `${Math.round(cw)}px`);
+	panel.style.setProperty("--kg-h", `${Math.round(ch)}px`);
+	panel.classList.add("kg-sized");
+	if (remember) try {
+		localStorage.setItem(POPUP_SIZE_KEY, JSON.stringify({
+			w: Math.round(cw),
+			h: Math.round(ch)
+		}));
+	} catch {}
+}
+function loadPopupPos() {
+	try {
+		const p = JSON.parse(localStorage.getItem(POPUP_POS_KEY) || "null");
+		return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? {
+			x: p.x,
+			y: p.y
+		} : null;
+	} catch {
+		return null;
+	}
+}
+/** Put the popup at (x, y), kept fully on screen; persist unless told not to. */
+function placePopup(panel, x, y, remember) {
+	const w = panel.offsetWidth, h = panel.offsetHeight;
+	const cx = Math.max(4, Math.min(window.innerWidth - w - 4, x));
+	const cy = Math.max(4, Math.min(window.innerHeight - h - 26, y));
+	panel.style.setProperty("--kg-x", `${Math.round(cx)}px`);
+	panel.style.setProperty("--kg-y", `${Math.round(cy)}px`);
+	panel.classList.add("kg-moved");
+	if (remember) try {
+		localStorage.setItem(POPUP_POS_KEY, JSON.stringify({
+			x: Math.round(cx),
+			y: Math.round(cy)
+		}));
+	} catch {}
+}
+/**
+* The popup moves by dragging an empty part of its toolbar (controls keep
+* working). Position is remembered and clamped on screen; fullscreen ignores
+* it (CSS applies --kg-x/--kg-y in popup mode only).
+*/
+function makePopupMovable(layerEl, panel) {
+	const saved = loadPopupPos();
+	const savedSize = loadPopupSize();
+	requestAnimationFrame(() => {
+		if (savedSize) {
+			panel.style.setProperty("--kg-w", `${savedSize.w}px`);
+			panel.style.setProperty("--kg-h", `${savedSize.h}px`);
+			panel.classList.add("kg-sized");
+		}
+		if (saved) placePopup(panel, saved.x, saved.y, false);
+	});
+	const grip = panel.querySelector(".kg-layer-resize");
+	grip?.addEventListener("pointerdown", (ev) => {
+		if (layerEl.dataset.mode !== "popup" || ev.button !== 0) return;
+		ev.preventDefault();
+		ev.stopPropagation();
+		const r = panel.getBoundingClientRect();
+		placePopup(panel, r.left, r.top, true);
+		const ox = ev.clientX - r.width, oy = ev.clientY - r.height;
+		panel.classList.add("kg-dragging");
+		trackDrag(grip, ev, (x, y) => sizePopup(panel, x - ox, y - oy, false), (x, y) => {
+			panel.classList.remove("kg-dragging");
+			sizePopup(panel, x - ox, y - oy, true);
+		});
+	});
+	panel.addEventListener("pointerdown", (ev) => {
+		const t = ev.target;
+		if (layerEl.dataset.mode !== "popup" || ev.button !== 0) return;
+		if (!(!!t.closest(".kg-layer-head") && !t.closest("button")) && (!t.closest(".kg-toolbar") || t.closest("button, input, select, a, .kg-search, .kg-scope, .kg-zoom-level, .kg-depth-label"))) return;
+		ev.preventDefault();
+		const r = panel.getBoundingClientRect();
+		const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+		panel.classList.add("kg-dragging");
+		trackDrag(panel, ev, (x, y) => placePopup(panel, x - dx, y - dy, false), (x, y) => {
+			panel.classList.remove("kg-dragging");
+			placePopup(panel, x - dx, y - dy, true);
+		});
+	});
+	window.addEventListener("resize", () => {
+		if (!panel.classList.contains("kg-moved")) return;
+		const r = panel.getBoundingClientRect();
+		if (layerEl.dataset.mode !== "popup") return;
+		placePopup(panel, r.left, r.top, false);
+		if (panel.classList.contains("kg-sized")) sizePopup(panel, r.width, r.height, false);
+	});
+}
+function ensureLayer() {
+	if (layer && layerPanel) return layerPanel;
+	layer = document.createElement("div");
+	layer.id = "kg-layer";
+	layer.className = "hidden";
+	layer.innerHTML = "<div class=\"kg-layer-scrim\"></div><div class=\"kg-layer-panel\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Knowledge Graph\"><div class=\"kg-layer-head\"><span class=\"kg-layer-grip\" aria-hidden=\"true\">⠿</span><span class=\"kg-layer-title\">Knowledge Graph</span><span class=\"kg-layer-buttons\"></span></div><div class=\"kg-layer-body\"></div><div class=\"kg-layer-resize\" role=\"separator\" aria-label=\"Resize the Knowledge Graph\" title=\"Drag to resize\"></div></div>";
+	document.body.appendChild(layer);
+	const panelEl = layer.querySelector(".kg-layer-panel");
+	makePopupMovable(layer, panelEl);
+	layerPanel = layer.querySelector(".kg-layer-body");
+	layer.querySelector(".kg-layer-scrim").addEventListener("click", () => {
+		if (layerOwner) setMode(layerOwner, layerOwner.previous === "fullscreen" ? "popup" : layerOwner.previous);
+	});
+	window.addEventListener("keydown", (ev) => {
+		if (ev.key !== "Escape" || ev.defaultPrevented || !layerOwner) return;
+		const dialog = ev.target?.closest?.("[role=\"dialog\"]");
+		if (dialog && !layer.contains(dialog)) return;
+		if (document.querySelector("[role=\"dialog\"][aria-modal=\"true\"]:not([hidden]):not(.hidden)")) return;
+		ev.preventDefault();
+		setMode(layerOwner, layerOwner.home ? "embedded" : "closed");
+	});
+	return layerPanel;
+}
+/**
+* Move an explorer to a presentation mode. The explorer (and its Cytoscape
+* instance, while mounted) is moved, never rebuilt — exploration state stays.
+*/
+async function setMode(slot, mode) {
+	const ex = slot.explorer;
+	const from = ex.vm.presentation;
+	if (from === mode) return;
+	if (from !== "closed") slot.previous = from;
+	if (mode === "closed" || mode === "embedded" && !slot.home) {
+		ex.unmount();
+		if (layerOwner === slot) hideLayer();
+		updateStatusButton();
+		return;
+	}
+	if (mode === "embedded") {
+		if (layerOwner === slot) hideLayer();
+		if (slot !== globalSlot && layerOwner === globalSlot && globalSlot && slot.home) {
+			slot.home.classList.remove("hidden");
+			slot.home.dataset.away = "1";
+			lessonSuspended = true;
+			updateStatusButton();
+			return;
+		}
+		ex.setModeButtonsHost(document.getElementById("lesson-kg-buttons"));
+		slot.home.classList.remove("hidden");
+		await ex.mount(slot.home, "embedded");
+		updateStatusButton();
+		return;
+	}
+	if (layerOwner && layerOwner !== slot) {
+		const other = layerOwner;
+		await setMode(other, other.home ? "embedded" : "closed");
+	}
+	const panel = ensureLayer();
+	layer.classList.remove("hidden");
+	layer.dataset.mode = mode;
+	layerOwner = slot;
+	if (slot.home && from === "embedded") slot.home.dataset.away = "1";
+	if (slot === globalSlot && lessonSlot && lessonSlot.explorer.vm.presentation === "embedded" && lessonSlot.home) {
+		lessonSlot.explorer.unmount();
+		lessonSlot.home.dataset.away = "1";
+		lessonSuspended = true;
+	}
+	const title = layer.querySelector(".kg-layer-title");
+	if (title) title.textContent = ex.root.getAttribute("aria-label") ?? "Knowledge Graph";
+	layer.querySelector(".kg-layer-panel").setAttribute("aria-label", title?.textContent ?? "Knowledge Graph");
+	ex.setModeButtonsHost(layer.querySelector(".kg-layer-buttons"));
+	await ex.mount(panel, mode);
+	updateStatusButton();
+}
+function hideLayer() {
+	layer?.classList.add("hidden");
+	if (layerOwner?.home) delete layerOwner.home.dataset.away;
+	const wasGlobal = layerOwner === globalSlot;
+	layerOwner = null;
+	if (wasGlobal) restoreDocked();
+	syncLessonSection();
+}
+/** The lesson panel's graph stepped aside for the global popup. */
+var lessonSuspended = false;
+/** Bring the docked lesson graph back once the global graph leaves the layer
+*  (unless the learner folded the section meanwhile). */
+function restoreDocked() {
+	if (!lessonSuspended) return;
+	lessonSuspended = false;
+	const slot = lessonSlot;
+	if (!slot?.home) return;
+	delete slot.home.dataset.away;
+	if (!lessonSectionEls().head?.classList.contains("side-section-folded") && slot.explorer.vm.presentation === "closed") setMode(slot, "embedded");
+}
+function getGlobalSlot() {
+	if (globalSlot) return globalSlot;
+	const vm = new GraphViewModel(knowledgeStore, {
+		graphType: "knowledge",
+		contextId: "global",
+		searchText: adapter.searchText
+	});
+	const slot = {
+		explorer: null,
+		home: null,
+		previous: "popup"
+	};
+	slot.explorer = new GraphExplorer({
+		vm,
+		adapter,
+		label: "Knowledge Graph — all lessons",
+		modes: [
+			"popup",
+			"fullscreen",
+			"closed"
+		],
+		onRequestMode: (m) => {
+			setMode(slot, m);
+		},
+		actions: { openLesson: (id, s, t) => {
+			openLesson(id, s, t);
+		} },
+		overview: () => vm.showOverview(40),
+		makeAskButton,
+		detailsContext: () => ({ currentLessonId: currentLessonId() }),
+		scopes: SCOPES,
+		onScope: (id) => {
+			applyScope(vm, id, activeLesson.id, activeLesson.focus);
+			if (id === "global" && vm.visibleNodes.size === 0) vm.showOverview(40);
+		},
+		emptyText: () => vm.scopeId === "local" ? activeLesson.focus ? "None of this lesson's concepts are in view. Search, or switch to Global." : "This lesson has no knowledge graph yet. Switch to Global to explore concepts from other lessons." : "No lesson knowledge graphs yet. Lessons add one with a \"knowledgeGraph\" block."
+	});
+	slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
+	trackForTutor(vm);
+	globalSlot = slot;
+	return slot;
+}
+/** Status-bar entry point: open the global explorer (or close it). */
+async function toggleGlobalExplorer() {
+	const slot = getGlobalSlot();
+	if (slot.explorer.vm.presentation !== "closed") {
+		await setMode(slot, "closed");
+		return;
+	}
+	await loadGlobalKnowledge();
+	followActiveLesson();
+	await setMode(slot, "popup");
+	slot.explorer.focusSearch();
+}
+/** Open the global explorer focused on a concept (for future callers: glossary, tutor). */
+async function openConcept(conceptId, mode = "popup") {
+	await loadGlobalKnowledge();
+	if (!knowledgeStore.hasNode(conceptId)) return false;
+	const slot = getGlobalSlot();
+	const vm = slot.explorer.vm;
+	globalFollowedLesson = activeLesson.id;
+	followActiveLesson();
+	if (!vm.inScope(conceptId)) applyScope(vm, "global", null, null);
+	if (vm.focus !== conceptId) vm.focusOn(conceptId);
+	else vm.select({
+		kind: "node",
+		id: conceptId
+	});
+	await setMode(slot, mode === "embedded" ? "popup" : mode);
+	return true;
+}
+/**
+* The concept the CURRENT lesson links to a glossary key — only through an
+* explicit `"glossary": "<key>"` on the concept (never by label or alias), and
+* only within this lesson: another lesson may use the same key for something
+* else. Null when there is none (the tooltip then shows no graph button).
+*/
+function conceptForGlossaryKey(key) {
+	const lessonId = currentLessonId();
+	return lessonId ? conceptForGlossaryKey$1(knowledgeStore, lessonId, key) : null;
+}
+/** Refresh the chrome outside the explorers after any mode change. */
+function updateStatusButton() {
+	syncLessonSection();
+	const btn = document.getElementById("kg-status");
+	if (!btn) return;
+	const open = !!globalSlot && globalSlot.explorer.vm.presentation !== "closed";
+	btn.classList.toggle("active", open);
+	btn.setAttribute("aria-expanded", String(open));
+}
+/**
+* Either docked or popped out — never both: the Doc tab's Knowledge Graph
+* section exists only while no graph is up in the popup / fullscreen layer
+* (the lesson's own, or the global one). It comes back when the layer closes.
+*/
+function syncLessonSection() {
+	const { section } = lessonSectionEls();
+	if (!section) return;
+	const hasGraph = !!lessonSlot && lessonSlot.parsed.concepts.length > 0;
+	const poppedOut = layerOwner !== null;
+	section.classList.toggle("hidden", !hasGraph || poppedOut);
+}
+function lessonSectionEls() {
+	return {
+		section: document.getElementById("lesson-kg-section"),
+		slot: document.getElementById("lesson-kg-slot"),
+		toggle: document.getElementById("lesson-kg-toggle"),
+		head: document.getElementById("lesson-kg-head"),
+		count: document.getElementById("lesson-kg-count")
+	};
+}
+function disposeLessonSlot() {
+	if (!lessonSlot) return;
+	if (layerOwner === lessonSlot) hideLayer();
+	lessonSlot.explorer.dispose();
+	lessonSlot.explorer.vm.dispose();
+	lessonSlot = null;
+}
+/** A lesson finished loading: show (or hide) its knowledge graph. */
+function onLessonLoaded(spec) {
+	const els = lessonSectionEls();
+	const lessonId = currentLessonId();
+	const raw = spec && typeof spec === "object" ? spec.knowledgeGraph : void 0;
+	const title = spec && typeof spec === "object" && typeof spec.title === "string" ? spec.title : "";
+	if (lessonSlot && lessonSlot.lessonId === lessonId && raw !== void 0) return;
+	disposeLessonSlot();
+	if (activeLesson.id !== lessonId) globalFollowedLesson = null;
+	if (openedFromGraph === lessonId) globalFollowedLesson = lessonId;
+	openedFromGraph = null;
+	activeLesson.id = lessonId;
+	activeLesson.title = title;
+	activeLesson.focus = null;
+	activeLesson.placeFocus = null;
+	if (raw === void 0 || !lessonId || !els.section || !els.slot) {
+		els.section?.classList.add("hidden");
+		followActiveLesson();
+		return;
+	}
+	const s = spec;
+	const parsed = parseLessonKnowledgeGraph(raw, {
+		lessonId,
+		lessonTitle: typeof s.title === "string" ? s.title : lessonId,
+		draft: lessonId.startsWith("draft/"),
+		glossary: s.glossary ?? {}
+	}, (id) => knowledgeStore.hasNode(id));
+	if (parsed.issues.length) console.warn(`[knowledge-graph] ${lessonId}:\n  ` + parsed.issues.join("\n  "));
+	mergeIntoGraph(knowledgeStore, parsed);
+	if (!parsed.concepts.length) {
+		els.section.classList.add("hidden");
+		followActiveLesson();
+		return;
+	}
+	const vm = new GraphViewModel(knowledgeStore, {
+		graphType: "knowledge",
+		contextId: `lesson:${lessonId}`,
+		searchText: adapter.searchText
+	});
+	const slot = {
+		explorer: null,
+		home: els.slot,
+		previous: "embedded",
+		lessonId,
+		parsed
+	};
+	slot.explorer = new GraphExplorer({
+		vm,
+		adapter,
+		label: `Knowledge Graph — ${typeof s.title === "string" ? s.title : lessonId}`,
+		modes: [
+			"embedded",
+			"popup",
+			"fullscreen"
+		],
+		onRequestMode: (m) => {
+			setMode(slot, m);
+		},
+		actions: { openLesson: (id, sc, st) => {
+			openLesson(id, sc, st);
+		} },
+		makeAskButton,
+		detailsContext: () => ({ currentLessonId: currentLessonId() }),
+		scopes: SCOPES,
+		onScope: (id) => applyScope(vm, id, lessonId, focus)
+	});
+	lessonSlot = slot;
+	const focus = parsed.mainConcept ?? parsed.concepts[0].id;
+	trackForTutor(vm);
+	vm.setScope("local", lessonScope(lessonId));
+	activeLesson.focus = focus;
+	activeLesson.placeFocus = conceptAtPlace(parsed.concepts, lessonId, state.currentSceneIndex, state.currentStepIndex, focus);
+	vm.focusOn(activeLesson.placeFocus ?? focus, 1);
+	followActiveLesson();
+	els.section.classList.remove("hidden");
+	syncLessonSection();
+	if (els.count) els.count.textContent = `${parsed.concepts.length} concepts`;
+	slot.explorer.setStatusExtra(() => statusText(slot.explorer.vm));
+	setEmbeddedFolded(loadFolded(), false);
+}
+var FOLD_KEY = "algebench.foldKnowledgeGraph";
+var chevron = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD = chevron("M6 9l6 6 6-6");
+var ICON_UNFOLD = chevron("M6 15l6-6 6 6");
+function loadFolded() {
+	try {
+		return localStorage.getItem(FOLD_KEY) !== "0";
+	} catch {
+		return true;
+	}
+}
+function saveFolded(folded) {
+	try {
+		localStorage.setItem(FOLD_KEY, folded ? "1" : "0");
+	} catch {}
+}
+/** Fold the section to its header (closing the graph) or open it (mounting it). */
+async function setEmbeddedFolded(folded, remember = true) {
+	const els = lessonSectionEls();
+	if (!els.slot || !els.head || !els.toggle) return;
+	els.head.classList.toggle("side-section-folded", folded);
+	els.toggle.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+	els.toggle.title = folded ? "Show the knowledge graph" : "Fold the knowledge graph down to its header";
+	els.toggle.setAttribute("aria-label", els.toggle.title);
+	els.toggle.setAttribute("aria-expanded", String(!folded));
+	els.slot.classList.toggle("hidden", folded);
+	if (remember) saveFolded(folded);
+	if (!lessonSlot) return;
+	const mode = lessonSlot.explorer.vm.presentation;
+	if (folded) {
+		if (mode === "closed") return;
+		lessonSlot.home = null;
+		await setMode(lessonSlot, "closed");
+		lessonSlot.home = els.slot;
+	} else if (mode !== "embedded") {
+		loadGlobalKnowledge();
+		await setMode(lessonSlot, "embedded");
+	}
+}
+function toggleEmbedded() {
+	const head = lessonSectionEls().head;
+	if (head) setEmbeddedFolded(!head.classList.contains("side-section-folded"));
+}
+/**
+* THE standard way to set the Knowledge Graph's current focus from outside the
+* explorer — lesson navigation uses it, and a tutor tool or another feature
+* should too. Focuses every open-or-closed explorer that can show the concept
+* (the lesson graph when it is in its scope, the global graph), each keeping
+* its own history so Back returns to what the learner had. A no-op for
+* explorers already focused there. Returns whether any view changed.
+*/
+function focusKnowledgeConcept(conceptId, _opts = {}) {
+	if (!knowledgeStore.hasNode(conceptId)) return false;
+	let changed = false;
+	for (const slot of [lessonSlot, globalSlot]) {
+		if (!slot) continue;
+		const vm = slot.explorer.vm;
+		if (vm.focus === conceptId || !vm.inScope(conceptId)) continue;
+		vm.focusOn(conceptId);
+		changed = true;
+	}
+	return changed;
+}
+/**
+* Clear a focus / selection that doesn't belong to the open lesson — it is
+* stale context (for the learner and for the tutor's CTX). The view itself
+* stays; Back restores the old focus. A focus that is in the lesson but with a
+* foreign concept selected only loses the selection.
+*/
+function clearForeignFocus() {
+	const lessonId = currentLessonId();
+	const inLesson = lessonId ? lessonScope(lessonId) : () => false;
+	for (const slot of [lessonSlot, globalSlot]) {
+		if (!slot) continue;
+		const vm = slot.explorer.vm;
+		const sel = vm.selection;
+		const selForeign = sel?.kind === "node" ? !inLesson(sel.id) : sel?.kind === "edge" ? (() => {
+			const e = knowledgeStore.getEdge(sel.id);
+			return !e || !inLesson(e.source) && !inLesson(e.target);
+		})() : false;
+		if (vm.focus !== null && !inLesson(vm.focus)) vm.clearFocus();
+		else if (selForeign) vm.select(null);
+	}
+}
+/** Scene/step changed: focus the concept the lesson teaches there (if any). */
+function followLessonPosition() {
+	if (!lessonSlot || lessonSlot.lessonId !== currentLessonId()) return;
+	const id = conceptAtPlace(lessonSlot.parsed.concepts, lessonSlot.lessonId, state.currentSceneIndex, state.currentStepIndex, activeLesson.focus ?? void 0);
+	if (!id) {
+		activeLesson.placeFocus = null;
+		clearForeignFocus();
+		return;
+	}
+	if (id === activeLesson.placeFocus) return;
+	activeLesson.placeFocus = id;
+	focusKnowledgeConcept(id, { source: "navigation" });
+}
+/**
+* Add concepts/relations at runtime. Accepts the same authored shape as a
+* lesson's knowledgeGraph block, validates it, and merges it in one batch —
+* every open explorer updates incrementally. Runtime records carry no lesson
+* reference and are marked as live updates.
+*/
+function applyKnowledgeUpdate(update) {
+	const res = applyRuntimeUpdate(knowledgeStore, update);
+	return { issues: [...res.parseIssues, ...res.issues] };
+}
+function setupKnowledgeGraph() {
+	const btn = document.getElementById("kg-status");
+	btn?.addEventListener("click", () => {
+		toggleGlobalExplorer();
+	});
+	btn?.addEventListener("keydown", (ev) => {
+		if (ev.key === "Enter" || ev.key === " ") {
+			ev.preventDefault();
+			toggleGlobalExplorer();
+		}
+	});
+	const { head, toggle } = lessonSectionEls();
+	toggle?.addEventListener("click", (e) => {
+		e.stopPropagation();
+		toggleEmbedded();
+	});
+	head?.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) toggleEmbedded();
+	});
+	window.addEventListener("algebench:lessonload", (ev) => {
+		onLessonLoaded(ev.detail?.spec);
+	});
+	window.addEventListener("algebench:navchange", followLessonPosition);
+	window.algebenchGetKnowledgeGraphState = getKnowledgeGraphContext;
+	window.algebenchKnowledgeGraph = {
+		store: knowledgeStore,
+		applyUpdate: applyKnowledgeUpdate,
+		openConcept,
+		focusConcept: focusKnowledgeConcept,
+		conceptForGlossaryKey,
+		explorers: () => ({
+			global: globalSlot?.explorer ?? null,
+			lesson: lessonSlot?.explorer ?? null
+		})
+	};
+}
+//#endregion
 //#region src/main.ts
 window.algebenchIcons = {
 	ai: AI_ICON,
@@ -30030,6 +33619,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupContextStatusPopup();
 	setupCamStatusPopup();
 	setupAboutPopup();
+	setupKnowledgeGraph();
 	setupViewSync();
 	setupShareButton();
 	setupSideSections();

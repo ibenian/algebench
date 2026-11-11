@@ -125,6 +125,7 @@ function _classifyFocusTarget(target: EventTarget | null): string | null {
     // elements); the original guarded on `.closest` existing, so keep that.
     const el = target as Element | null;
     if (!el || !el.closest) return null;
+    if (el.closest('.kg-explorer, #kg-layer')) return 'knowledge graph';
     if (el.closest('#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip')) return 'graph';
     if (el.closest('#mathbox-container, #mathbox-overlay, canvas')) return 'viewport';
     if (el.closest('.explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts')) return 'panel';
@@ -353,6 +354,17 @@ function buildChatContext(): AlgeBenchChatContext {
         }
     }
 
+    // Knowledge Graph — the view the learner last explored, kept after the
+    // explorer closes (`open: false`) so the tutor still knows what was studied.
+    if (typeof window.algebenchGetKnowledgeGraphState === 'function') {
+        try {
+            const kg = window.algebenchGetKnowledgeGraphState();
+            if (kg) runtime.knowledgeGraph = kg;
+        } catch (e) {
+            console.warn('[chat] failed to read knowledge graph state:', e);
+        }
+    }
+
     // Which surface did the user last touch? Disambiguates dock visibility
     // from actual user attention (issue #124 follow-up).
     if (_lastFocusedSurface) {
@@ -379,6 +391,7 @@ function buildChatContext(): AlgeBenchChatContext {
     } else if (runtime.activeTab === 'doc') {
         viewing.push('doc');
     }
+    if (runtime.knowledgeGraph?.open) viewing.push(`knowledge graph (${runtime.knowledgeGraph.presentation})`);
     runtime.userViewing = viewing;
 
     // Guided-tour ("Coach") state so the agent can answer questions about it

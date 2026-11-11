@@ -1083,6 +1083,7 @@ export interface LessonFormat {
    * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked.
    */
   glossaryMatchThreshold?: number;
+  knowledgeGraph?: KnowledgeGraph;
   /**
    * When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.
    */
@@ -1133,6 +1134,89 @@ export interface GlossaryEntry {
    * Message sent to the AI chat by the tooltip's Ask AI button. Defaults to asking the AI to explain the term in the context of the lesson.
    */
   prompt?: string;
+}
+/**
+ * Optional knowledge graph for the Knowledge Graph Explorer: the concepts this lesson teaches and typed, directed relations between them. Concepts are identified ONLY by their explicit id — two lessons using the same id describe the same concept and are merged in the global graph; labels and glossary aliases never merge anything. Lessons without this block are unaffected.
+ */
+export interface KnowledgeGraph {
+  /**
+   * Concept id of what this lesson is mainly about. The default focus whenever nothing more specific applies: a scene/step no concept refers to, a tie between concepts at one place, switching the graph to Local scope, or the global graph's starting point. Defaults to the first concept.
+   */
+  mainConcept?: string;
+  /**
+   * @deprecated
+   * Deprecated alias of mainConcept, still accepted. Use mainConcept.
+   */
+  focus?: string;
+  /**
+   * Concepts this lesson teaches or relies on.
+   */
+  concepts?: KnowledgeConcept[];
+  /**
+   * Directed, typed relations. Both ends must be concept ids defined in this lesson or another lesson; relations never create concepts.
+   */
+  relations?: KnowledgeRelation[];
+}
+/**
+ * One concept node.
+ */
+export interface KnowledgeConcept {
+  /**
+   * Stable, globally unique concept id, conventionally namespaced: "dsa.stack". Reuse the same id in every lesson that teaches the concept.
+   */
+  id: string;
+  /**
+   * Display name. Example: "Monotonic Deque".
+   */
+  label: string;
+  /**
+   * Concept kind, used for colour: problem, data-structure, technique, invariant, analysis (others are drawn neutrally).
+   */
+  category?: string;
+  /**
+   * Short markdown definition (KaTeX allowed). Overrides the linked glossary entry.
+   */
+  definition?: string;
+  /**
+   * Key of this lesson's glossary entry that defines the concept — an explicit link, never inferred from the label.
+   */
+  glossary?: string;
+  /**
+   * Where in this lesson the concept is taught; each becomes a navigation button.
+   */
+  refs?: KnowledgePlaceRef[];
+}
+/**
+ * A place in the lesson: scene index and optional step index (0-based; step -1 or omitted = the scene's base view).
+ */
+export interface KnowledgePlaceRef {
+  scene: number;
+  step?: number;
+  /**
+   * Short label for the navigation button.
+   */
+  label?: string;
+}
+/**
+ * A directed relation read as "source <type> target".
+ */
+export interface KnowledgeRelation {
+  /**
+   * Concept id the relation starts from.
+   */
+  source: string;
+  /**
+   * Concept id the relation points to.
+   */
+  target: string;
+  /**
+   * Relation type. Known types: prerequisite-of, specializes, part-of, uses, maintains, solves, analyzed-by, measured-by, related-to. Use prerequisite-of only for genuine learning prerequisites.
+   */
+  type: string;
+  /**
+   * Why the relation holds (markdown).
+   */
+  description?: string;
 }
 /**
  * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.

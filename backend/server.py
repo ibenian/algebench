@@ -756,6 +756,8 @@ def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
         "sceneTitles": scene_titles,
         "searchText": " ".join(" ".join(search_parts).split()),
         "glossary": _glossary_terms(spec.get("glossary")),
+        # Private: served by /api/knowledge-graph, stripped from /api/scenes.
+        "_knowledge": _lesson_knowledge_graph(spec),
     }
     _lesson_summary_cache[lesson_id] = (mtime, summary)
     return summary
@@ -768,7 +770,38 @@ def _with_domain_terms(summary: dict) -> dict:
         if term.lower() not in seen:
             seen.add(term.lower())
             terms.append(term)
-    return {**summary, "glossary": terms}
+    public = {k: v for k, v in summary.items() if not k.startswith("_")}
+    return {**public, "glossary": terms}
+
+
+# A lesson's knowledgeGraph block is passed through as authored (the client
+# validates it — see src/graph-explorer/knowledge-model.ts); this cap only keeps
+# one oversized file from bloating every /api/knowledge-graph response.
+KNOWLEDGE_GRAPH_MAX_BYTES = 256 * 1024
+
+
+def _lesson_knowledge_graph(spec: dict) -> Optional[dict]:
+    """The lesson's optional ``knowledgeGraph`` block, plus the glossary entries
+    its concepts name explicitly (``"glossary": "<key>"``) so a definition can
+    be shown without loading the lesson. None when the lesson has none."""
+    kg = spec.get("knowledgeGraph")
+    if not isinstance(kg, dict):
+        return None
+    try:
+        if len(json.dumps(kg)) > KNOWLEDGE_GRAPH_MAX_BYTES:
+            logging.getLogger("backend").warning("knowledgeGraph too large; skipped")
+            return None
+    except (TypeError, ValueError):
+        return None
+    glossary = spec.get("glossary") if isinstance(spec.get("glossary"), dict) else {}
+    concepts = kg.get("concepts") if isinstance(kg.get("concepts"), list) else []
+    keys = {c["glossary"] for c in concepts if isinstance(c, dict) and isinstance(c.get("glossary"), str)}
+    used = {}
+    for key in sorted(keys):
+        entry = glossary.get(key)
+        if isinstance(entry, dict):
+            used[key] = {k: entry[k] for k in ("term", "markdown") if isinstance(entry.get(k), str)}
+    return {"knowledgeGraph": kg, "glossary": used}
 
 
 # One scan at a time: the startup build and an early request would otherwise
@@ -791,26 +824,40 @@ def list_builtin_lessons(refresh: bool = False):
         return _scan_builtin_lessons()
 
 
+def list_lesson_knowledge_graphs() -> dict:
+    """Every lesson's knowledgeGraph block (from the same mtime-cached index as
+    the picker), and how many lessons there are in all — so the explorer can say
+    how much of the catalogue the graph actually covers."""
+    with _lesson_index_lock:
+        summaries = _scan_builtin_lessons(public=False)
+    lessons = [
+        {"id": s["id"], "title": s["title"], "draft": s["draft"], **s["_knowledge"]}
+        for s in summaries if s.get("_knowledge")
+    ]
+    return {"lessonCount": len(summaries), "lessons": lessons}
+
+
 def _confined_lesson(f: Path) -> Optional[Path]:
     """``f`` resolved inside scenes/, as /scenes/{name} would load it; None for a
     symlink that points outside."""
     return sanitize_path(scenes_dir, f.relative_to(scenes_dir).as_posix())
 
 
-def _scan_builtin_lessons():
+def _scan_builtin_lessons(public: bool = True):
     if not scenes_dir.exists():
         return []
     lessons = []
+    finish = _with_domain_terms if public else (lambda s: s)
     for f in sorted(scenes_dir.glob("*.json")):
         path = _confined_lesson(f)
         summary = path and _lesson_summary(path, f.stem, draft=False)
         if summary:
-            lessons.append(_with_domain_terms(summary))
+            lessons.append(finish(summary))
     for f in sorted((scenes_dir / DRAFT_SCENES_SUBDIR).glob("*.json")):
         path = _confined_lesson(f)
         summary = path and _lesson_summary(path, f"{DRAFT_SCENES_SUBDIR}/{f.stem}", draft=True)
         if summary:
-            lessons.append(_with_domain_terms(summary))
+            lessons.append(finish(summary))
     return lessons
 
 
@@ -2504,6 +2551,12 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         # it); "lessons" adds drafts and what the lesson picker shows per row.
         lessons = await asyncio.to_thread(list_builtin_lessons, refresh)
         return JSONResponse({"scenes": list_builtin_scenes(), "lessons": lessons})
+
+    @fastapp.get("/api/knowledge-graph")
+    async def get_knowledge_graph():
+        # The authored knowledgeGraph block of every lesson that has one; the
+        # client validates and merges them by explicit concept id.
+        return JSONResponse(await asyncio.to_thread(list_lesson_knowledge_graphs))
 
     @fastapp.get("/api/scene_file")
     async def get_scene_file(request: Request):

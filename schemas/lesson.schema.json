@@ -42,6 +42,10 @@
           "default": 2,
           "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked."
         },
+        "knowledgeGraph": {
+          "$ref": "#/$defs/knowledgeGraph",
+          "description": "Optional knowledge graph for the Knowledge Graph Explorer: the concepts this lesson teaches and typed, directed relations between them. Concepts are identified ONLY by their explicit id — two lessons using the same id describe the same concept and are merged in the global graph; labels and glossary aliases never merge anything. Lessons without this block are unaffected."
+        },
         "unsafe": {
           "type": "boolean",
           "description": "When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.",
@@ -3478,6 +3482,128 @@
           }
         ]
       }
+    },
+    "knowledgeGraph": {
+      "type": "object",
+      "description": "A lesson's knowledge graph. Shown embedded in the lesson's Doc tab and merged into the global Knowledge Graph (status bar).",
+      "properties": {
+        "mainConcept": {
+          "type": "string",
+          "description": "Concept id of what this lesson is mainly about. The default focus whenever nothing more specific applies: a scene/step no concept refers to, a tie between concepts at one place, switching the graph to Local scope, or the global graph's starting point. Defaults to the first concept."
+        },
+        "focus": {
+          "type": "string",
+          "deprecated": true,
+          "description": "Deprecated alias of mainConcept, still accepted. Use mainConcept."
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeConcept"
+          },
+          "description": "Concepts this lesson teaches or relies on."
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeRelation"
+          },
+          "description": "Directed, typed relations. Both ends must be concept ids defined in this lesson or another lesson; relations never create concepts."
+        }
+      },
+      "additionalProperties": false
+    },
+    "knowledgeConcept": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "description": "One concept node.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Stable, globally unique concept id, conventionally namespaced: \"dsa.stack\". Reuse the same id in every lesson that teaches the concept."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name. Example: \"Monotonic Deque\"."
+        },
+        "category": {
+          "type": "string",
+          "description": "Concept kind, used for colour: problem, data-structure, technique, invariant, analysis (others are drawn neutrally)."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Short markdown definition (KaTeX allowed). Overrides the linked glossary entry."
+        },
+        "glossary": {
+          "type": "string",
+          "description": "Key of this lesson's glossary entry that defines the concept — an explicit link, never inferred from the label."
+        },
+        "refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgePlaceRef"
+          },
+          "description": "Where in this lesson the concept is taught; each becomes a navigation button."
+        }
+      },
+      "additionalProperties": false
+    },
+    "knowledgeRelation": {
+      "type": "object",
+      "required": [
+        "source",
+        "target",
+        "type"
+      ],
+      "description": "A directed relation read as \"source <type> target\".",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Concept id the relation starts from."
+        },
+        "target": {
+          "type": "string",
+          "description": "Concept id the relation points to."
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$",
+          "description": "Relation type. Known types: prerequisite-of, specializes, part-of, uses, maintains, solves, analyzed-by, measured-by, related-to. Use prerequisite-of only for genuine learning prerequisites."
+        },
+        "description": {
+          "type": "string",
+          "description": "Why the relation holds (markdown)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "knowledgePlaceRef": {
+      "type": "object",
+      "required": [
+        "scene"
+      ],
+      "description": "A place in the lesson: scene index and optional step index (0-based; step -1 or omitted = the scene's base view).",
+      "properties": {
+        "scene": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": -1
+        },
+        "label": {
+          "type": "string",
+          "description": "Short label for the navigation button."
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
